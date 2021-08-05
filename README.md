@@ -4,8 +4,7 @@ Authors - Leonardos Mageiros (primary author) & Philip Ashton
 
 ## getting started
 
-1. Clone this repo
-	a. `git clone `
+1. Clone this repo i.e. `git clone git@github.com:flashton2003/STRATAA_metagenomics.git`
 2. Install all the required packages
 	a. They can be found in the `STRATAA_analysis_species.Rmd` file.
 3. Change the location of the files which are sourced in lines 61-63 to the location to which you downloaded them.
