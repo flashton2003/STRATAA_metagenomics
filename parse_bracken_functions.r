@@ -23,7 +23,7 @@ get_bracken_summarise <- function(folder, filename_regex){
 #this function reads the summarised data, plots them, filters low abundunce reads, save and plot the filtered data
 filter_data <- function(folder, prefix, filename_regex, output){
   #browser()
-  
+  output <- file.path(output, '1_species')
   #create the names of the parsed bracken files - one with all the data and one with the filtered
   summary_file <- paste(output, "summarised_", prefix, "_kraken.txt", sep = "")
   otu_file <- paste(output, "summarised_", prefix, "_otu.txt", sep = "")
@@ -180,31 +180,30 @@ relative_abundances_histogram <- function(data, level, out_folder){
 calculate_beta <- function(data, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
   
   
-  #View(data)
   #make the first column headers
   rownames(meta) <- meta[,1]
   #meta <- meta %>% remove_rownames %>% column_to_rownames()
   
   #and order
   meta <- meta[ order(row.names(meta)), ]
-  
-  
+  # need to transpose the OTU table from species as rows to species as columns
+  data <- as.matrix(t(data))
   #order data table as well to be sure
   data <- data[ order(row.names(data)), ]
   rownames(data) <- gsub("#","_",rownames(data))
   #make sure that you have the same ids
   meta_names <- rownames(meta)
-  data_names <- colnames(data)
-  common.ids <- intersect(rownames(meta), colnames(data))
+  data_names <- rownames(data)
+  common.ids <- intersect(rownames(meta), rownames(data))
   #browser()
   #make sure you have the correct meta
   meta <- meta[common.ids,]
-  data <- data[,common.ids]
-  View(data)
+  data <- data[common.ids,]
+  
   #transform the table to relative abundances
   data <- sweep(data, 1, rowSums(data),'/')
   #calculate bray curtis distance matrix
-  d.bray <- vegdist(as.matrix(t(data)))
+  d.bray <- vegdist(data)
   
   #transform it to a matrix to save it
   beta_matrix <- as.matrix(d.bray)

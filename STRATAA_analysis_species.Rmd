@@ -19,11 +19,6 @@ We are going to need the following R packages and a source code file with all th
 ```{r Setup, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-#Here we change the library path to local.
-#Knitr has a problem producing files when operating in a network drive.
-#Ignore that if you already have an R isntalation that opperates localy. 
-#.libPaths("C:/CustomR")
-
 library(broom)
 library(tidyverse)
 library(stringr)
@@ -62,6 +57,7 @@ library(hrbrthemes)
 library(MASS)
 
 #this is a file with some functions we are going to use to anlyse our results
+# there's probably a better way to do this with relative paths, but absolute paths are simpler.
 source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
 source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
 source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/diff_expr.r")
@@ -94,7 +90,15 @@ names(meta)[names(meta) == "ID"] <- "isolate"
 # the species and genus level are separate bracken analyses
 braken_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
 level = "species"
-out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_2/1_species/"
+out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3"
+species_dir <- file.path(out_folder, '1_species')
+analysis_dir <- file.path(out_folder, '3_analysis')
+beta_dir <- file.path(out_folder, '4_beta')
+
+if (!dir.exists(out_folder)){ dir.create(out_folder) }
+if (!dir.exists(species_dir)){ dir.create(species_dir) }
+if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
+if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
 
 #give filename patern as a reg exp
 samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
@@ -205,7 +209,7 @@ Let us also try and see how the phenotypes are looking if we seperate our data p
 
 
 sampledata <- sample_data(meta %>% remove_rownames %>% column_to_rownames(var="isolate"))
-OTU = otu_table(t(data_table.unnormalised), taxa_are_rows = TRUE)
+OTU = otu_table(t(data_table.unnormalised), taxa_are_rows = FALSE)
 pseq <- phyloseq(OTU, sampledata)
 
 malawi <- subset_samples(pseq, Country == "Malawi")
