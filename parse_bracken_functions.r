@@ -179,8 +179,8 @@ relative_abundances_histogram <- function(data, level, out_folder){
 
 calculate_beta <- function(data, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
   
-  #browser()
   
+  #View(data)
   #make the first column headers
   rownames(meta) <- meta[,1]
   #meta <- meta %>% remove_rownames %>% column_to_rownames()
@@ -192,24 +192,26 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   #order data table as well to be sure
   data <- data[ order(row.names(data)), ]
   rownames(data) <- gsub("#","_",rownames(data))
-
   #make sure that you have the same ids
-  common.ids <- intersect(rownames(meta), rownames(data))
-  
+  #meta_names <- rownames(meta)
+  #data_names <- colnames(data)
+  #common.ids <- intersect(rownames(meta), colnames(data))
+  #browser()
   #make sure you have the correct meta
-  meta <- meta[common.ids,]
-  data <- data[common.ids,]
+  #meta <- meta[common.ids,]
+  #data <- data[common.ids,]
   
   #transform the table to relative abundances
   data <- sweep(data, 1, rowSums(data),'/')
-  
+  View(data)
   #calculate bray curtis distance matrix
   d.bray <- vegdist(data)
+  
   #transform it to a matrix to save it
   beta_matrix <- as.matrix(d.bray)
-  
+  View(beta_matrix)
   #Perform PCoA
-  pc.bray <- cmdscale(d.bray,k=2, eig = T)
+  pc.bray <- cmdscale(d.bray, k=4, eig = T)
   pcoa.var <- round(pc.bray$eig/sum(pc.bray$eig)*100, 1)
   pcoa.values <- pc.bray$points
   pcoa.data <- data.frame(Sample = rownames(pcoa.values), X=pcoa.values[,1], Y = pcoa.values[,2])
@@ -219,7 +221,7 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   
   
   
-  output_folder <- paste("./", output_folder, "4_beta/", sep = "")
+  output_folder <- paste(output_folder, "4_beta/", sep = "")
   if (!dir.exists(output_folder)){ dir.create(output_folder) }
   title <- paste("Beta diversity PCoA: ", level, " level", sep = "")
   
@@ -231,10 +233,13 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   #plot and save
   file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
   
-  g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
-          ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
-          guides(colour=guide_legend(title=prefix)) +
-          geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+  #g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
+  #        ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+  #        guides(colour=guide_legend(title=prefix)) +
+  #        geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+  g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
+    ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+    geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   ggsave(file_path)
   
   print(g1)

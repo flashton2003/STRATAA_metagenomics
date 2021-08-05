@@ -77,11 +77,12 @@ We need to set specific variables for our analysis first. These contain the work
 
 #STRATAA
 # - set this as the location of this script.
-knitr::opts_knit$set(root.dir = '/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running/3_analysis/reports')
+knitr::opts_knit$set(root.dir = '/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_2/3_analysis/reports')
 
 #give metadata file
 # either get this from email form leo, or convert the excel one.
 meta <- read.csv("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.txt", header=T, sep = "\t")
+# i dont think this line does anything, probably just there for historic reasons
 names(meta)[names(meta) == "sample_ID"] <- "isolate"
 names(meta)[names(meta) == "ID"] <- "isolate"
 
@@ -93,7 +94,7 @@ names(meta)[names(meta) == "ID"] <- "isolate"
 # the species and genus level are separate bracken analyses
 braken_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
 level = "species"
-out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running/1_species/"
+out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_2/1_species/"
 
 #give filename patern as a reg exp
 samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
@@ -139,11 +140,12 @@ The normalised tables are stored in the hard drive.
 data_table.normalised.clr <- t(clr_transform(data_table, "kraken_assigned_reads", "clr_normalised_data.txt", out_folder))
 colnames(data_table.normalised.clr) = gsub(pattern = "X", replacement = "", x = colnames(data_table.normalised.clr)) 
 
+# this is not working
 data_table.normalised.tmm <- t(tmm_transformation(data_table, "kraken_assigned_reads", "tmm_normalised_data.txt", out_folder))
 colnames(data_table.normalised.tmm) = gsub(pattern = "X", replacement = "", x = colnames(data_table.normalised.tmm))
 
 # beta and alpha diversity analyses require unnormalised data, as they do their own normalisation steps.
-data_table.unnormalised <- data.matrix(read.csv("../1_species/summarised_filtered_species_otu.txt", header=T, sep = "\t"))
+data_table.unnormalised <- data.matrix(read.csv("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_2/1_species/summarised_filtered_species_otu.txt", header=T, sep = "\t"))
 colnames(data_table.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
 ```
 
@@ -159,9 +161,11 @@ g1 <- ggplot() + geom_point(aes(x=x, y=y)) + labs(x="Unnormalised values", y="TM
 
 y2<-as.vector(data_table.normalised.clr)
 g2 <- ggplot() + geom_point(aes(x=x, y=y2)) + labs(x="Unnormalised values", y="CLR normalised values")
+plot(g2)
+
 
 g <- arrangeGrob(g1, g2, ncol=2) #generates g
-plot(g)
+
 # might be better to do png plot
 ggsave(file= paste(out_folder, "1_normalized_data/normalization_distributions.pdf", sep=""), g)
 ```
@@ -182,6 +186,9 @@ Lets see how the PCA plots differ from PCoA plots.
 ```{r Beta diversity - PCoA , message = FALSE, results = FALSE}
 
 # beta and alpha diversity analyses require unnormalised data, as they do their own normalisation steps.
+#View(data_table.unnormalised)
+source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
+
 calculate_beta(data_table.unnormalised, meta, quote("Country"), out_folder, "Country", level)
 
 calculate_beta(data_table.unnormalised, meta, quote("Group"), out_folder, "Phenotype", level)

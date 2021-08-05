@@ -7,7 +7,7 @@ library(edgeR)
 library("phyloseq")
 
 
-setwd("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running/3_analysis/")
+setwd("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_2/3_analysis/")
 
 
 # x is the independent variable, a 2-group factor
