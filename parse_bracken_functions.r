@@ -193,19 +193,18 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   data <- data[ order(row.names(data)), ]
   rownames(data) <- gsub("#","_",rownames(data))
   #make sure that you have the same ids
-  #meta_names <- rownames(meta)
-  #data_names <- colnames(data)
-  #common.ids <- intersect(rownames(meta), colnames(data))
+  meta_names <- rownames(meta)
+  data_names <- colnames(data)
+  common.ids <- intersect(rownames(meta), colnames(data))
   #browser()
   #make sure you have the correct meta
-  #meta <- meta[common.ids,]
-  #data <- data[common.ids,]
-  
+  meta <- meta[common.ids,]
+  data <- data[,common.ids]
+  View(data)
   #transform the table to relative abundances
   data <- sweep(data, 1, rowSums(data),'/')
-  View(data)
   #calculate bray curtis distance matrix
-  d.bray <- vegdist(data)
+  d.bray <- vegdist(as.matrix(t(data)))
   
   #transform it to a matrix to save it
   beta_matrix <- as.matrix(d.bray)
@@ -233,13 +232,13 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   #plot and save
   file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
   
-  #g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
-  #        ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
-  #        guides(colour=guide_legend(title=prefix)) +
-  #        geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
-  g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
-    ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
-    geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+  g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
+          ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+          guides(colour=guide_legend(title=prefix)) +
+          geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+  #g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
+  #  ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+  #  geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   ggsave(file_path)
   
   print(g1)
