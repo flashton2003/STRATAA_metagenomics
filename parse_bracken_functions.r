@@ -23,7 +23,7 @@ get_bracken_summarise <- function(folder, filename_regex){
 #this function reads the summarised data, plots them, filters low abundunce reads, save and plot the filtered data
 filter_data <- function(folder, prefix, filename_regex, output){
   #browser()
-  output <- file.path(output, '1_species')
+  output <- file.path(output, '1_species/')
   #create the names of the parsed bracken files - one with all the data and one with the filtered
   summary_file <- paste(output, "summarised_", prefix, "_kraken.txt", sep = "")
   otu_file <- paste(output, "summarised_", prefix, "_otu.txt", sep = "")

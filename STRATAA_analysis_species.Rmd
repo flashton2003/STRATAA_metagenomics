@@ -90,7 +90,7 @@ names(meta)[names(meta) == "ID"] <- "isolate"
 # the species and genus level are separate bracken analyses
 braken_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
 level = "species"
-out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3"
+out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3/"
 species_dir <- file.path(out_folder, '1_species')
 analysis_dir <- file.path(out_folder, '3_analysis')
 beta_dir <- file.path(out_folder, '4_beta')
