@@ -94,12 +94,13 @@ out_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Le
 species_dir <- file.path(out_folder, '1_species')
 analysis_dir <- file.path(out_folder, '3_analysis')
 beta_dir <- file.path(out_folder, '4_beta')
-
+glm_dir <- file.path(out_folder, '5_glm')
 
 if (!dir.exists(out_folder)){ dir.create(out_folder) }
 if (!dir.exists(species_dir)){ dir.create(species_dir) }
 if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
 if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
+if (!dir.exists(glm_dir)){ dir.create(glm_dir) }
 
 #give filename patern as a reg exp
 samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
@@ -250,11 +251,11 @@ EdgeR uses Trimmed Mean of M-values (TMM). This normalization method is implemen
 ```{r diff edgeR_setup, message = FALSE, warning=FALSE, results = FALSE}
 
 #give metadata file
-full_meta <- read.csv("../full_meta.txt", header=T, row.names=1, sep = "\t")
+full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, row.names=1, sep = "\t")
 sampledata <- sample_data(full_meta)
 
 #OTU
-otu <- read.csv("../1_species/summarised_filtered_species_otu.txt", header=T, row.names=1, sep = "\t")
+otu <- read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, row.names=1, sep = "\t")
 colnames(otu) = gsub(pattern = "X", replacement = "", x = colnames(otu)) 
 OTU = otu_table(otu, taxa_are_rows = TRUE)
 
@@ -275,14 +276,14 @@ subset_otu <- t(abundances(pseq_control_vs_acute))
 #EdgeR diff expression - HERE AGE SHOULD BE ADDED 
 result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex')])
 topTags(result, n=10)
-write.table(topTags(result, n=Inf)$table, file='../1_species/5_glm/edgeR/results_all.txt',sep='\t',quote=FALSE, col.names=NA)
+write.table(topTags(result, n=Inf)$table, file=paste(out_folder,'/5_glm/results_all.edgeR.tsv', sep = ''),sep='\t',quote=FALSE, col.names=NA)
 
 plot_glm(result, "../1_species/5_glm/edgeR/all.pdf", 40, 0.05, "Top 20 - All samples", "Accute Disease", "Control Healthy", "blue", "red")
 
 sig_results <- topTags(result, n=Inf)$table
 sig_results <- sig_results[sig_results$FDR < 0.05 , ]
 sig_results <- sig_results[sig_results$logFC > 1 | sig_results$logFC < -1, ]
-plot_one_gene(sig_results, subset_otu, subset_meta, "Group", "../1_species/5_glm/edgeR/test.pdf")
+plot_one_gene(sig_results, subset_otu, subset_meta, "Group", "../5_glm/edgeR/test.pdf")
 
 ```
 
