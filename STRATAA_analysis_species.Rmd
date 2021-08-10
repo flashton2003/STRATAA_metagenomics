@@ -58,9 +58,9 @@ library(MASS)
 
 #this is a file with some functions we are going to use to anlyse our results
 # there's probably a better way to do this with relative paths, but absolute paths are simpler.
-source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
-source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
-source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/diff_expr.r")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/diff_expr.r")
 
 ```
 
@@ -77,7 +77,7 @@ knitr::opts_knit$set(root.dir = '/Users/flashton/Dropbox/STRATAA_Microbiome_from
 
 #give metadata file
 # either get this from email form leo, or convert the excel one.
-meta <- read.csv("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.txt", header=T, sep = "\t")
+meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.txt", header=T, sep = "\t")
 # i dont think this line does anything, probably just there for historic reasons
 names(meta)[names(meta) == "sample_ID"] <- "isolate"
 names(meta)[names(meta) == "ID"] <- "isolate"
@@ -88,12 +88,13 @@ names(meta)[names(meta) == "ID"] <- "isolate"
 # might want to do genus because have more power to detect effects with a smaller number of genera rather than species.
 # do both, and then compare between the two to check consistent
 # the species and genus level are separate bracken analyses
-braken_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
+braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
 level = "species"
-out_folder = "/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3/"
+out_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3/"
 species_dir <- file.path(out_folder, '1_species')
 analysis_dir <- file.path(out_folder, '3_analysis')
 beta_dir <- file.path(out_folder, '4_beta')
+
 
 if (!dir.exists(out_folder)){ dir.create(out_folder) }
 if (!dir.exists(species_dir)){ dir.create(species_dir) }
@@ -149,32 +150,11 @@ data_table.normalised.tmm <- t(tmm_transformation(data_table, "kraken_assigned_r
 colnames(data_table.normalised.tmm) = gsub(pattern = "X", replacement = "", x = colnames(data_table.normalised.tmm))
 
 # beta and alpha diversity analyses require unnormalised data, as they do their own normalisation steps.
-data_table.unnormalised <- data.matrix(read.csv("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_2/1_species/summarised_filtered_species_otu.txt", header=T, sep = "\t"))
+
+data_table.unnormalised <- data.matrix(read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, sep = "\t"))
 colnames(data_table.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
 ```
 
-
-We can observe the distribution between our unnormalised data and the two normalisation methods we used by creating scaterplots comparing the corresponding values:
-
-```{r normalisation scatter plots, message = FALSE, results = FALSE}
-
-x<-as.vector(data_table.unnormalised)
-
-y<-as.vector(data_table.normalised.tmm)
-g1 <- ggplot() + geom_point(aes(x=x, y=y)) + labs(x="Unnormalised values", y="TMM normalised values")
-
-y2<-as.vector(data_table.normalised.clr)
-g2 <- ggplot() + geom_point(aes(x=x, y=y2)) + labs(x="Unnormalised values", y="CLR normalised values")
-plot(g2)
-
-
-g <- arrangeGrob(g1, g2, ncol=2) #generates g
-
-# might be better to do png plot
-ggsave(file= paste(out_folder, "1_normalized_data/normalization_distributions.pdf", sep=""), g)
-```
-
-It appears that our methods are performing equally good. 
 
 
 
@@ -191,7 +171,7 @@ Lets see how the PCA plots differ from PCoA plots.
 
 # beta and alpha diversity analyses require unnormalised data, as they do their own normalisation steps.
 #View(data_table.unnormalised)
-source("/Users/flashton/Dropbox/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
+#source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
 
 calculate_beta(data_table.unnormalised, meta, quote("Country"), out_folder, "Country", level)
 
@@ -207,6 +187,7 @@ Let us also try and see how the phenotypes are looking if we seperate our data p
 
 ```{r Beta diversity per city - PCoA , message = FALSE, results = FALSE}
 
+## todo - start here
 
 sampledata <- sample_data(meta %>% remove_rownames %>% column_to_rownames(var="isolate"))
 OTU = otu_table(t(data_table.unnormalised), taxa_are_rows = FALSE)
