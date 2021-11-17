@@ -1,4 +1,4 @@
-.libPaths("C:/CustomR")
+#.libPaths("C:/CustomR")
 library(microbiome)
 library(dplyr)
 library(tidyverse)
@@ -7,7 +7,7 @@ library(edgeR)
 library("phyloseq")
 
 
-setwd("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3/3_analysis/")
+setwd("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/3_analysis/")
 
 
 # x is the independent variable, a 2-group factor

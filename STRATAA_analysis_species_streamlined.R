@@ -36,19 +36,19 @@ library(hrbrthemes)
 library(MASS)
 
 
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/bin/diff_expr.r")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/diff_expr.r")
 
 
-meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, sep = "\t")
+meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, sep = "\t")
 # i dont think this line does anything, probably just there for historic reasons
 names(meta)[names(meta) == "sample_ID"] <- "isolate"
 names(meta)[names(meta) == "ID"] <- "isolate"
 
 
-braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
-output_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_running_3/"
+braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
+output_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/"
 taxonomic_level = "species"
 
 run_calc_beta <- function(input_braken_folder, out_folder, level, country){
@@ -74,11 +74,11 @@ run_calc_beta <- function(input_braken_folder, out_folder, level, country){
   calculate_beta(data_table.unnormalised, meta, quote("Group"), out_folder, "Group", level)
 }
 
-run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_blantyre/", "species", "Malawi")
+run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/", "species", "Malawi")
 
-run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_kathmandu/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_kathmandu/", "species", "Nepal")
+run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_kathmandu/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu/", "species", "Nepal")
 
-run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_dhaka/", "species", "Bangladesh")
+run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/", "species", "Bangladesh")
 
 
 
@@ -107,15 +107,16 @@ run_dge <- function(full_meta, root_dir, country){
   out_folder <- paste(root_dir,'/5_glm/', sep = '')
   if (!dir.exists(out_folder)){ dir.create(out_folder) }
   write.table(topTags(result, n=Inf)$table, file=paste(root_dir,'/5_glm/results_all.edgeR.tsv', sep = ''),sep='\t',quote=FALSE, col.names=NA)
-  
 }
 
 
-full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, row.names=1, sep = "\t")
+full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, row.names=1, sep = "\t")
 
 
 
-run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/phil_blantyre', 'Malawi')
+run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu', 'Nepal')
+run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka', 'Bangladesh')
+run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre', 'Malawi')
 
 
 

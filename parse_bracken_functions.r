@@ -53,7 +53,6 @@ filter_data <- function(folder, prefix, filename_regex, output){
        border="blue")
   dev.off()
   
-  
   #old filtering method
   #data <- data %>% filter(fraction_total_reads > 0.002)
   

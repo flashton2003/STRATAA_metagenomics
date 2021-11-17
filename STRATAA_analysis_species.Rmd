@@ -77,7 +77,7 @@ knitr::opts_knit$set(root.dir = '/Users/flashton/Dropbox/STRATAA_Microbiome_from
 
 #give metadata file
 # either get this from email form leo, or convert the excel one.
-meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.txt", header=T, sep = "\t")
+meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome_from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, sep = "\t")
 # i dont think this line does anything, probably just there for historic reasons
 names(meta)[names(meta) == "sample_ID"] <- "isolate"
 names(meta)[names(meta) == "ID"] <- "isolate"
