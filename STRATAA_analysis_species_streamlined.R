@@ -46,6 +46,10 @@ meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Le
 names(meta)[names(meta) == "sample_ID"] <- "isolate"
 names(meta)[names(meta) == "ID"] <- "isolate"
 
+## plot of the age per group per country
+#ggplot(meta, aes(x = Country, y = Age, fill = Group)) + geom_boxplot()
+
+meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 5, 15, Inf), labels=c("0-5", "6-15", ">15")))
 
 braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
 output_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/"
@@ -70,8 +74,10 @@ run_calc_beta <- function(input_braken_folder, out_folder, level, country){
   data_table.unnormalised <- data.matrix(read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, sep = "\t"))
   colnames(data_table.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
   
-  calculate_beta(data_table.unnormalised, meta, quote("Country"), out_folder, "Country", level)
+  `calculate_beta`(data_table.unnormalised, meta, quote("Country"), out_folder, "Country", level)
   calculate_beta(data_table.unnormalised, meta, quote("Group"), out_folder, "Group", level)
+  calculate_beta(data_table.unnormalised, meta, quote("Sex"), out_folder, "Sex", level)
+  calculate_beta(data_table.unnormalised, meta, quote("age_bracket"), out_folder, "age_bracket", level)
 }
 
 run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/", "species", "Malawi")
@@ -83,7 +89,7 @@ run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/L
 
 
 
-run_dge <- function(full_meta, root_dir, country){
+run_dge_one_city <- function(full_meta, root_dir, country){
   # filter full_meta
   full_meta <- full_meta %>% filter(Country == country)
   sampledata <- sample_data(full_meta)
@@ -100,6 +106,7 @@ run_dge <- function(full_meta, root_dir, country){
   
   pseq_control_vs_acute <- subset_samples(pseq, Group =="Control_HealthySerosurvey" | Group =="Acute_Typhi")
   subset_meta <- meta(pseq_control_vs_acute)
+  View(subset_meta)
   subset_otu <- t(abundances(pseq_control_vs_acute))
   #EdgeR diff expression - HERE AGE SHOULD BE ADDED 
   result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex')])
@@ -114,9 +121,9 @@ full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/fr
 
 
 
-run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu', 'Nepal')
-run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka', 'Bangladesh')
-run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre', 'Malawi')
+run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu', 'Nepal')
+run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka', 'Bangladesh')
+run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre', 'Malawi')
 
 
 
