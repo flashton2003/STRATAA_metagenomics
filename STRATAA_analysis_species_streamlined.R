@@ -34,6 +34,7 @@ library(vegan)
 library(viridis)
 library(vsn)
 library(zCompositions)
+library(VennDiagram)
 
 
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
@@ -53,15 +54,14 @@ names(meta)[names(meta) == "ID"] <- "isolate"
 number_per_country <- meta %>% group_by(Country) %>% summarise(count = n())
 number_per_country <- split(number_per_country$count, number_per_country$Country)
 
-
-
-
 eg1 <- meta %>% group_by(Country, Group, Sex) %>% summarise(count = n()) 
 for (c in c('Bangladesh', 'Malawi', 'Nepal')) {
   d <- eg1 %>% filter(Country == c)
   p <- ggplot(d, aes(x = Group, y = count, fill = Sex)) + geom_bar(stat ='identity', position = 'fill') + ylab('Proportion') + ggtitle(c)
   show(p)
 }
+
+# add age bracket
 
 meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 5, 15, Inf), labels=c("0-5", "6-15", ">15")))
 
@@ -101,10 +101,10 @@ run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/L
 run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/", "species", "Bangladesh")
 
 
-run_dge_one_city <- function(full_meta, root_dir, country){
+run_dge <- function(our_metadata, root_dir){
   # filter full_meta
-  full_meta <- full_meta %>% filter(Country == country)
-  sampledata <- sample_data(full_meta)
+  
+  sampledata <- sample_data(our_metadata)
   #OTU
   print(paste(root_dir, "/1_species/summarised_filtered_species_otu.txt", sep = ''))
   otu <- read.csv(paste(root_dir, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, row.names=1, sep = "\t")
@@ -113,32 +113,74 @@ run_dge_one_city <- function(full_meta, root_dir, country){
   
   #put them in a phyloseq object
   pseq <- phyloseq(OTU, sampledata)
-  full_meta <- meta(pseq)
+  our_metadata <- meta(pseq)
   otu <- abundances(pseq)
   
   pseq_control_vs_acute <- subset_samples(pseq, Group =="Control_HealthySerosurvey" | Group =="Acute_Typhi")
   subset_meta <- meta(pseq_control_vs_acute)
   View(subset_meta)
   subset_otu <- t(abundances(pseq_control_vs_acute))
-  #EdgeR diff expression - HERE AGE SHOULD BE ADDED 
+  # this is Leo's function for running edgeR GLM.
   result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age')])
+  #result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu)
   topTags(result, n=10)
   out_folder <- paste(root_dir,'/5_glm/', sep = '')
   if (!dir.exists(out_folder)){ dir.create(out_folder) }
-  write.table(topTags(result, n=Inf)$table, file=paste(root_dir,'/5_glm/results_all.edgeR.tsv', sep = ''),sep='\t',quote=FALSE, col.names=NA)
+  write.table(topTags(result, n=Inf)$table, file=paste(root_dir,'/5_glm/results_all.country_sex_age.edgeR.tsv', sep = ''),sep='\t',quote=FALSE, col.names=NA)
 }
 
 
 full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, row.names=1, sep = "\t")
+run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3')
+
+bangladesh_meta <- full_meta %>% filter(Country == 'Bangladesh')
+run_dge(bangladesh_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka')
+
+nepal_meta <- full_meta %>% filter(Country == 'Nepal')
+run_dge(nepal_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu')
+
+malawi_meta <- full_meta %>% filter(Country == 'Malawi')
+run_dge(malawi_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre')
 
 
+combine_and_compare_dges <- function() {
+  # dpt is differentially present taxa
+  all_sites_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/5_glm/all_sites.age_gender_country.results_all.edgeR.tsv'
+  bangladesh_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/5_glm/dhaka.age_gender.results_all.edgeR.tsv'
+  malawi_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/5_glm/blantyre.age_gender.results_all.edgeR.tsv'
+  nepal_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu/5_glm/kathmandu.age_gender.results_all.edgeR.tsv'
+  all_sites_dpt <- read_delim(all_sites_dpt_handle, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  all_sites_dpt <- rename(all_sites_dpt, c(species=...1, all_sites_logFC = logFC, all_sites_logCPM = logCPM, all_sites_LR = LR, all_sites_PValue = PValue, all_sites_FDR = FDR))
+  
+  bangladesh_dpt <- read_delim(bangladesh_dpt_handle, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  bangladesh_dpt <- rename(bangladesh_dpt, c(species=...1, bangladesh_logFC = logFC, bangladesh_logCPM = logCPM, bangladesh_LR = LR, bangladesh_PValue = PValue, bangladesh_FDR = FDR))
+  bangladesh_dpt_sig <- filter(bangladesh_dpt, bangladesh_FDR <= 0.01)
+  bangladesh_dpt_sig_up <- filter(bangladesh_dpt_sig, bangladesh_logFC >= 1)
+  bangladesh_dpt_sig_down <- filter(bangladesh_dpt_sig, bangladesh_logFC <= -1)
+  malawi_dpt <- read_delim(malawi_dpt_handle, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  malawi_dpt <- rename(malawi_dpt, c(species=...1, malawi_logFC = logFC, malawi_logCPM = logCPM, malawi_LR = LR, malawi_PValue = PValue, malawi_FDR = FDR))  
+  malawi_dpt_sig <- filter(malawi_dpt, malawi_FDR <= 0.01)
+  malawi_dpt_sig_up <- filter(malawi_dpt_sig, malawi_logFC >= 1)
+  malawi_dpt_sig_down <- filter(malawi_dpt_sig, malawi_logFC <= -1)
+  nepal_dpt <- read_delim(nepal_dpt_handle, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  nepal_dpt <- rename(nepal_dpt, c(species=...1, nepal_logFC = logFC, nepal_logCPM = logCPM, nepal_LR = LR, nepal_PValue = PValue, nepal_FDR = FDR))  
+  nepal_dpt_sig <- filter(nepal_dpt, nepal_FDR <= 0.01)
+  
+  combined_dpt <- left_join(all_sites_dpt, bangladesh_dpt, by = "species")
+  combined_dpt <- left_join(combined_dpt, malawi_dpt, by = "species")
+  combined_dpt <- left_join(combined_dpt, nepal_dpt, by = "species")
+  
+  write.table(combined_dpt, file='/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.combined_dges.tsv',sep='\t',quote=FALSE, col.names=NA)
+  venn.diagram(x = list(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.no_filter.png', euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  venn.diagram(x = list(bangladesh_dpt_sig$species, malawi_dpt_sig$species, nepal_dpt_sig$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.fdr_0.01.png', euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  
+  
+  venn.diagram(x = list(bangladesh_dpt_sig_up$species, malawi_dpt_sig_up$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.fdr_0.01.upreg.png', euler.d = FALSE, scaled = FALSE)
+  venn.diagram(x = list(bangladesh_dpt_sig_down$species, malawi_dpt_sig_down$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.fdr_0.01.downreg.png', euler.d = FALSE, scaled = FALSE)
+  
+  
+}
 
-run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu', 'Nepal')
-run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka', 'Bangladesh')
-run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre', 'Malawi')
-
-run_dge_one_city(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_combined', 'Malawi')
-
-
+combine_and_compare_dges()
 
 

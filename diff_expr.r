@@ -32,21 +32,25 @@ setwd("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos
 
 # x is the independent variable
 # Y is a matrix of samples x dependent variables
+# x is the Group
+# y is the OTU
 # returns p-values
 "glm.edgeR" <- function(x, Y, covariates=NULL,
                         use.fdr=TRUE, estimate.trended.disp=TRUE,
                         verbose=TRUE){
-  
+
   require('edgeR')
-  
-  # drop NA's
+  # drop samples that are NA for, by default, the Group (i.e. acute typhi/healthy control/etc)
   ix <- !is.na(x)
   Y <- Y[ix,]
   x <- x[ix]
+  # if covariates have been given
   if(!is.null(covariates)){
+    # if the dimensions of them are null then it isn't a matrix/data frame, so convert it to one
     if(is.null(dim(covariates))){
       covariates <- as.data.frame(covariates)
     }
+    # drop samples that are NA for the independent variable
     covariates <- covariates[ix,,drop=F]
     
     # drop constant covariates
@@ -55,13 +59,22 @@ setwd("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos
   
   if(verbose) cat('Making DGEList...\n')
   d <- DGEList(count=t(Y), group=x)
+  View(d)
   if(verbose) cat('calcNormFactors...\n')
   d <- calcNormFactors(d, method = "TMM" )
   if(!is.null(covariates)){
     covariates <- as.data.frame(covariates)
+    # combines the Group (i.e. acute typhi etc) back with the co-variates
     covariates <- cbind(x, covariates)
     covariates <- droplevels(covariates)
-    design <- model.matrix(~ ., data=covariates)		
+    design <- model.matrix(~ ., data=covariates)
+    # this makes the below
+    # x <- data.frame(c('case', 'control', 'carrier'), c(5, 17, 8))
+    # model.matrix(~ ., data = x)
+    #  (Intercept) c..case....control....carrier..case c..case....control....carrier..control c.5..17..8.
+    # 1           1                                   1                                      0           5
+    # 2           1                                   0                                      1          17
+    # 3           1                                   0                                      0           8
   } else {
     design <- model.matrix(~x)
   }
