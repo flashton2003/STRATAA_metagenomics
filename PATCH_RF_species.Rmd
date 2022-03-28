@@ -1,0 +1,464 @@
+---
+title: "PATCH RF on the species level"
+author: "Leonardos Mageiros"
+date: "08/03/20201"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+# Random Forest of the PATCH data at the species level
+
+After executing kracken2 and Bracken, here we analyse our taxonomic results for the PATCH metagenomics project.
+
+## Load packages and set up environmental variables
+
+We are going to need the following R packages and a source code file with all the fanctions we are going to use: 
+
+```{r Setup, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Here we change the library path to local. 
+#Knitr has a problem producing files when operating in a network drive.
+#Ignore that if you already have an R isntalation that opperates localy. 
+.libPaths("C:/CustomR")
+library(broom)
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(reshape2)
+library(RColorBrewer)
+library(viridis)
+library(heatmaply)
+library(ggplot2)
+library(readr)
+library(ggfortify)
+library(cluster)
+library(autoplotly)
+library(htmlwidgets)
+library(compositions)
+library(zCompositions)
+library(vegan)
+library(dendextend)
+library(dplyr)
+library(ggpubr)
+library(edgeR)
+library(rmarkdown)
+library(gridExtra)
+library(microbiome)
+library(phyloseq)
+library(apeglm)
+library(vsn)
+library(DESeq2)
+library(edgeR)
+library(pROC)
+#libraries for RF
+library("randomForest")
+library("plyr") # for the "arrange" function
+library("rfUtilities") # to test model significance
+library("caret") # to get leave-one-out cross-validation accuracies and also contains the nearZeroVar function 
+
+#this is a file with some functions we are going to use to anlyse our results
+source("C:/Monash/projects/bin/parse_bracken_functions.r")
+
+```
+
+
+## Define globals
+
+We need to set specific variables for our analysis first. 
+These contain the working dierectory, the metadata csv file, the output of braken etc.
+
+
+```{r Define working dierectory, load data and define variables, message = FALSE}
+
+
+#PATCH
+knitr::opts_knit$set(root.dir = 'C:/Monash/projects/PATCH/3_RF/reports')
+
+#give metadata file
+meta <- read.csv("C:/Monash/projects/PATCH/2_taxonomic_profiling/3_analysis/full_meta.txt", header=T, sep = "\t")
+names(meta)[names(meta) == "sample_ID"] <- "isolate"
+names(meta)[names(meta) == "ID"] <- "isolate"
+
+#define the braken output folder, the level we are operating and a folder for all the output
+braken_folder = "C:/Monash/projects/PATCH/2_taxonomic_profiling/2_bracken/species/"; level = "species"; out_folder = "../1_species/"
+
+#give filename patern as a reg exp
+samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
+
+```
+
+## Parse, filter, load
+
+The first step will be to read the braken output, parse the files, filter low abundance reads (< 0.003%) and load the results in a data frame. We are also storing everything in our hard drive. Step by step what this functon does is: 
+
+* Check if the filtered file with the parsed bracken data exists. If yes load it and return
+* Otherwise it reads all the files in the braken_folder 
+* Puts them all in one file + create a histogram of the values
+* Filters reads with relative abundance lower than 0.003% + recreates the histogram
+* Save all the files in the hard drive
+
+```{r Parse, filter and load data, message = FALSE, results = FALSE}
+
+data_table <- filter_data(braken_folder, level, samples_regexp, out_folder)
+#data_table_unfiltered <- read.csv("C:/Monash/projects/PATCH/3_RF/1_species/summarised_filtered_species_otu.txt", header=T, sep = "\t")
+
+```
+
+## Normalisation
+
+There are three reasons that make normalisation a necessary step in metagenomic data. 
+
+* Different sequencing depth between different samples
+* Sparcity (data contain lots of 0 values)
+* Compositionality (there is a fixed number reads that each sample can obtain. Thinking in terms of abundances the sum will always be 1)
+
+There are a lot of ways to normalize metagenomic datasets. But most of them belong to one out of 3 gategories: 
+
+* Rarefying (which actually subsamples the data to account for deferent depths - not recomended)
+* Scaling (Which they calculate a factor the every value in our data will be multiplied with)
+* Transforming the datafrom the linear to the logarithmic scale 
+
+We have implemented TMM (scaling method) and CLR (logarithmic transformation)
+
+The normalised tables are stored in the hard drive.  
+
+
+```{r Normalise, message = FALSE, results = FALSE, warning=FALSE}
+
+#normalise the PATCH data
+data_table.normalised.tmm <- tmm_transformation(data_table, "kraken_assigned_reads", "tmm_normalised_data.txt", out_folder)
+rownames(data_table.normalised.tmm) = gsub(pattern = "X", replacement = "", x = rownames(data_table.normalised.tmm))
+```
+
+##Validation
+It would be a good idea to verify our findings at the STRATAA dataset
+To do that we must normalise the data together. 
+Fix that after you run basic STRATAA analysis
+
+```{r preprocess validation, message = FALSE, results = FALSE, warning=FALSE}
+#Read the STRATAA validation OTU and metadata
+validation_data_table <- read.csv("C:/Monash/projects/STRATTA/2_taxonomical_profiling/3_analysis/1_species/summarised_species_otu.txt", header=T, sep = "\t")
+colnames(validation_data_table) = gsub(pattern = "X", replacement = "", x = colnames(validation_data_table))
+validation_data_table  <- t(validation_data_table)
+
+#find the intersection and remove any species not in validation from PATCH
+intersection <- intersect(colnames(data_table.normalised.tmm),  colnames(validation_data_table))
+data_table.normalised.tmm <- data_table.normalised.tmm[ , intersection]
+
+#Keep only PATCH columns and make a data frame
+validation_data_table <- validation_data_table[ , colnames(data_table.normalised.tmm) ]
+
+#Normalize the validation set
+validation_data_table.normalised.tmm <- tmm_transformation(validation_data_table, "kraken_assigned_reads", "validation_tmm_normalised_data.txt", out_folder)
+
+
+#make a data frame
+validation_data_table.normalised.tmm <- data.frame(validation_data_table.normalised.tmm)
+colnames(validation_data_table.normalised.tmm) = gsub(pattern = "X", replacement = "", x = colnames(validation_data_table.normalised.tmm))
+
+#load STRATAA metadata
+validation.meta <- read.csv("C:/Monash/projects/STRATTA/2_taxonomical_profiling/3_analysis/full_meta.txt", header=T, sep = "\t")
+validation.meta <- validation.meta %>% remove_rownames %>% column_to_rownames(var="ID")
+validation.meta_no_placebo <- droplevels(validation.meta[validation.meta$Disease != "na", ])
+validation.meta_no_placebo <- validation.meta_no_placebo[order(row.names(validation.meta_no_placebo)), ]
+
+#add at the end the diagnosis
+validation_data_table.normalised.tmm$Diagnosis <- validation.meta[rownames(validation_data_table.normalised.tmm), "Disease"]  
+#and remove the placebo
+validation_data_table.normalised.tmm <- droplevels(validation_data_table.normalised.tmm[validation_data_table.normalised.tmm$Diagnosis != "na", ])
+
+
+```
+
+
+
+## RF
+
+
+```{r RF_preprocess, message = FALSE, warning=FALSE, results = FALSE}
+#https://github.com/LangilleLab/microbiome_helper/wiki/Random-Forest-Tutorial
+
+ 
+
+#make samples rawnames
+metadata <- meta %>% remove_rownames %>% column_to_rownames(var="isolate")
+metadata <- metadata[order(row.names(metadata)), ]
+#add at the end the diagnosis
+otu_table_scaled_state <- data.frame(data_table.normalised.tmm)
+rownames(otu_table_scaled_state) = gsub(pattern = "X", replacement = "", x = rownames(otu_table_scaled_state))
+otu_table_scaled_state$Diagnosis <- metadata[rownames(otu_table_scaled_state), "Diagnosis"]  
+otu_table_scaled_state$Group <- metadata[rownames(otu_table_scaled_state), "summary_group"]
+
+set.seed(151) 
+
+
+
+#add at the end the sevirity score
+#otu_table_scaled_IS <- data.frame(matrix.clr)
+#otu_table_scaled_IS$IS <- metadata[rownames(otu_table_scaled_IS), "severity_score"]  
+#otu_table_scaled_IS_no_placebo <- droplevels(otu_table_scaled_IS[otu_table_scaled_IS$IS != "na", ])
+#otu_table_scaled_IS$IS <- as.numeric(otu_table_scaled_IS$IS)
+```
+
+
+```{r RF_all, message = FALSE, warning=FALSE, results = FALSE}
+############################################################################
+###All no placebo
+
+otu_table_scaled_state_no_placebo <- droplevels(otu_table_scaled_state[otu_table_scaled_state$Diagnosis != "na", ])
+otu_table_scaled_state_no_placebo$Group <- NULL
+
+#run the model
+RF_state_classify <- randomForest( x=otu_table_scaled_state_no_placebo[,1:(ncol(otu_table_scaled_state_no_placebo)-1)] , y=otu_table_scaled_state_no_placebo[ , ncol(otu_table_scaled_state_no_placebo)] , ntree=5001, importance=TRUE, proximities=TRUE )
+
+#print the curve for the model
+rf.roc<-roc(metadata$Diagnosis[metadata$Diagnosis != "na"] ,RF_state_classify$votes[,2])
+label <- auc(rf.roc)
+ggroc(rf.roc, lwd=0.8, col="blue")+
+  geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=0.5) +
+  ggtitle("ROC curve - All samples") + theme(plot.title = element_text(hjust = 0.5)) +
+  annotate("text", x=0.15, y=0.2, label= "AUC: 0.9589") 
+ggsave(paste(out_folder, "2_RF/all_roc.pdf", sep = "")) 
+  
+
+#plot the OOB error rate
+#plot(RF_state_classify)
+plotdf <- pivot_longer(data.frame(ntrees=1:nrow(RF_state_classify$err.rate),RF_state_classify$err.rate),-ntrees)
+error_plot <- ggplot(plotdf,aes(x=ntrees,y=value,col=name)) + 
+              geom_line() + theme_bw()
+ggsave(paste(out_folder,"2_RF/all_error_rate.pdf",sep = ""))
+#plot(RF_state_classify$err.rate[,1],type="l",col="steelblue",xlab="ntrees",ylab="err.rate",ylim=c(0,0.5))
+#lines(RF_state_classify$err.rate[,1],col="orange")
+#legend("topright",fill=c("steelblue","orange"),c("test","OOB.train"))
+
+
+#FIND HOW TO SAVE AS PDF!!!!
+varImpPlot(RF_state_classify, type=1, pch=19, col="black", cex=.7)
+varImpPlot(RF_state_classify, type=2, pch=19, col="black", cex=.7)
+  
+#predict to STRATAA
+pred_test <- predict(RF_state_classify, validation_data_table.normalised.tmm, index=2, type="prob", norm.votes=TRUE, predict.all=FALSE, proximity=FALSE, nodes=FALSE)
+pred_test <- data.frame(pred_test)
+pred_test_roc <- roc(validation.meta_no_placebo$Disease, pred_test$X1)
+auc(pred_test_roc)
+plot(pred_test_roc)
+
+ggroc(pred_test_roc, lwd=1.2, col="blue")+
+geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=1.2)
+
+
+
+#Permutation Test
+RF_state_classify_sig <- rf.significance( x=RF_state_classify ,  xdata=otu_table_scaled_state_no_placebo[,1:(ncol(otu_table_scaled_state_no_placebo)-1)] , nperm=1000 , ntree=501 )  
+
+#cross validation
+fit_control <- trainControl( method = "LOOCV" )
+RF_state_classify_loocv <- train( otu_table_scaled_state_no_placebo[,1:(ncol(otu_table_scaled_state_no_placebo)-1)] , y=otu_table_scaled_state_no_placebo[, ncol(otu_table_scaled_state_no_placebo)] , method="rf", ntree=501 , tuneGrid=data.frame( mtry=25 ) , trControl=fit_control )
+
+#plot top 40
+importance = importance(RF_state_classify)
+varImportance = data.frame(Variables = row.names(importance), Importance = round(importance[,"MeanDecreaseAccuracy"],2))
+rankImportance = varImportance %>% mutate(Rank=paste("#",dense_rank(desc(Importance))))
+rankImportance_sorted <- arrange( rankImportance  , desc(Importance)  )
+write_tsv(rankImportance_sorted, path=paste(out_folder,"2_RF/all_importance.txt",sep = ""))
+ggplot(rankImportance_sorted[1:40, ],aes(x=reorder(Variables,Importance), y=Importance,fill=Importance)) + geom_bar(stat="identity") +
+ geom_text(aes(x = Variables, y = 0.5, label = Rank), hjust=0, vjust=0.55, size = 4, colour = "white") + labs(x = "Variables") + coord_flip() + theme_classic()
+ggsave(paste(out_folder,"2_RF/all_top_40.pdf",sep = ""))
+
+
+#saveRDS( file = "RF_state_model.rda" , RF_state_classify )
+#RF_state_model <- readRDS("RF_state_model.rda") 
+```
+
+```{r RF_baseline, message = FALSE, warning=FALSE, results = FALSE}
+############################################################################
+#baseline only
+otu_table_scaled_state <- droplevels(otu_table_scaled_state[otu_table_scaled_state$Diagnosis != "na", ])
+otu_table_scaled_state_baseline <- droplevels(otu_table_scaled_state[otu_table_scaled_state$Group == "baseline_preAb", ])
+otu_table_scaled_state_baseline$Group <- NULL
+
+RF_state_classify_baseline <- randomForest( x=otu_table_scaled_state_baseline[,1:(ncol(otu_table_scaled_state_baseline)-1)] , y=otu_table_scaled_state_baseline[ , ncol(otu_table_scaled_state_baseline)] , ntree=5001, importance=TRUE, proximities=TRUE )
+
+importance = importance(RF_state_classify_baseline)
+varImportance = data.frame(Variables = row.names(importance), Importance = round(importance[,"MeanDecreaseAccuracy"],2))
+rankImportance = varImportance %>% mutate(Rank=paste("#",dense_rank(desc(Importance))))
+rankImportance_sorted <- arrange( rankImportance  , desc(Importance)  )
+ggplot(rankImportance_sorted[1:10, ],aes(x=reorder(Variables,Importance), y=Importance,fill=Importance)) + geom_bar(stat="identity") +
+ geom_text(aes(x = Variables, y = 0.5, label = Rank), hjust=0, vjust=0.55, size = 4, colour = "white") + labs(x = "Variables") + coord_flip() + theme_classic()
+write.table(rankImportance_sorted, file='../1_species/2_RF/results_beseline_only_only.txt',sep='\t',quote=FALSE, col.names=NA)
+```
+
+```{r RF_week1, message = FALSE, warning=FALSE, results = FALSE}
+############################################################################
+#week1_only
+otu_table_scaled_state_week1 <- droplevels(otu_table_scaled_state[otu_table_scaled_state$Group == "1week_preAb", ])
+otu_table_scaled_state_week1$Group <- NULL
+
+RF_state_classify_week1 <- randomForest( x=otu_table_scaled_state_week1[,1:(ncol(otu_table_scaled_state_week1)-1)] , y=otu_table_scaled_state_week1[ , ncol(otu_table_scaled_state_week1)] , ntree=5001, importance=TRUE, proximities=TRUE )
+```
+
+```{r RF_baseline_week1, message = FALSE, warning=FALSE, results = FALSE}
+############################################################################
+#Baseline+week1
+
+otu_table_scaled_state_baseline_week1 <- droplevels(otu_table_scaled_state[otu_table_scaled_state$Group == "baseline_preAb" | otu_table_scaled_state$Group == "1week_preAb" , ]  )
+otu_table_scaled_state_baseline_week1 <- droplevels(otu_table_scaled_state_baseline_week1[otu_table_scaled_state_baseline_week1$Diagnosis != "na", ])
+otu_table_scaled_state_baseline_week1$Group <- NULL
+
+RF_state_classify_baseline_week1 <- randomForest( x=otu_table_scaled_state_baseline_week1[,1:(ncol(otu_table_scaled_state_baseline_week1)-1)] , y=otu_table_scaled_state_baseline_week1[ , ncol(otu_table_scaled_state_baseline_week1)] , ntree=5001, importance=TRUE, proximities=TRUE )
+
+metadata_baseline_week1 <- metadata[metadata$summary_group == "baseline_preAb" | metadata$summary_group == "1week_preAb", ] 
+
+#print the curve for the model
+rf.roc<-roc(metadata_baseline_week1$Diagnosis[metadata_baseline_week1$Diagnosis != "na"] ,RF_state_classify_baseline_week1$votes[,2])
+label <- auc(rf.roc)
+ggroc(rf.roc, lwd=0.8, col="blue")+
+  geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=0.5) +
+  ggtitle("ROC curve - Baseline vs Week1 ") + theme(plot.title = element_text(hjust = 0.5)) +
+  annotate("text", x=0.15, y=0.2, label= "AUC: 0.9428") 
+ggsave(paste(out_folder, "2_RF/baseline_week1_roc.pdf", sep = "")) 
+
+
+#cross validation
+fit_control <- trainControl( method = "LOOCV" )
+RF_state_classify_loocv_baseline_week1 <- train( otu_table_scaled_state_baseline_week1[,1:(ncol(otu_table_scaled_state_baseline_week1)-1)] , y=otu_table_scaled_state_baseline_week1[, ncol(otu_table_scaled_state_baseline_week1)] , method="rf", ntree=501 , tuneGrid=data.frame( mtry=25 ) , trControl=fit_control )
+
+
+#plot(RF_state_classify)
+plotdf <- pivot_longer(data.frame(ntrees=1:nrow(RF_state_classify_baseline_week1$err.rate),RF_state_classify_baseline_week1$err.rate),-ntrees)
+error_plot <- ggplot(plotdf,aes(x=ntrees,y=value,col=name)) + 
+              geom_line() + theme_bw()
+ggsave(paste(out_folder,"2_RF/baseline_week1_error_rate.pdf",sep = ""))
+
+importance = importance(RF_state_classify_baseline_week1)
+varImportance = data.frame(Variables = row.names(importance), Importance = round(importance[,"MeanDecreaseAccuracy"],2))
+rankImportance = varImportance %>% mutate(Rank=paste("#",dense_rank(desc(Importance))))
+rankImportance_sorted <- arrange( rankImportance  , desc(Importance)  )
+write.table(rankImportance_sorted, file='../1_species/2_RF/results_beseline_week1pre.txt',sep='\t',quote=FALSE, col.names=NA)
+
+ggplot(rankImportance_sorted[1:40, ],aes(x=reorder(Variables,Importance), y=Importance,fill=Importance)) + geom_bar(stat="identity") +
+ geom_text(aes(x = Variables, y = 0.5, label = Rank), hjust=0, vjust=0.55, size = 4, colour = "white") + labs(x = "Variables") + coord_flip() + theme_classic()
+ggsave(paste(out_folder,"2_RF/baseline_week1_top_40.pdf",sep = ""))
+```
+
+
+```{r RF_pre_post_AB, message = FALSE, warning=FALSE, results = FALSE}
+############################################################################
+#Pre - Post AB (predict AB)
+#
+otu_table_scaled_state_pre_post_Ab <- droplevels(otu_table_scaled_state[otu_table_scaled_state$Diagnosis != "na", ])
+otu_table_scaled_state_pre_post_Ab$Ab <- metadata[rownames(otu_table_scaled_state_pre_post_Ab), "pre_post_antibiotics"]
+
+
+otu_table_scaled_state_pre_post_Ab$Group <- NULL
+otu_table_scaled_state_pre_post_Ab$Diagnosis <- NULL
+
+RF_state_classify_pre_post <- randomForest( x=otu_table_scaled_state_pre_post_Ab[,1:(ncol(otu_table_scaled_state_pre_post_Ab)-1)] , y=otu_table_scaled_state_pre_post_Ab[ , ncol(otu_table_scaled_state_pre_post_Ab)] , ntree=5001, importance=TRUE, proximities=TRUE )
+
+
+metadata_pre_post <- metadata
+
+#print the curve for the model
+rf.roc<-roc(metadata_pre_post$pre_post_antibiotics[metadata_pre_post$Diagnosis != "na"] ,RF_state_classify_pre_post$votes[,2])
+label <- auc(rf.roc)
+ggroc(rf.roc, lwd=0.8, col="blue")+
+  geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=0.5) +
+  ggtitle("ROC curve - Pre vs Post Ab ") + theme(plot.title = element_text(hjust = 0.5)) +
+  annotate("text", x=0.15, y=0.2, label= "AUC: 0.9516") 
+ggsave(paste(out_folder, "2_RF/pre_vs_post_Ab_roc.pdf", sep = "")) 
+
+#cross validation
+fit_control <- trainControl( method = "LOOCV" )
+RF_state_classify_loocv_baseline_week1 <- train( otu_table_scaled_state_pre_post_Ab[,1:(ncol(otu_table_scaled_state_pre_post_Ab)-1)] , y=otu_table_scaled_state_pre_post_Ab[, ncol(otu_table_scaled_state_pre_post_Ab)] , method="rf", ntree=501 , tuneGrid=data.frame( mtry=25 ) , trControl=fit_control )
+
+
+#plot(RF_state_classify)
+plotdf <- pivot_longer(data.frame(ntrees=1:nrow(RF_state_classify_pre_post$err.rate),RF_state_classify_pre_post$err.rate),-ntrees)
+error_plot <- ggplot(plotdf,aes(x=ntrees,y=value,col=name)) + 
+              geom_line() + theme_bw()
+ggsave(paste(out_folder,"2_RF/pre_post_error_rate.pdf",sep = ""))
+
+importance = importance(RF_state_classify_pre_post)
+varImportance = data.frame(Variables = row.names(importance), Importance = round(importance[,"MeanDecreaseAccuracy"],2))
+rankImportance = varImportance %>% mutate(Rank=paste("#",dense_rank(desc(Importance))))
+rankImportance_sorted <- arrange( rankImportance  , desc(Importance)  )
+write.table(rankImportance_sorted, file='../1_species/2_RF/results_pre_post_ab.txt',sep='\t',quote=FALSE, col.names=NA)
+
+ggplot(rankImportance_sorted[1:40, ],aes(x=reorder(Variables,Importance), y=Importance,fill=Importance)) + geom_bar(stat="identity") +
+ geom_text(aes(x = Variables, y = 0.5, label = Rank), hjust=0, vjust=0.55, size = 4, colour = "white") + labs(x = "Variables") + coord_flip() + theme_classic()
+ggsave(paste(out_folder,"2_RF/pre_post_ab_top_40.pdf",sep = ""))
+```
+```{r RF_species_challenged_with, message = FALSE, warning=FALSE, results = FALSE}
+############################################################################
+#Species challenged with 
+
+otu_table_scaled_state_species <- otu_table_scaled_state
+otu_table_scaled_state_species$species <- metadata[rownames(otu_table_scaled_state_species), "Species"]
+otu_table_scaled_state_species <- droplevels(otu_table_scaled_state_species[otu_table_scaled_state_species$Group != "baseline_preAb"  , ])
+otu_table_scaled_state_species <- droplevels(otu_table_scaled_state_species[otu_table_scaled_state_species$Group != "month3"  , ])
+otu_table_scaled_state_species <- droplevels(otu_table_scaled_state_species[otu_table_scaled_state_species$species != "Bicarbonate", ])
+otu_table_scaled_state_species$Group <- NULL
+otu_table_scaled_state_species$Diagnosis <- NULL
+
+RF_state_classify_species <- randomForest( x=otu_table_scaled_state_species[,1:(ncol(otu_table_scaled_state_species)-1)] , y=otu_table_scaled_state_species[ , ncol(otu_table_scaled_state_species)] , ntree=5001, importance=TRUE, proximities=TRUE )
+
+
+metadata_species <- metadata[(metadata$summary_group != "baseline_preAb" & metadata$summary_group != "month3") , ] 
+metadata_species <- metadata_species[metadata_species$Species != "Bicarbonate", ]
+metadata_species <- droplevels(metadata_species$Species)
+
+#print the curve for the model
+rf.roc<-roc(metadata_species ,RF_state_classify_species$votes[,2])
+label <- auc(rf.roc)
+ggroc(rf.roc, lwd=0.8, col="blue")+
+  geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=0.5) +
+  ggtitle("ROC curve - Species Challenged with ") + theme(plot.title = element_text(hjust = 0.5)) +
+  annotate("text", x=0.15, y=0.2, label= "AUC: 0.8333") 
+ggsave(paste(out_folder, "2_RF/species_challenged_with_roc.pdf", sep = "")) 
+
+#plot(RF_state_classify)
+plotdf <- pivot_longer(data.frame(ntrees=1:nrow(RF_state_classify_species$err.rate),RF_state_classify_species$err.rate),-ntrees)
+error_plot <- ggplot(plotdf,aes(x=ntrees,y=value,col=name)) + 
+              geom_line() + theme_bw()
+ggsave(paste(out_folder,"2_RF/species_challenged_error_rate.pdf",sep = ""))
+
+
+importance = importance(RF_state_classify_species)
+varImportance = data.frame(Variables = row.names(importance), Importance = round(importance[,"MeanDecreaseAccuracy"],2))
+rankImportance = varImportance %>% mutate(Rank=paste("#",dense_rank(desc(Importance))))
+rankImportance_sorted <- arrange( rankImportance  , desc(Importance)  )
+write.table(rankImportance_sorted, file='../1_species/2_RF/results_species_challenged_with.txt',sep='\t',quote=FALSE, col.names=NA)
+
+ggplot(rankImportance_sorted[1:40, ],aes(x=reorder(Variables,Importance), y=Importance,fill=Importance)) + geom_bar(stat="identity") +
+ geom_text(aes(x = Variables, y = 0.5, label = Rank), hjust=0, vjust=0.55, size = 4, colour = "white") + labs(x = "Variables") + coord_flip() + theme_classic()
+ggsave(paste(out_folder,"2_RF/results_species_challenged_with.pdf",sep = ""))
+
+############################################################################
+```
+
+
+
+
+
+
+
+
+
+
+
+#Not really needed
+par(mfrow=c(1,2))
+RF_state_classify_imp <- as.data.frame( RF_state_classify$importance )
+RF_state_classify_imp$features <- rownames( RF_state_classify_imp )
+RF_state_classify_imp_sorted <- arrange( RF_state_classify_imp  , desc(MeanDecreaseAccuracy)  )
+barplot(RF_state_classify_imp_sorted$MeanDecreaseAccuracy, ylab="Mean Decrease in Accuracy (Variable Importance)", main="RF Classification Variable Importance Distribution")
+
+barplot(RF_state_classify_imp_sorted[1:10,"MeanDecreaseAccuracy"], names.arg=RF_state_classify_imp_sorted[1:10,"features"] , ylab="Mean Decrease in Accuracy (Variable Importance)", las=2, ylim=c(0,0.02), main="Classification RF")  
+
+```
+
+
+
