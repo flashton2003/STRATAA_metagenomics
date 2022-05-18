@@ -58,6 +58,7 @@ p_typhi_malawi <- ggplot(malawi_typhi, aes(x = taxon, y = value, fill = Group)) 
 
 p_healthy_malawi / p_typhi_malawi + plot_layout(heights = c(2, 4))
 
+install.packages("ggbeeswarm")
 
 
 bangladesh_healthy <- filter(healthy_all, Country == 'Bangladesh')
@@ -69,5 +70,18 @@ p_typhi_bangladesh <- ggplot(bangladesh_typhi, aes(x = taxon, y = value, fill = 
 p_healthy_bangladesh / p_typhi_bangladesh + plot_layout(heights = c(2, 4))
 
 
+plot_count <- function(taxon_to_plot, working_data_table){
+  to_plot <- filter(working_data_table, taxon == taxon_to_plot)
+  p <- ggplot(to_plot, aes(x = taxon, y = value, fill = factor(Group))) + geom_boxplot() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0.5)) + ylab(y_lab_text) + xlab('Species')
+  p
 
+}
 
+, , , 
+
+plot_count('Prevotella copri', bangladesh_healthy)
+plot_count('Dialister sp000434475', data_table)
+plot_count('Absiella innocuum', data_table)
+plot_count('Pauljensenia odontolyticus', data_table)
+plot_count('KLE1796 sp001580115', data_table)
+plot_count('Massiliomicrobiota timonensis', data_table)
