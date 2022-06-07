@@ -148,12 +148,16 @@ run_calc_alpha <- function(input_braken_folder, out_folder, level, country){
   samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
   data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
   print('done reading data')
+  meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh')
+  View(data_table)
   calculate_alpha(data_table, "kraken_assigned_reads", meta, quote("Group"), out_folder, "Phenotype", level, TRUE)  
 }
 
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
 
-run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/", "species", "Malawi")
+run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species", "Malawi")
+
+#run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/", "species", "Malawi")
 
 
 run_dge <- function(our_metadata, root_dir){

@@ -247,8 +247,7 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, coun
   
 }
 
-
-calculate_alpha <- function(data, summary_column, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
+old_calculate_alpha <- function(data, summary_column, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
   
   #browser()
   
@@ -261,19 +260,20 @@ calculate_alpha <- function(data, summary_column, meta, group, output_folder, pr
   alpha_table <- tibble(isolate = names(alpha), alpha = alpha)
   alpha_table <- left_join(meta, alpha_table, by="isolate")
   
+  View(alpha_table)
   
   #for t.test
   #all pairwise combinations
-  print(group)
-  print(meta[,eval(group)])
-  print(levels(meta[,eval(group)]))
-  my_comparisons <- combn(levels(meta[,eval(group)]), 2, simplify = F)
+  #print(group)
+  #print(meta[,eval(group)])
+  #print(levels(meta[,eval(group)]))
+  #my_comparisons <- combn(levels(meta[,eval(group)]), 2, simplify = F)
   
   #pairwise t test
-  f <- paste("alpha~", group, sep = "")
-  pv <- compare_means(as.formula(f),  data = alpha_table, method = "t.test")
+  #f <- paste("alpha~", group, sep = "")
+  #pv <- compare_means(as.formula(f),  data = alpha_table, method = "t.test")
   
-  gr <- pv$p <= 0.05
+  #gr <- pv$p <= 0.05
   
   
   file_path <- paste(output_folder, "3_alpha/", prefix, "_alpha.pdf", sep = "")
@@ -282,27 +282,27 @@ calculate_alpha <- function(data, summary_column, meta, group, output_folder, pr
   
   title <- paste("Alpha div.(T test): ", prefix, sep = "")
   
-  if(all(gr == FALSE)){
-    g1 <- ggplot(alpha_table, aes_(x=as.name(group), y=alpha)) + 
-        ggtitle(title) + 
-        labs(x="", y="Alpha diversity") +
-        geom_boxplot(fill="slateblue", alpha=0.8) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        geom_point(alpha = 0.3, position = "jitter") 
-     
+  #if(all(gr == FALSE)){
+  g1 <- ggplot(alpha_table, aes_(x=as.name(group), y=alpha)) + 
+    ggtitle(title) + 
+    labs(x="", y="Alpha diversity") +
+    geom_boxplot(fill="slateblue", alpha=0.8) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    geom_point(alpha = 0.3, position = "jitter") 
   
-    ggsave(file_path)
-  } else {
-    g1 <- ggplot(alpha_table, aes_(x=as.name(group), y=alpha)) + 
-        ggtitle(title) + 
-        labs(x="", y="Alpha diversity") +
-        geom_boxplot(fill="slateblue", alpha=0.8) +
-        geom_point(alpha = 0.3, position = "jitter") +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        geom_signif(comparisons = my_comparisons[gr], step_increase = 0.1, annotation = pv$p.signif[gr]) 
-    
-        ggsave(file_path)
-  }
+  View(g1)
+  #ggsave(file_path)
+  #} else {
+  #  g1 <- ggplot(alpha_table, aes_(x=as.name(group), y=alpha)) + 
+  #      ggtitle(title) + 
+  #      labs(x="", y="Alpha diversity") +
+  #      geom_point(alpha = 0.3, position = "jitter") +
+  #      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ###      geom_boxplot(fill="slateblue", alpha=0.8) +
+  #      geom_signif(comparisons = my_comparisons[gr], step_increase = 0.1, annotation = pv$p.signif[gr]) 
+  
+  #      ggsave(file_path)
+  #}
   
   #############################################
   
@@ -349,12 +349,12 @@ calculate_alpha <- function(data, summary_column, meta, group, output_folder, pr
   
   
   if(all(gr == FALSE)){
-  g2 <- ggplot(alpha_table, aes_(x=as.name(group), y=alpha)) + 
-        ggtitle(title) + labs(x="", y="Alpha diversity") + 
-        geom_boxplot(fill="slateblue", alpha=0.8) +
-        geom_point(alpha = 0.3, position = "jitter") +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  ggsave(file_path)
+    g2 <- ggplot(alpha_table, aes_(x=as.name(group), y=alpha)) + 
+      ggtitle(title) + labs(x="", y="Alpha diversity") + 
+      geom_boxplot(fill="slateblue", alpha=0.8) +
+      geom_point(alpha = 0.3, position = "jitter") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    ggsave(file_path)
   }
   
   else{
@@ -385,10 +385,61 @@ calculate_alpha <- function(data, summary_column, meta, group, output_folder, pr
   dev.off()
   
   if(print_extra_plots){
-  print(hist(alpha_table$alpha, main="Shannon diversity histogram", xlab="", breaks=30))
+    print(hist(alpha_table$alpha, main="Shannon diversity histogram", xlab="", breaks=30))
     plot(richness,ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue", xlab="Number of Samples", ylab=paste(level, "Richness", sep=" "), main="Accumulation curve")
   }
   
+  
+}
+
+
+calculate_alpha <- function(data, summary_column, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
+
+  #calculate alpha diverities 
+  #input_matrix <- acast(data, sample_ID ~ name, value.var = summary_column, fill=0)
+  
+  input_matrix <- t(data)
+  
+  alpha <- vegan::diversity(input_matrix, index="shannon")
+  alpha_table <- tibble(isolate = names(alpha), alpha = alpha)
+  View(alpha_table)
+  alpha_table <- alpha_table %>% mutate(isolate = substring(isolate, 2))
+  
+  alpha_table <- left_join(meta, alpha_table, by="isolate")
+  #View(alpha_table)
+  
+  #for t.test
+  #all pairwise combinations
+  #print(group)
+  #print(meta[,eval(group)])
+  #print(levels(meta[,eval(group)]))
+  #my_comparisons <- combn(levels(meta[,eval(meta$Group)]), 2, simplify = F)
+  my_comparisons <- list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Carrier', 'Control_HealthySerosurvey'))
+  
+  #pairwise t test
+  f <- paste("alpha~", group, sep = "")
+  #pv <- compare_means(as.formula(f),  data = alpha_table, method = "t.test")
+  
+  #gr <- pv$p <= 0.05
+  
+  
+  file_path <- paste(output_folder, "3_alpha/", prefix, "_alpha.pdf", sep = "")
+  output_folder <- paste(output_folder, "3_alpha/", sep = "")
+  if (!dir.exists(output_folder)){ dir.create(output_folder) }
+  
+  title <- paste("Alpha div.(T test): ", prefix, sep = "")
+  
+  
+  
+  alpha_table <- alpha_table %>% filter(!is.na(alpha))
+  g1 <- ggplot(alpha_table, aes(x=Group, y=alpha)) + 
+        #ggtitle(title) + 
+        labs(x="", y="Alpha diversity") +
+        geom_boxplot(fill="slateblue", alpha=0.8) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        geom_point(alpha = 0.3, position = "jitter") +
+        stat_compare_means(comparisons = my_comparisons)
+  g1
  
 }
 
@@ -563,3 +614,4 @@ plot_one_gene <- function(glm_results, otu_table, meta_table, meta_column, filen
   ggsave(filename, marrangeGrob(plist, nrow = 2, ncol = 2), width = 297, height =  210, units = "mm")
   
 }
+
