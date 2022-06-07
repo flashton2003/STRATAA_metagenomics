@@ -176,7 +176,7 @@ relative_abundances_histogram <- function(data, level, out_folder){
 }
 
 
-calculate_beta <- function(data, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
+calculate_beta <- function(data, meta, group, output_folder, prefix, level, country, print_extra_plots = FALSE){
   
   
   #make the first column headers
@@ -220,7 +220,8 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   
   output_folder <- paste(output_folder, "4_beta/", sep = "")
   if (!dir.exists(output_folder)){ dir.create(output_folder) }
-  title <- paste("Beta diversity PCoA: ", level, " level", sep = "")
+  #title <- paste("Beta diversity PCoA: ", level, " level", sep = "")
+  title <- paste("Beta diversity PCoA: ", country, sep = "")
   
   #save the table
   out_file <- paste(output_folder, "pairwise_beta.txt", sep = "")
@@ -231,18 +232,20 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, prin
   file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
   
   g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
-          ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
-          guides(colour=guide_legend(title=prefix)) +
-          geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+    ggtitle(title) + 
+    xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + 
+    ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+    guides(colour=guide_legend(title=prefix)) +
+    geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   #g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
   #  ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
   #  geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   ggsave(file_path)
   
   print(g1)
+  return(g1)
   
 }
-
 
 
 calculate_alpha <- function(data, summary_column, meta, group, output_folder, prefix, level, print_extra_plots = FALSE){
@@ -251,6 +254,7 @@ calculate_alpha <- function(data, summary_column, meta, group, output_folder, pr
   
   #calculate alpha diverities 
   #input_matrix <- acast(data, sample_ID ~ name, value.var = summary_column, fill=0)
+  
   input_matrix <- t(data)
   
   alpha <- vegan::diversity(input_matrix, index="shannon")
@@ -260,6 +264,9 @@ calculate_alpha <- function(data, summary_column, meta, group, output_folder, pr
   
   #for t.test
   #all pairwise combinations
+  print(group)
+  print(meta[,eval(group)])
+  print(levels(meta[,eval(group)]))
   my_comparisons <- combn(levels(meta[,eval(group)]), 2, simplify = F)
   
   #pairwise t test

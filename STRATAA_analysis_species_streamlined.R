@@ -20,6 +20,7 @@ library(htmlwidgets)
 library(MASS)
 library(metacoder)
 library(microbiome)
+library(patchwork)
 library(phyloseq)
 library(purrr)
 library(RColorBrewer)
@@ -36,17 +37,27 @@ library(vsn)
 library(zCompositions)
 library(VennDiagram)
 
-
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/diff_expr.r")
-
 
 meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, sep = "\t")
 # i dont think this line does anything, probably just there for historic reasons
 names(meta)[names(meta) == "sample_ID"] <- "isolate"
 names(meta)[names(meta) == "ID"] <- "isolate"
 #meta <- meta %>% mutate(Sex = str_replace(Sex, 'Male  ', 'Male'))
+
+# add age bracket
+
+meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("0-1", "1-5", "6-15", ">15")))
+
+
+table(meta$Group, meta$Country)
+table(meta$Sex, meta$Country)
+table(meta$age_bracket, meta$Country)
+table(meta$Antibiotics_taken_before_sampling_yes_no_assumptions, meta$Country)
+
+round(prop.table(table(meta$Group, meta$Country)), 2)
+
 
 ## plot of the age per group per country
 #ggplot(meta, aes(x = Country, y = Age, fill = Group)) + geom_boxplot()
@@ -61,15 +72,39 @@ for (c in c('Bangladesh', 'Malawi', 'Nepal')) {
   show(p)
 }
 
-# add age bracket
-
-meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 5, 15, Inf), labels=c("0-5", "6-15", ">15")))
+table(meta$Group, meta$Country)
 
 braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/"
 output_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/"
 taxonomic_level = "species"
 
-run_calc_beta <- function(input_braken_folder, out_folder, level, country){
+run_calc_beta_both_countries <- function(input_braken_folder, out_folder, level){
+  species_dir <- file.path(out_folder, '1_species')
+  analysis_dir <- file.path(out_folder, '3_analysis')
+  beta_dir <- file.path(out_folder, '4_beta')
+  if (!dir.exists(out_folder)){ dir.create(out_folder) }
+  if (!dir.exists(species_dir)){ dir.create(species_dir) }
+  if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
+  if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
+  samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
+  meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh')
+  meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
+  meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_yes_no_assumptions, sep = '_')
+  data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
+  
+  data_table.unnormalised <- data.matrix(read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, sep = "\t"))
+  colnames(data_table.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
+  
+  calculate_beta(data_table.unnormalised, meta, quote("group_country"), out_folder, "group_country", level)
+  calculate_beta(data_table.unnormalised, meta, quote("group_antibiotic"), out_folder, "group_antibiotic", level)
+  
+}
+
+
+run_calc_beta_both_countries("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species")
+
+
+run_calc_beta_one_country <- function(input_braken_folder, out_folder, level, country){
   species_dir <- file.path(out_folder, '1_species')
   analysis_dir <- file.path(out_folder, '3_analysis')
   beta_dir <- file.path(out_folder, '4_beta')
@@ -88,17 +123,37 @@ run_calc_beta <- function(input_braken_folder, out_folder, level, country){
   data_table.unnormalised <- data.matrix(read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, sep = "\t"))
   colnames(data_table.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
   
-  `calculate_beta`(data_table.unnormalised, meta, quote("Country"), out_folder, "Country", level)
-  calculate_beta(data_table.unnormalised, meta, quote("Group"), out_folder, "Group", level)
-  calculate_beta(data_table.unnormalised, meta, quote("Sex"), out_folder, "Sex", level)
-  calculate_beta(data_table.unnormalised, meta, quote("age_bracket"), out_folder, "age_bracket", level)
+  calculate_beta(data_table.unnormalised, meta, quote("Country"), out_folder, "Country", level, country)
+  group_beta <- calculate_beta(data_table.unnormalised, meta, quote("Group"), out_folder, "Group", level, country)
+  sex_beta <- calculate_beta(data_table.unnormalised, meta, quote("Sex"), out_folder, "Sex", level, country)
+  age_beta <- calculate_beta(data_table.unnormalised, meta, quote("age_bracket"), out_folder, "age_bracket", level, country)
+  
+  return(group_beta)
+  
 }
 
-run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/", "species", "Malawi")
+malawi_group <- run_calc_beta_one_country("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/", "species", "Malawi")
 
-run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_kathmandu/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu/", "species", "Nepal")
+nepal_group <- run_calc_beta_one_country("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_kathmandu/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu/", "species", "Nepal")
 
-run_calc_beta("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/", "species", "Bangladesh")
+bangladesh_group <- run_calc_beta_one_country("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/", "species", "Bangladesh")
+
+
+bangladesh_group / malawi_group / nepal_group
+
+
+
+run_calc_alpha <- function(input_braken_folder, out_folder, level, country){
+  print('running calc alpha')
+  samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
+  data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
+  print('done reading data')
+  calculate_alpha(data_table, "kraken_assigned_reads", meta, quote("Group"), out_folder, "Phenotype", level, TRUE)  
+}
+
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
+
+run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/", "species", "Malawi")
 
 
 run_dge <- function(our_metadata, root_dir){
@@ -130,16 +185,16 @@ run_dge <- function(our_metadata, root_dir){
 }
 
 
-full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, row.names=1, sep = "\t")
-run_dge(full_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3')
+#full_meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, row.names=1, sep = "\t")
+run_dge(meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3')
 
-bangladesh_meta <- full_meta %>% filter(Country == 'Bangladesh')
+bangladesh_meta <- meta %>% filter(Country == 'Bangladesh')
 run_dge(bangladesh_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka')
 
-nepal_meta <- full_meta %>% filter(Country == 'Nepal')
+nepal_meta <- meta %>% filter(Country == 'Nepal')
 run_dge(nepal_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu')
 
-malawi_meta <- full_meta %>% filter(Country == 'Malawi')
+malawi_meta <- meta %>% filter(Country == 'Malawi')
 run_dge(malawi_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre')
 
 
