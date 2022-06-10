@@ -3,6 +3,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(patchwork)
+library(ggpubr)
 
 '''
 1. read in the normalised data and metadata
@@ -10,6 +11,8 @@ library(patchwork)
 3. reshape it to be ggplot friendly
 4. plot it
 '''
+
+
 
 data_table.normalised.clr <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/phil_running_3/1_normalized_data/clr_normalised_data.txt", header=T, sep = "\t")
 #data_table.normalised.clr <- read_delim("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/phil_running_3/1_normalized_data/clr_normalised_data.txt", delim = "\t", escape_double = FALSE, trim_ws = TRUE)
