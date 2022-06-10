@@ -5,7 +5,7 @@ library(ggbeeswarm)
 
 abundance <- read_csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/2022.03.28 prevotella copri relative abundance.csv")
 meta <- read.csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/0_metadata/full_meta.tsv", header=T, sep = "\t")
-abundance <- abundance %>% left_join(select(meta, c('ID', 'Group', 'Country', 'Age')), by = c('Sample' = 'ID'))
+abundance <- abundance %>% left_join(dplyr::select(meta, c('ID', 'Group', 'Country', 'Age')), by = c('Sample' = 'ID'))
 
 abundance$age_range <- cut(abundance$Age,
                        breaks=c(0, 5.99, 15.99, Inf),
@@ -25,7 +25,14 @@ ggplot(abundance_malawi, aes(x = age_range, y = `Proportion Prevotella copri`, f
 
 abundance_bangladesh <- filter(abundance_bangladesh, `Proportion Prevotella copri` < 10)
 
-ggplot(abundance_bangladesh, aes(x = age_range, y = `Proportion Prevotella copri`, fill = factor(Group))) + geom_boxplot() + ylab('Percentage P. copri') + ggtitle('Bangladesh')
+
+# https://stackoverflow.com/questions/21468380/overlay-geom-points-on-geom-boxplotfill-group
+
+ggplot(abundance_bangladesh, aes(x = age_range, y = `Proportion Prevotella copri`, fill = factor(Group))) + 
+  geom_boxplot(alpha = 0.5) + 
+  geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
+  ylab('Percentage P. copri') + 
+  ggtitle('Bangladesh')
 
 
 ggplot(abundance_bangladesh, aes(x = Group, y = `Proportion Prevotella copri`)) + geom_boxplot() + ylab('Percentage P. copri') + ggtitle('Bangladesh')

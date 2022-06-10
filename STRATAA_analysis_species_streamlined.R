@@ -37,6 +37,7 @@ library(vsn)
 library(zCompositions)
 library(VennDiagram)
 
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/parse_bracken_functions.r")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/diff_expr.r")
 
@@ -153,7 +154,6 @@ run_calc_alpha <- function(input_braken_folder, out_folder, level, country){
   calculate_alpha(data_table, "kraken_assigned_reads", meta, quote("Group"), out_folder, "Phenotype", level, TRUE)  
 }
 
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/pairwise_beta.R")
 
 run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species", "Malawi")
 
@@ -162,8 +162,9 @@ run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/
 
 run_dge <- function(our_metadata, root_dir){
   # filter full_meta
-  
+  rownames(our_metadata) <- our_metadata[,1]
   sampledata <- sample_data(our_metadata)
+  View(sampledata)
   #OTU
   print(paste(root_dir, "/1_species/summarised_filtered_species_otu.txt", sep = ''))
   otu <- read.csv(paste(root_dir, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, row.names=1, sep = "\t")
@@ -171,6 +172,14 @@ run_dge <- function(our_metadata, root_dir){
   OTU = otu_table(otu, taxa_are_rows = TRUE)
   
   #put them in a phyloseq object
+  OTU <- t(OTU)
+  #print(as.vector(sampledata[,1]))
+  #print(length(sampledata))
+  #print(length(sampledata[,1]))
+  
+  #print(sample_names(OTU))
+  #print(sample_names(sampledata))
+  
   pseq <- phyloseq(OTU, sampledata)
   our_metadata <- meta(pseq)
   otu <- abundances(pseq)
@@ -180,12 +189,12 @@ run_dge <- function(our_metadata, root_dir){
   View(subset_meta)
   subset_otu <- t(abundances(pseq_control_vs_acute))
   # this is Leo's function for running edgeR GLM.
-  result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age')])
+  result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')])
   #result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu)
   topTags(result, n=10)
   out_folder <- paste(root_dir,'/5_glm/', sep = '')
   if (!dir.exists(out_folder)){ dir.create(out_folder) }
-  write.table(topTags(result, n=Inf)$table, file=paste(root_dir,'/5_glm/results_all.country_sex_age.edgeR.tsv', sep = ''),sep='\t',quote=FALSE, col.names=NA)
+  write.table(topTags(result, n=Inf)$table, file=paste(root_dir,'/5_glm/results_all.country_sex_age_amu.edgeR.tsv', sep = ''),sep='\t',quote=FALSE, col.names=NA)
 }
 
 
@@ -204,10 +213,10 @@ run_dge(malawi_meta, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/fro
 
 combine_and_compare_dges <- function() {
   # dpt is differentially present taxa
-  all_sites_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/5_glm/all_sites.age_gender_country.results_all.edgeR.tsv'
-  bangladesh_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/5_glm/dhaka.age_gender.results_all.edgeR.tsv'
-  malawi_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/5_glm/blantyre.age_gender.results_all.edgeR.tsv'
-  nepal_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu/5_glm/kathmandu.age_gender.results_all.edgeR.tsv'
+  all_sites_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/5_glm/results_all.country_sex_age_amu.edgeR.tsv'
+  bangladesh_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/5_glm/results_all.country_sex_age_amu.edgeR.tsv'
+  malawi_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre/5_glm/results_all.country_sex_age_amu.edgeR.tsv'
+  nepal_dpt_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_kathmandu/5_glm/results_all.country_sex_age_amu.edgeR.tsv'
   all_sites_dpt <- read_delim(all_sites_dpt_handle, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   all_sites_dpt <- rename(all_sites_dpt, c(species=...1, all_sites_logFC = logFC, all_sites_logCPM = logCPM, all_sites_LR = LR, all_sites_PValue = PValue, all_sites_FDR = FDR))
   
@@ -229,13 +238,13 @@ combine_and_compare_dges <- function() {
   combined_dpt <- left_join(combined_dpt, malawi_dpt, by = "species")
   combined_dpt <- left_join(combined_dpt, nepal_dpt, by = "species")
   
-  write.table(combined_dpt, file='/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.combined_dges.tsv',sep='\t',quote=FALSE, col.names=NA)
-  venn.diagram(x = list(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.no_filter.png', euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
-  venn.diagram(x = list(bangladesh_dpt_sig$species, malawi_dpt_sig$species, nepal_dpt_sig$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.fdr_0.01.png', euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  write.table(combined_dpt, file='/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.combined_dges.tsv',sep='\t',quote=FALSE, col.names=NA)
+  venn.diagram(x = list(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.venn_diagram.no_filter.png', euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  venn.diagram(x = list(bangladesh_dpt_sig$species, malawi_dpt_sig$species, nepal_dpt_sig$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.venn_diagram.fdr_0.01.png', euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
   
   
-  venn.diagram(x = list(bangladesh_dpt_sig_up$species, malawi_dpt_sig_up$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.fdr_0.01.upreg.png', euler.d = FALSE, scaled = FALSE)
-  venn.diagram(x = list(bangladesh_dpt_sig_down$species, malawi_dpt_sig_down$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.01.12/2022.01.12.venn_diagram.fdr_0.01.downreg.png', euler.d = FALSE, scaled = FALSE)
+  venn.diagram(x = list(bangladesh_dpt_sig_up$species, malawi_dpt_sig_up$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.venn_diagram.fdr_0.01.upreg.png', euler.d = FALSE, scaled = FALSE)
+  venn.diagram(x = list(bangladesh_dpt_sig_down$species, malawi_dpt_sig_down$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.venn_diagram.fdr_0.01.downreg.png', euler.d = FALSE, scaled = FALSE)
   
   
 }
