@@ -65,6 +65,7 @@ m <- ggplot(abundance_malawi, aes(x = age_range, y = ProportionPrevotellacopri, 
   geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
   ylab('Percentage P. copri') + 
   ggtitle('Malawi') +
+  theme(legend.position="none") + 
   stat_summary(fun.data = give.n, geom = "text", fun = median,
                position = position_dodge(width = 0.75)) + 
   annotate("text", x = 3, y = 52, label = paste0('p = ', toString(malawi_abundance_compared[,6]$p.adj)))

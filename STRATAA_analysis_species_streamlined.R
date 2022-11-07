@@ -88,7 +88,7 @@ run_calc_beta_both_countries <- function(input_braken_folder, out_folder, level)
   if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
   if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
   samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
-  meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh')
+  meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh' | Country == 'Nepal')
   meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
   meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_yes_no_assumptions, sep = '_')
   data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
@@ -96,11 +96,12 @@ run_calc_beta_both_countries <- function(input_braken_folder, out_folder, level)
   data_table.unnormalised <- data.matrix(read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, sep = "\t"))
   colnames(data_table.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
   
-  calculate_beta(data_table.unnormalised, meta, quote("group_country"), out_folder, "group_country", level)
-  calculate_beta(data_table.unnormalised, meta, quote("group_antibiotic"), out_folder, "group_antibiotic", level)
+  #calculate_beta(data_table.unnormalised, meta, quote("country"), out_folder, "country", level, 'all_three')
+  calculate_beta(data_table.unnormalised, meta, "Country", out_folder, "Country", level, 'Beta diversity PCoA: species level')
   
 }
 
+run_calc_beta_both_countries("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_3/", "species")
 
 run_calc_beta_both_countries("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species")
 
@@ -140,7 +141,7 @@ nepal_group <- run_calc_beta_one_country("/Users/flashton/Dropbox/GordonGroup/ST
 bangladesh_group <- run_calc_beta_one_country("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_dhaka/", "species", "Bangladesh")
 
 
-bangladesh_group / malawi_group / nepal_group
+bangladesh_group / malawi_group | nepal_group / plot_spacer()
 
 
 

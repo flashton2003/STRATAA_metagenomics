@@ -221,7 +221,7 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, coun
   output_folder <- paste(output_folder, "4_beta/", sep = "")
   if (!dir.exists(output_folder)){ dir.create(output_folder) }
   #title <- paste("Beta diversity PCoA: ", level, " level", sep = "")
-  title <- paste("Beta diversity PCoA: ", country, sep = "")
+  #title <- paste("Beta diversity PCoA: ", country, sep = "")
   
   #save the table
   out_file <- paste(output_folder, "pairwise_beta.txt", sep = "")
@@ -232,11 +232,13 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, coun
   file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
   
   g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
-    ggtitle(title) + 
+    ggtitle(country) + 
     xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + 
     ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
     guides(colour=guide_legend(title=prefix)) +
-    geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+    geom_point() +
+    theme(legend.position="none")
+    #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   #g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
   #  ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
   #  geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
