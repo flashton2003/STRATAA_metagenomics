@@ -91,6 +91,7 @@ run_calc_beta_both_countries <- function(input_braken_folder, out_folder, level)
   meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh' | Country == 'Nepal')
   meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
   meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_yes_no_assumptions, sep = '_')
+  
   data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
   
   data_table.unnormalised <- data.matrix(read.csv(paste(out_folder, "/1_species/summarised_filtered_species_otu.txt", sep = ''), header=T, sep = "\t"))

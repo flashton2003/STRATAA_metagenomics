@@ -1,0 +1,43 @@
+
+
+## Imports
+```{r}
+library(kableExtra)
+library(ggplot2)
+library(ggpubr)
+```
+
+
+## Sources
+```{r}
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+
+```
+
+
+
+
+
+## Metadata basics
+
+First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
+
+
+```{r}
+meta <- read_metadata(metadata_handle)
+
+number_per_country <- meta %>% group_by(Country) %>% summarise(count = n())
+
+number_per_country %>% kbl() %>% kable_styling()
+
+print(sum(number_per_country$count))
+
+baseline_chars <- get_baseline_characteristics(meta)
+baseline_chars %>% kbl(digits = c(NA, NA, 0, 0, 1, 1)) %>% kable_styling()
+
+ggplot(meta, aes(x = Country, y = Age, fill = Group)) + geom_boxplot() + stat_compare_means(method = 'kruskal.test', label = "p")
+comparisons <- list(c("Acute_Typhi", "Carrier"), c("Acute_Typhi", "Control_HealthySerosurvey"), c("Carrier", "Control_HealthySerosurvey"))
+# default stat method when doing pairwise tests in wilcoxon.
+ggboxplot(meta, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") # +rotate_x_text(angle = 45)
+
+```

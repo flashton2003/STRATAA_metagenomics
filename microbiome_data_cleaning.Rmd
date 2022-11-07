@@ -2,8 +2,7 @@
 
 ## Imports
 ```{r}
-library(tidyr)
-library(kableExtra)
+
 ```
 
 
@@ -18,27 +17,48 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 ```{r}
 
 metadata_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv"
+braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output"
 
 ```
 
-
-## Metadata basics
+## read in metadata
 
 ```{r}
 meta <- read_metadata(metadata_handle)
 
-#table(meta$Group, meta$Country)
-#table(meta$Sex, meta$Country)
-#table(meta$age_bracket, meta$Country)
-#table(meta$Antibiotics_taken_before_sampling_yes_no_assumptions, meta$Country)
-
-#round(prop.table(table(meta$Group, meta$Country)), 2)
-
-baseline_chars <- get_baseline_characteristics(meta)
+```
 
 
+## Setting general params
 
-baseline_chars %>% kbl(digits = c(NA, NA, 0, 1, 1)) %>% kable_styling()
+```{r}
+filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
+```
+
+
+
+## Run one beta diversity analysis
+
+
+```{r}
+
+output_folder_all_three = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_running_test/"
+taxonomic_level = "species"
+countries_to_include <- c('Malawi', 'Bangladesh', 'Nepal')
+
+species_dir <- file.path(output_folder_all_three, '1_species')
+analysis_dir <- file.path(output_folder_all_three, '3_analysis')
+beta_dir <- file.path(output_folder_all_three, '4_beta')
+if (!dir.exists(output_folder_all_three)){ dir.create(output_folder_all_three) }
+if (!dir.exists(species_dir)){ dir.create(species_dir) }
+if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
+if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
+
+samples_to_include <- meta %>% filter(Country %in% countries_to_include) %>% select('isolate')
+samples_to_include <- samples_to_include$isolate
+
+filtered_otu.unnormalised <- make_filtered_otu_table(input_braken_folder, taxonomic_level, filename_regex, output_folder_all_three, samples_to_include)
+
 
 ```
 
