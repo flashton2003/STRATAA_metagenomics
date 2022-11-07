@@ -1,0 +1,37 @@
+
+
+## Imports
+```{r}
+
+```
+
+
+## Sources
+```{r}
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+
+```
+
+## Setting file paths
+
+```{r}
+
+metadata_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv"
+
+```
+
+
+## Metadata basics
+
+```{r}
+meta <- read_metadata(metadata_handle)
+
+table(meta$Group, meta$Country)
+table(meta$Sex, meta$Country)
+table(meta$age_bracket, meta$Country)
+table(meta$Antibiotics_taken_before_sampling_yes_no_assumptions, meta$Country)
+
+round(prop.table(table(meta$Group, meta$Country)), 2)
+
+```
+
