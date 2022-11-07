@@ -4,6 +4,8 @@ library(magrittr)
 library(dplyr)
 library(stringr)
 library(reshape2)
+library(vegan)
+library(ggplot2)
 
 read_metadata <- function(path_to_metadata){
   meta <- read.csv(path_to_metadata, header=T, sep = "\t")
@@ -63,7 +65,7 @@ make_filtered_otu_table <- function(input_braken_folder, taxonomic_level, filena
   colnames(otu) = gsub(pattern = "X", replacement = "", x = colnames(otu))
   write.table(otu, otu_file, row.names = T, quote=FALSE, sep='\t')
   
-  pdf(file = paste(output_folder, taxonomic_level, "_abundances_hist.pdf", sep = ""))
+  pdf(file = file.path(output_folder, paste(taxonomic_level, "_abundances_hist.pdf", sep = "")))
   hist(as.matrix(otu), 
        breaks = 100, 
        main="Histogram For Unfiltered OTU table", 
@@ -82,7 +84,7 @@ make_filtered_otu_table <- function(input_braken_folder, taxonomic_level, filena
   
   otu_table_rare_removed_norm_cpm <- sweep(filtered_otu, 2, colSums(filtered_otu) , '/')*100
   
-  pdf(file = paste(output_folder, taxonomic_level, "_filtered_abundances_hist.pdf", sep = ""))
+  pdf(file = file.path(output_folder, paste(taxonomic_level, "_filtered_abundances_hist.pdf", sep = ""))) 
   hist(as.matrix(otu_table_rare_removed_norm_cpm), 
        main="Histogram For filtered OTU table", 
        breaks = 100, 
@@ -115,4 +117,74 @@ combine_bracken_outputs <- function(braken_folder, filename_regex, samples_to_in
     }
   }
   return(combined_bracken)
+}
+
+
+calculate_beta <- function(data, meta, group, output_folder, prefix, level, country, print_extra_plots = FALSE){
+  #make the first column headers
+  rownames(meta) <- meta[,1]
+  #meta <- meta %>% remove_rownames %>% column_to_rownames()
+  
+  #and order
+  meta <- meta[ order(row.names(meta)), ]
+  # need to transpose the OTU table from species as rows to species as columns
+  data <- as.matrix(t(data))
+  #order data table as well to be sure
+  data <- data[ order(row.names(data)), ]
+  rownames(data) <- gsub("#","_",rownames(data))
+  rownames(data) <- gsub("X","",rownames(data))
+  #make sure that you have the same ids
+  meta_names <- rownames(meta)
+  data_names <- rownames(data)
+  common.ids <- intersect(rownames(meta), rownames(data))
+  #browser()
+  #make sure you have the correct meta
+  meta <- meta[common.ids,]
+  data <- data[common.ids,]
+  
+  #transform the table to relative abundances
+  data <- sweep(data, 1, rowSums(data),'/')
+  #calculate bray curtis distance matrix
+  d.bray <- vegdist(data)
+  
+  #transform it to a matrix to save it
+  beta_matrix <- as.matrix(d.bray)
+  View(beta_matrix)
+  #Perform PCoA
+  pc.bray <- cmdscale(d.bray, k=4, eig = T)
+  pcoa.var <- round(pc.bray$eig/sum(pc.bray$eig)*100, 1)
+  pcoa.values <- pc.bray$points
+  pcoa.data <- data.frame(Sample = rownames(pcoa.values), X=pcoa.values[,1], Y = pcoa.values[,2])
+  #get the metadata column to paint the plot 
+  paint <- meta[,group]
+  #shapes <- meta[,9]
+  
+  output_folder <- paste(output_folder, "4_beta/", sep = "")
+  if (!dir.exists(output_folder)){ dir.create(output_folder) }
+  #title <- paste("Beta diversity PCoA: ", level, " level", sep = "")
+  #title <- paste("Beta diversity PCoA: ", country, sep = "")
+  
+  #save the table
+  out_file <- paste(output_folder, "pairwise_beta.txt", sep = "")
+  write.table(beta_matrix, out_file, row.names=T, col.names=T, sep = "\t")
+  
+  #plot and save
+  file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
+  
+  g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
+    ggtitle(country) + 
+    xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + 
+    ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+    guides(colour=guide_legend(title=prefix)) +
+    geom_point() +
+    theme(legend.position="none")
+  #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+  #g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
+  #  ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
+  #  geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
+  ggsave(file_path)
+  
+  #print(g1)
+  return(g1)
+  
 }

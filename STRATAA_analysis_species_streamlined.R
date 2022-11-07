@@ -106,7 +106,6 @@ run_calc_beta_both_countries("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microb
 
 run_calc_beta_both_countries("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output_blantyre_dhaka/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species")
 
-
 run_calc_beta_one_country <- function(input_braken_folder, out_folder, level, country){
   species_dir <- file.path(out_folder, '1_species')
   analysis_dir <- file.path(out_folder, '3_analysis')
