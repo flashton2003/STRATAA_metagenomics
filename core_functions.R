@@ -198,7 +198,6 @@ calculate_beta <- function(data, meta, output_folder){
 }
 
 
-
 plot_beta <- function(pcoa.data, pcoa.var, to_plot){
   #plot and save
   #file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
@@ -218,7 +217,7 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Group")) +
-      geom_point()
+      geom_point() 
     output_plots <- list.append(output_plots, "group_plot" = group_plot)
   }
   
@@ -227,7 +226,7 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Sex")) +
-      geom_point()
+      geom_point() 
     output_plots <- list.append(output_plots, "sex_plot" = sex_plot)
   }
   
@@ -236,7 +235,7 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Age bracket")) +
-      geom_point()
+      geom_point() 
     output_plots <- list.append(output_plots, "age_plot" = age_plot)
   }
   
@@ -245,7 +244,7 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Group/Country")) +
-      geom_point()
+      geom_point() 
     output_plots <- list.append(output_plots, "group_country_plot" = group_country_plot)
   }
   
@@ -254,7 +253,7 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Group/Antibiotic")) +
-      geom_point()
+      geom_point() 
     output_plots <- list.append(output_plots, "group_antibiotic_plot" = group_antibiotic_plot)
   }
   

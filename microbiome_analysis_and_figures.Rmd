@@ -5,6 +5,7 @@
 library(kableExtra)
 library(ggplot2)
 library(ggpubr)
+library(patchwork)
 ```
 
 
@@ -44,7 +45,6 @@ ggboxplot(metadata, facet.by = "Country", y = "Age", x = "Group", color = "Group
 ## pairwise beta
 
 ```{r}
-
 run_plot_beta <- function(output_folder, meta, vars_to_plot){
   pcoa.data.handle <- file.path(output_folder, '4_beta', "first_2d_coords.txt")
   pcoa.var.handle <- file.path(output_folder, '4_beta', "pcoa_var.txt")
@@ -62,24 +62,31 @@ run_plot_beta <- function(output_folder, meta, vars_to_plot){
   plots <- plot_beta(pcoa.data, pcoa.var, vars_to_plot)
   return(plots)
 }
+```
 
+### All three countries
 
+```{r}
 all_three_vars_to_plot <- c('Country', 'Group', 'Sex', 'age_bracket', 'group_country', 'group_antibiotic')
 all_three_plots <- run_plot_beta(output_folder_all_three, metadata, all_three_vars_to_plot)
 
-#all_three_plots$country_plot
-#all_three_plots$group_plot
-#all_three_plots$sex_plot
-#all_three_plots$age_plot
-#all_three_plots$group_country_plot
-#all_three_plots$group_antibiotic_plot
+all_three_plots$country_plot
+all_three_plots$group_plot
+all_three_plots$sex_plot
+all_three_plots$age_plot
+all_three_plots$group_country_plot
+all_three_plots$group_antibiotic_plot
 
+```
+
+### Just Blantyre
+
+```{r}
 blantyre_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
 blantyre_plots <- run_plot_beta(output_folder_blantyre, metadata, all_three_vars_to_plot)
 blantyre_plots$group_plot
 blantyre_plots$sex_plot
 blantyre_plots$age_plot
 blantyre_plots$group_antibiotic_plot
-
 ```
 
