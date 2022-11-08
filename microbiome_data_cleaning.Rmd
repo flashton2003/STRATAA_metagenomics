@@ -30,11 +30,8 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 ```{r}
 
 taxonomic_level <- "species"
-countries_to_include <- c('Malawi', 'Bangladesh', 'Nepal')
+all_three_countries <- c('Malawi', 'Bangladesh', 'Nepal')
 
-
-
-# todo - turn the below into a function
 run_calculate_beta <- function(output_folder, tax_level, countries, meta){
   filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries)
   meta_filtered <- meta %>% filter(Country %in% countries)
@@ -42,7 +39,6 @@ run_calculate_beta <- function(output_folder, tax_level, countries, meta){
   if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
   beta_pca_output <- calculate_beta(filtered_otu.unnormalised, meta_filtered, beta_dir)
 }
-
 
 run_calculate_beta(output_folder_all_three, taxonomic_level, countries_to_include, metadata)
 
