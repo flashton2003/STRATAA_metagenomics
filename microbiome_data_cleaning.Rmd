@@ -11,7 +11,7 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 ## read in metadata
 
 ```{r}
-meta <- read_metadata(metadata_handle)
+metadata <- read_metadata(metadata_handle)
 
 ```
 
@@ -32,34 +32,19 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 taxonomic_level <- "species"
 countries_to_include <- c('Malawi', 'Bangladesh', 'Nepal')
 
-run_make_filtered_otu_table <- function(output_folder, tax_level, countries, filename_regex){
-  species_dir <- file.path(output_folder, '1_species')
-  analysis_dir <- file.path(output_folder, '3_analysis')
-  
-  if (!dir.exists(output_folder)){ dir.create(output_folder) }
-  if (!dir.exists(species_dir)){ dir.create(species_dir) }
-  if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
 
-  samples_to_include <- meta %>% filter(Country %in% countries) %>% select('isolate')
-  samples_to_include <- samples_to_include$isolate
-  
-  filtered_otu.unnormalised <- make_filtered_otu_table(input_braken_folder, tax_level, filename_regex, output_folder_all_three, samples_to_include)
-  # not needed at the moment, but leaving in just in case
-  #colnames(filtered_otu.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
-  return(filtered_otu.unnormalised)
+
+# todo - turn the below into a function
+run_calculate_beta <- function(output_folder, tax_level, countries, meta){
+  filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries)
+  meta_filtered <- meta %>% filter(Country %in% countries)
+  beta_dir <- file.path(output_folder, '4_beta')
+  if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
+  beta_pca_output <- calculate_beta(filtered_otu.unnormalised, meta_filtered, beta_dir)
 }
 
-# todo - turn the below intoa function
 
-all_three_countries_filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder_all_three, taxonomic_level, countries_to_include)
-meta_filtered <- meta %>% filter(Country %in% countries_to_include)
-
-beta_dir <- file.path(output_folder_all_three, '4_beta')
-if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
-
-beta_pca_output <- calculate_beta(all_three_countries_filtered_otu.unnormalised, meta_filtered, beta_dir)
-
-
+run_calculate_beta(output_folder_all_three, taxonomic_level, countries_to_include, metadata)
 
 ```
 

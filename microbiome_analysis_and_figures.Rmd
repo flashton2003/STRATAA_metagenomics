@@ -56,12 +56,16 @@ meta_for_beta <- meta %>% select(isolate, Country, Group, Sex, age_bracket, Anti
 
 pcoa.data <- left_join(pcoa.data, meta_for_beta, by = c('Sample' = 'isolate'))
 
-to_plot <- c('Country')
+to_plot <- c('Country', 'Group', 'Sex', 'age_bracket', 'group_country', 'group_antibiotic')
 
 # add some different plots to the below
 # or, change this function to take the variable to colour by
 p <- plot_beta(pcoa.data, pcoa.var, to_plot)
 p$country_plot
-
+p$group_plot
+p$sex_plot
+p$age_plot
+p$group_country_plot
+p$group_antibiotic_plot
 ```
 

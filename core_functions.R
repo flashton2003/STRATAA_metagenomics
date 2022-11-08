@@ -6,6 +6,7 @@ library(stringr)
 library(reshape2)
 library(vegan)
 library(ggplot2)
+library(rlist)
 
 
 
@@ -152,7 +153,7 @@ calculate_beta <- function(data, meta, output_folder){
   
   #transform it to a matrix to save it
   beta_matrix <- as.matrix(d.bray)
-  View(beta_matrix)
+  #View(beta_matrix)
   #Perform PCoA
   pc.bray <- cmdscale(d.bray, k=4, eig = T)
   pcoa.var <- round(pc.bray$eig/sum(pc.bray$eig)*100, 1)
@@ -178,25 +179,81 @@ calculate_beta <- function(data, meta, output_folder){
   
 }
 
+run_make_filtered_otu_table <- function(output_folder, tax_level, countries, filename_regex){
+  species_dir <- file.path(output_folder, '1_species')
+  analysis_dir <- file.path(output_folder, '3_analysis')
+  
+  if (!dir.exists(output_folder)){ dir.create(output_folder) }
+  if (!dir.exists(species_dir)){ dir.create(species_dir) }
+  if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
+  
+  samples_to_include <- meta %>% filter(Country %in% countries) %>% select('isolate')
+  samples_to_include <- samples_to_include$isolate
+  
+  filtered_otu.unnormalised <- make_filtered_otu_table(input_braken_folder, tax_level, filename_regex, output_folder_all_three, samples_to_include)
+  # not needed at the moment, but leaving in just in case
+  #colnames(filtered_otu.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
+  return(filtered_otu.unnormalised)
+}
+
 plot_beta <- function(pcoa.data, pcoa.var, to_plot){
   #plot and save
   #file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
   #get the metadata column to paint the plot
-  #output_plots <- data.frame(plot_name = c(), actual_plot = c())
-  #output_plots <- c()
-  
+  output_plots <- list()
   if ("Country" %in% to_plot) {
     country_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = Country)) + 
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Country")) +
       geom_point()
-    #output_plots <- output_plots %>% add_row(plot_name = 'Country', plot = country_plot)
-    print(country_plot)
-    
+    output_plots <- list.append(output_plots, "country_plot" = country_plot)
   }
-  output_plots <- list("country_plot" = country_plot)
   
+  if ("Group" %in% to_plot) {
+    group_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = Group)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="Group")) +
+      geom_point()
+    output_plots <- list.append(output_plots, "group_plot" = group_plot)
+  }
+  
+  if ("Sex" %in% to_plot) {
+    sex_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = Sex)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="Sex")) +
+      geom_point()
+    output_plots <- list.append(output_plots, "sex_plot" = sex_plot)
+  }
+  
+  if ("age_bracket" %in% to_plot) {
+    age_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = age_bracket)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="Age bracket")) +
+      geom_point()
+    output_plots <- list.append(output_plots, "age_plot" = age_plot)
+  }
+  
+  if ("group_country" %in% to_plot) {
+    group_country_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = group_country)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="Group/Country")) +
+      geom_point()
+    output_plots <- list.append(output_plots, "group_country_plot" = group_country_plot)
+  }
+  
+  if ("group_antibiotic" %in% to_plot) {
+    group_antibiotic_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = group_antibiotic)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="Group/Antibiotic")) +
+      geom_point()
+    output_plots <- list.append(output_plots, "group_antibiotic_plot" = group_antibiotic_plot)
+  }
   
   
   #+
@@ -206,7 +263,12 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
   #  ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
   #  geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   #ggsave(file_path)
-  View(output_plots)
   #print(g1)
   return(output_plots)
 }
+
+
+
+
+
+
