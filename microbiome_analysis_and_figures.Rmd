@@ -9,13 +9,13 @@ library(ggpubr)
 
 
 ## Sources
+
+The file handles are set in config.R as they're used by both this script and data_cleaning.
+
 ```{r}
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
-
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
-
-
-
 
 
 ## Metadata basics
@@ -39,5 +39,29 @@ ggplot(meta, aes(x = Country, y = Age, fill = Group)) + geom_boxplot() + stat_co
 comparisons <- list(c("Acute_Typhi", "Carrier"), c("Acute_Typhi", "Control_HealthySerosurvey"), c("Carrier", "Control_HealthySerosurvey"))
 # default stat method when doing pairwise tests in wilcoxon.
 ggboxplot(meta, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") # +rotate_x_text(angle = 45)
+```
+
+## pairwise beta
+
+```{r}
+
+pcoa.data.handle <- file.path(output_folder_all_three, '4_beta', "first_2d_coords.txt")
+pcoa.var.handle <- file.path(output_folder_all_three, '4_beta', "pcoa_var.txt")
+pcoa.data <- read_delim(pcoa.data.handle, delim = " ", escape_double = FALSE, trim_ws = TRUE)
+#pcoa.data <- pcoa.data %>% separate(col = Y, sep = '\t', into = c('x', 'y')) %>% rename(ID = X)
+pcoa.var <- read_delim(pcoa.var.handle, delim = " ", escape_double = FALSE, trim_ws = TRUE)
+#pcoa.data <- read_tsv(pcoa.data.handle)
+
+meta_for_beta <- meta %>% select(isolate, Country, Group, Sex, age_bracket, Antibiotics_taken_before_sampling_yes_no_assumptions, group_country, group_antibiotic)
+
+pcoa.data <- left_join(pcoa.data, meta_for_beta, by = c('Sample' = 'isolate'))
+
+to_plot <- c('Country')
+
+# add some different plots to the below
+# or, change this function to take the variable to colour by
+p <- plot_beta(pcoa.data, pcoa.var, to_plot)
+p$country_plot
 
 ```
+

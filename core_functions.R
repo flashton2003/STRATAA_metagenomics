@@ -7,12 +7,17 @@ library(reshape2)
 library(vegan)
 library(ggplot2)
 
+
+
+
 read_metadata <- function(path_to_metadata){
   meta <- read.csv(path_to_metadata, header=T, sep = "\t")
   # i dont think this line does anything, probably just there for historic reasons
   names(meta)[names(meta) == "sample_ID"] <- "isolate"
   names(meta)[names(meta) == "ID"] <- "isolate"
   meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("0-1", "1-5", "6-15", ">15")))
+  meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
+  meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_yes_no_assumptions, sep = '_')
   
   return(meta)
 }
@@ -91,8 +96,6 @@ make_filtered_otu_table <- function(input_braken_folder, taxonomic_level, filena
        xlab="Relative Abundance", 
        border="blue")
   dev.off()
-  
-  
   return(filtered_otu)
 }
 
@@ -120,7 +123,7 @@ combine_bracken_outputs <- function(braken_folder, filename_regex, samples_to_in
 }
 
 
-calculate_beta <- function(data, meta, group, output_folder, prefix, level, country, print_extra_plots = FALSE){
+calculate_beta <- function(data, meta, output_folder){
   #make the first column headers
   rownames(meta) <- meta[,1]
   #meta <- meta %>% remove_rownames %>% column_to_rownames()
@@ -155,36 +158,55 @@ calculate_beta <- function(data, meta, group, output_folder, prefix, level, coun
   pcoa.var <- round(pc.bray$eig/sum(pc.bray$eig)*100, 1)
   pcoa.values <- pc.bray$points
   pcoa.data <- data.frame(Sample = rownames(pcoa.values), X=pcoa.values[,1], Y = pcoa.values[,2])
-  #get the metadata column to paint the plot 
-  paint <- meta[,group]
-  #shapes <- meta[,9]
+  #pcoa.data <- data.frame(X=pcoa.values[,1], Y = pcoa.values[,2])
   
-  output_folder <- paste(output_folder, "4_beta/", sep = "")
+  
   if (!dir.exists(output_folder)){ dir.create(output_folder) }
-  #title <- paste("Beta diversity PCoA: ", level, " level", sep = "")
-  #title <- paste("Beta diversity PCoA: ", country, sep = "")
   
   #save the table
-  out_file <- paste(output_folder, "pairwise_beta.txt", sep = "")
-  write.table(beta_matrix, out_file, row.names=T, col.names=T, sep = "\t")
+  pairwise_out_file <-  file.path(output_folder, "pairwise_beta.txt")
+  first_2d_coords_out_file <- file.path(output_folder, "first_2d_coords.txt")
+  pcoa_var_file <- file.path(output_folder, "pcoa_var.txt")
+  write_delim(as.data.frame(beta_matrix), pairwise_out_file)
+  #write.table(beta_matrix, pairwise_out_file, row.names=T, col.names=T, sep = "\t")
+  write_delim(as.data.frame(pcoa.data), first_2d_coords_out_file)
+  #write.table(pcoa.data, first_2d_coords_out_file, col.names = T, sep = "\t")
+  write_delim(as.data.frame(pcoa.var), pcoa_var_file)
+  output <- list(pcoa.data = pcoa.data, pcoa.var = pcoa.var)
   
+  return(output)
+  
+}
+
+plot_beta <- function(pcoa.data, pcoa.var, to_plot){
   #plot and save
-  file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
+  #file_path <- paste(output_folder, prefix, "_beta_PCoA.pdf", sep = "")
+  #get the metadata column to paint the plot
+  #output_plots <- data.frame(plot_name = c(), actual_plot = c())
+  #output_plots <- c()
   
-  g1 <- ggplot(pcoa.data, aes(x=X, y=Y, colour = paint)) + 
-    ggtitle(country) + 
-    xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + 
-    ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
-    guides(colour=guide_legend(title=prefix)) +
-    geom_point() +
-    theme(legend.position="none")
+  if ("Country" %in% to_plot) {
+    country_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = Country)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="Country")) +
+      geom_point()
+    #output_plots <- output_plots %>% add_row(plot_name = 'Country', plot = country_plot)
+    print(country_plot)
+    
+  }
+  output_plots <- list("country_plot" = country_plot)
+  
+  
+  
+  #+
+    #theme(legend.position="none")
   #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
   #g1 <- ggplot(pcoa.data, aes(x=X, y=Y)) + 
   #  ggtitle(title) + xlab(paste("MDS1 - ", pcoa.var[1], "%", sep="")) + ylab(paste("MDS2 - ", pcoa.var[2], "%", sep="")) + 
   #  geom_point() #+ geom_text(aes(label=Sample),hjust=0, vjust=0)
-  ggsave(file_path)
-  
+  #ggsave(file_path)
+  View(output_plots)
   #print(g1)
-  return(g1)
-  
+  return(output_plots)
 }
