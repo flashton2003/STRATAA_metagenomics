@@ -8,9 +8,6 @@ library(vegan)
 library(ggplot2)
 library(rlist)
 
-
-
-
 read_metadata <- function(path_to_metadata){
   meta <- read.csv(path_to_metadata, header=T, sep = "\t")
   # i dont think this line does anything, probably just there for historic reasons
@@ -22,6 +19,7 @@ read_metadata <- function(path_to_metadata){
   
   return(meta)
 }
+
 
 get_baseline_characteristics <- function(meta){
   meta_subset <- meta %>% select(Group, Sex, Country, Age, Antibiotics_taken_before_sampling_yes_no_assumptions)
@@ -36,6 +34,7 @@ get_baseline_characteristics <- function(meta){
   return(baseline_chars)
 }
 
+
 remove_rare <- function( table , cutoff_pro ) {
   row2keep <- c()
   cutoff <- ceiling( cutoff_pro * ncol(table) )  
@@ -48,7 +47,26 @@ remove_rare <- function( table , cutoff_pro ) {
   return( table [ row2keep , , drop=F ])
 }
 
-make_filtered_otu_table <- function(input_braken_folder, taxonomic_level, filename_regex, output_folder, samples_to_include){
+
+run_make_filtered_otu_table <- function(output_folder, tax_level, countries, filename_regex, braken_folder, meta){
+  species_dir <- file.path(output_folder, '1_species')
+  analysis_dir <- file.path(output_folder, '3_analysis')
+  
+  if (!dir.exists(output_folder)){ dir.create(output_folder) }
+  if (!dir.exists(species_dir)){ dir.create(species_dir) }
+  if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
+  
+  samples_to_include <- meta %>% filter(Country %in% countries) %>% select('isolate')
+  samples_to_include <- samples_to_include$isolate
+  #View(samples_to_include)
+  filtered_otu.unnormalised <- make_filtered_otu_table(braken_folder, tax_level, filename_regex, output_folder, samples_to_include)
+  # not needed at the moment, but leaving in just in case
+  #colnames(filtered_otu.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
+  return(filtered_otu.unnormalised)
+}
+
+
+make_filtered_otu_table <- function(braken_folder, taxonomic_level, filename_regex, output_folder, samples_to_include){
   #browser()
   output_folder <- file.path(output_folder, paste('1_', taxonomic_level, sep = ""))
   #create the names of the parsed bracken files - one with all the data and one with the filtered
@@ -179,22 +197,7 @@ calculate_beta <- function(data, meta, output_folder){
   
 }
 
-run_make_filtered_otu_table <- function(output_folder, tax_level, countries, filename_regex){
-  species_dir <- file.path(output_folder, '1_species')
-  analysis_dir <- file.path(output_folder, '3_analysis')
-  
-  if (!dir.exists(output_folder)){ dir.create(output_folder) }
-  if (!dir.exists(species_dir)){ dir.create(species_dir) }
-  if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
-  
-  samples_to_include <- meta %>% filter(Country %in% countries) %>% select('isolate')
-  samples_to_include <- samples_to_include$isolate
-  
-  filtered_otu.unnormalised <- make_filtered_otu_table(input_braken_folder, tax_level, filename_regex, output_folder_all_three, samples_to_include)
-  # not needed at the moment, but leaving in just in case
-  #colnames(filtered_otu.unnormalised) = gsub(pattern = "X", replacement = "", x = colnames(data_table.unnormalised))
-  return(filtered_otu.unnormalised)
-}
+
 
 plot_beta <- function(pcoa.data, pcoa.var, to_plot){
   #plot and save

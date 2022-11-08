@@ -31,16 +31,18 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 
 taxonomic_level <- "species"
 all_three_countries <- c('Malawi', 'Bangladesh', 'Nepal')
+just_malawi <- c('Malawi')
 
-run_calculate_beta <- function(output_folder, tax_level, countries, meta){
-  filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries)
+run_calculate_beta <- function(output_folder, tax_level, countries, meta, fn_regex, braken_folder){
+  filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries, fn_regex, braken_folder, metadata)
   meta_filtered <- meta %>% filter(Country %in% countries)
   beta_dir <- file.path(output_folder, '4_beta')
   if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
   beta_pca_output <- calculate_beta(filtered_otu.unnormalised, meta_filtered, beta_dir)
 }
 
-run_calculate_beta(output_folder_all_three, taxonomic_level, countries_to_include, metadata)
+#run_calculate_beta(output_folder_all_three, taxonomic_level, all_three_countries, metadata, filename_regex)
+run_calculate_beta(output_folder_blantyre, taxonomic_level, just_malawi, metadata, filename_regex, braken_folder)
 
 ```
 
