@@ -24,7 +24,7 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 
 
 
-## Run one beta diversity analysis
+## Run beta diversity analysis
 
 
 ```{r}
@@ -32,6 +32,9 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 taxonomic_level <- "species"
 all_three_countries <- c('Malawi', 'Bangladesh', 'Nepal')
 just_malawi <- c('Malawi')
+just_bangladesh <- c('Bangladesh')
+just_nepal <- c('Nepal')
+malawi_and_bangladesh <- c('Malawi', 'Bangladesh')
 
 run_calculate_beta <- function(output_folder, tax_level, countries, meta, fn_regex, braken_folder){
   filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries, fn_regex, braken_folder, metadata)
@@ -41,8 +44,11 @@ run_calculate_beta <- function(output_folder, tax_level, countries, meta, fn_reg
   beta_pca_output <- calculate_beta(filtered_otu.unnormalised, meta_filtered, beta_dir)
 }
 
-#run_calculate_beta(output_folder_all_three, taxonomic_level, all_three_countries, metadata, filename_regex)
+run_calculate_beta(output_folder_all_three, taxonomic_level, all_three_countries, metadata, filename_regex, braken_folder)
 run_calculate_beta(output_folder_blantyre, taxonomic_level, just_malawi, metadata, filename_regex, braken_folder)
+run_calculate_beta(output_folder_dhaka, taxonomic_level, just_bangladesh, metadata, filename_regex, braken_folder)
+run_calculate_beta(output_folder_kathmandu, taxonomic_level, just_nepal, metadata, filename_regex, braken_folder)
+run_calculate_beta(output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, metadata, filename_regex, braken_folder)
 
 ```
 
