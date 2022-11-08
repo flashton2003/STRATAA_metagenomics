@@ -169,6 +169,10 @@ calculate_beta <- function(data, meta, output_folder){
   #calculate bray curtis distance matrix
   d.bray <- vegdist(data)
   
+  # permanova
+  #m <- adonis(d.bray~Sex, data = meta, permutations = 1000)
+  #print(m)
+  
   #transform it to a matrix to save it
   beta_matrix <- as.matrix(d.bray)
   #View(beta_matrix)
@@ -178,7 +182,6 @@ calculate_beta <- function(data, meta, output_folder){
   pcoa.values <- pc.bray$points
   pcoa.data <- data.frame(Sample = rownames(pcoa.values), X=pcoa.values[,1], Y = pcoa.values[,2])
   #pcoa.data <- data.frame(X=pcoa.values[,1], Y = pcoa.values[,2])
-  
   
   if (!dir.exists(output_folder)){ dir.create(output_folder) }
   
@@ -192,8 +195,8 @@ calculate_beta <- function(data, meta, output_folder){
   #write.table(pcoa.data, first_2d_coords_out_file, col.names = T, sep = "\t")
   write_delim(as.data.frame(pcoa.var), pcoa_var_file)
   output <- list(pcoa.data = pcoa.data, pcoa.var = pcoa.var)
-  
-  return(output)
+  saveRDS(d.bray, file.path(output_folder, 'd.bray.RDS'))
+  saveRDS(meta, file.path(output_folder, 'meta_for_permanova.RDS'))
   
 }
 

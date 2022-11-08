@@ -6,6 +6,7 @@ library(kableExtra)
 library(ggplot2)
 library(ggpubr)
 library(patchwork)
+library(vegan)
 ```
 
 
@@ -66,6 +67,8 @@ run_plot_beta <- function(output_folder, meta, vars_to_plot){
 
 ### All three countries
 
+Plots
+
 ```{r}
 all_three_vars_to_plot <- c('Country', 'Group', 'Sex', 'age_bracket', 'group_country', 'group_antibiotic')
 all_three_plots <- run_plot_beta(output_folder_all_three, metadata, all_three_vars_to_plot)
@@ -79,7 +82,21 @@ all_three_plots$group_antibiotic_plot
 
 ```
 
+PERMANOVA
+
+```{r cache=TRUE}
+all_3_d.bray <- readRDS(file.path(output_folder_all_three, '4_beta', 'd.bray.RDS'))
+all_3_meta_permanova <- readRDS(file.path(output_folder_all_three, '4_beta', 'meta_for_permanova.RDS'))
+pn_all3_csgaa <- adonis(all_3_d.bray~Country*Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = all_3_meta_permanova, permutations = 1000)
+pn_all3_csgaa_res <- pn_all3_csgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+
+pn_all3_csgaa_res %>% kbl %>% kable_styling()
+```
+
+
 ### Just Blantyre
+
+Plots
 
 ```{r}
 blantyre_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
@@ -89,4 +106,115 @@ blantyre_plots$sex_plot
 blantyre_plots$age_plot
 blantyre_plots$group_antibiotic_plot
 ```
+
+PERMANOVA
+
+```{r cache=TRUE}
+blantyre_d.bray <- readRDS(file.path(output_folder_blantyre, '4_beta', 'd.bray.RDS'))
+blantyre_meta_permanova <- readRDS(file.path(output_folder_blantyre, '4_beta', 'meta_for_permanova.RDS'))
+pn_blantyre_sgaa <- adonis(blantyre_d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = blantyre_meta_permanova, permutations = 1000)
+
+pn_blantyre_sgaa_res <- pn_blantyre_sgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+
+pn_blantyre_sgaa_res %>% kbl %>% kable_styling()
+
+```
+
+### Just Dhaka
+
+Plots
+
+```{r}
+dhaka_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
+dhaka_plots <- run_plot_beta(output_folder_dhaka, metadata, all_three_vars_to_plot)
+dhaka_plots$group_plot
+dhaka_plots$sex_plot
+dhaka_plots$age_plot
+dhaka_plots$group_antibiotic_plot
+```
+
+PERMANOVA
+
+```{r cache=TRUE}
+dhaka_d.bray <- readRDS(file.path(output_folder_dhaka, '4_beta', 'd.bray.RDS'))
+dhaka_meta_permanova <- readRDS(file.path(output_folder_dhaka, '4_beta', 'meta_for_permanova.RDS'))
+pn_dhaka_sgaa <- adonis(dhaka_d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = dhaka_meta_permanova, permutations = 1000)
+
+pn_dhaka_sgaa_res <- pn_dhaka_sgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+
+pn_dhaka_sgaa_res %>% kbl %>% kable_styling()
+```
+
+
+### Just Kathmandu
+
+Plots
+
+```{r}
+kathmandu_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
+kathmandu_plots <- run_plot_beta(output_folder_kathmandu, metadata, all_three_vars_to_plot)
+kathmandu_plots$group_plot
+kathmandu_plots$sex_plot
+kathmandu_plots$age_plot
+kathmandu_plots$group_antibiotic_plot
+```
+
+PERMANOVA
+
+```{r cache=TRUE}
+kathmandu_d.bray <- readRDS(file.path(output_folder_kathmandu, '4_beta', 'd.bray.RDS'))
+kathmandu_meta_permanova <- readRDS(file.path(output_folder_kathmandu, '4_beta', 'meta_for_permanova.RDS'))
+pn_kathmandu_sgaa <- adonis(kathmandu_d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = kathmandu_meta_permanova, permutations = 1000)
+
+pn_kathmandu_sgaa_res <- pn_kathmandu_sgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+
+pn_kathmandu_sgaa_res %>% kbl %>% kable_styling()
+
+```
+
+### Blantyre and Dhaka
+
+
+Plots
+
+```{r}
+blantyre_dhaka_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
+blantyre_dhaka_plots <- run_plot_beta(output_folder_blantyre_dhaka, metadata, all_three_vars_to_plot)
+blantyre_dhaka_plots$group_plot
+blantyre_dhaka_plots$sex_plot
+blantyre_dhaka_plots$age_plot
+blantyre_dhaka_plots$group_antibiotic_plot
+```
+
+PERMANOVA
+
+```{r cache=TRUE}
+blantyre_dhaka_d.bray <- readRDS(file.path(output_folder_blantyre_dhaka, '4_beta', 'd.bray.RDS'))
+blantyre_dhaka_meta_permanova <- readRDS(file.path(output_folder_blantyre_dhaka, '4_beta', 'meta_for_permanova.RDS'))
+pn_blantyre_dhaka_csgaa <- adonis(blantyre_dhaka_d.bray~Country*Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = blantyre_dhaka_meta_permanova, permutations = 1000)
+
+pn_blantyre_dhaka_csgaa_res <- pn_blantyre_dhaka_csgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+
+pn_blantyre_dhaka_csgaa_res %>% kbl %>% kable_styling()
+
+```
+
+
+## Alpha diversity
+
+```{r}
+run_calc_alpha <- function(input_braken_folder, out_folder, level, country){
+  print('running calc alpha')
+  samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
+  data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
+  print('done reading data')
+  meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh')
+  View(data_table)
+  calculate_alpha(data_table, "kraken_assigned_reads", meta, quote("Group"), out_folder, "Phenotype", level, TRUE)  
+}
+
+
+run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species", "Malawi")
+```
+
 

@@ -41,7 +41,7 @@ run_calculate_beta <- function(output_folder, tax_level, countries, meta, fn_reg
   meta_filtered <- meta %>% filter(Country %in% countries)
   beta_dir <- file.path(output_folder, '4_beta')
   if (!dir.exists(beta_dir)){ dir.create(beta_dir) }
-  beta_pca_output <- calculate_beta(filtered_otu.unnormalised, meta_filtered, beta_dir)
+  calculate_beta(filtered_otu.unnormalised, meta_filtered, beta_dir)
 }
 
 run_calculate_beta(output_folder_all_three, taxonomic_level, all_three_countries, metadata, filename_regex, braken_folder)
