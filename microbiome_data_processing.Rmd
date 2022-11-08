@@ -52,3 +52,21 @@ run_calculate_beta(output_folder_blantyre_dhaka, taxonomic_level, malawi_and_ban
 
 ```
 
+
+## Run PERMANOVA
+
+
+
+```{r cache=TRUE}
+
+all_3_d.bray <- readRDS(file.path(output_folder_all_three, '4_beta', 'd.bray.RDS'))
+all_3_meta_permanova <- readRDS(file.path(output_folder_all_three, '4_beta', 'meta_for_permanova.RDS'))
+pn_all3_csgaa <- adonis(all_3_d.bray~Country*Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = all_3_meta_permanova, permutations = 100)
+pn_all3_csgaa_with_var_names <- cbind(rownames(pn_all3_csgaa$aov.tab), data.frame(pn_all3_csgaa$aov.tab, row.names = NULL))
+pn_all3_csgaa_res <- pn_all3_csgaa_with_var_names %>% rename(variable = `rownames(pn_all3_csgaa$aov.tab)`) %>% mutate(significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+
+
+write_delim(pn_all3_csgaa_res, file.path(output_folder_all_three, '4_beta', 'all_3.permanova.csgaa.tsv'), delim = '\t')
+
+```
+
