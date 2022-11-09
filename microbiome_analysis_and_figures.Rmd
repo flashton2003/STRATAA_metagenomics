@@ -84,8 +84,8 @@ all_three_plots$group_antibiotic_plot
 
 PERMANOVA
 
-```{r cache=TRUE}
-pn_all3_csgaa_res <- read_delim(file.path(output_folder_all_three, '4_beta', 'all_3.permanova.csgaa.tsv'))
+```{r}
+pn_all3_csgaa_res <- read_delim(file.path(output_folder_all_three, '4_beta', 'permanova.results.tsv'))
 pn_all3_csgaa_res %>% kbl %>% kable_styling()
 ```
 
@@ -105,13 +105,8 @@ blantyre_plots$group_antibiotic_plot
 
 PERMANOVA
 
-```{r cache=TRUE}
-blantyre_d.bray <- readRDS(file.path(output_folder_blantyre, '4_beta', 'd.bray.RDS'))
-blantyre_meta_permanova <- readRDS(file.path(output_folder_blantyre, '4_beta', 'meta_for_permanova.RDS'))
-pn_blantyre_sgaa <- adonis(blantyre_d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = blantyre_meta_permanova, permutations = 1000)
-
-pn_blantyre_sgaa_res <- pn_blantyre_sgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
-
+```{r}
+pn_blantyre_sgaa_res <- read_delim(file.path(output_folder_blantyre, '4_beta', 'permanova.results.tsv'))
 pn_blantyre_sgaa_res %>% kbl %>% kable_styling()
 
 ```
@@ -131,13 +126,8 @@ dhaka_plots$group_antibiotic_plot
 
 PERMANOVA
 
-```{r cache=TRUE}
-dhaka_d.bray <- readRDS(file.path(output_folder_dhaka, '4_beta', 'd.bray.RDS'))
-dhaka_meta_permanova <- readRDS(file.path(output_folder_dhaka, '4_beta', 'meta_for_permanova.RDS'))
-pn_dhaka_sgaa <- adonis(dhaka_d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = dhaka_meta_permanova, permutations = 1000)
-
-pn_dhaka_sgaa_res <- pn_dhaka_sgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
-
+```{r}
+pn_dhaka_sgaa_res <- read_delim(file.path(output_folder_dhaka, '4_beta', 'permanova.results.tsv'))
 pn_dhaka_sgaa_res %>% kbl %>% kable_styling()
 ```
 
@@ -157,15 +147,9 @@ kathmandu_plots$group_antibiotic_plot
 
 PERMANOVA
 
-```{r cache=TRUE}
-kathmandu_d.bray <- readRDS(file.path(output_folder_kathmandu, '4_beta', 'd.bray.RDS'))
-kathmandu_meta_permanova <- readRDS(file.path(output_folder_kathmandu, '4_beta', 'meta_for_permanova.RDS'))
-pn_kathmandu_sgaa <- adonis(kathmandu_d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = kathmandu_meta_permanova, permutations = 1000)
-
-pn_kathmandu_sgaa_res <- pn_kathmandu_sgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
-
+```{r}
+pn_kathmandu_sgaa_res <- read_delim(file.path(output_folder_kathmandu, '4_beta', 'permanova.results.tsv'))
 pn_kathmandu_sgaa_res %>% kbl %>% kable_styling()
-
 ```
 
 ### Blantyre and Dhaka
@@ -184,33 +168,98 @@ blantyre_dhaka_plots$group_antibiotic_plot
 
 PERMANOVA
 
-```{r cache=TRUE}
-blantyre_dhaka_d.bray <- readRDS(file.path(output_folder_blantyre_dhaka, '4_beta', 'd.bray.RDS'))
-blantyre_dhaka_meta_permanova <- readRDS(file.path(output_folder_blantyre_dhaka, '4_beta', 'meta_for_permanova.RDS'))
-pn_blantyre_dhaka_csgaa <- adonis(blantyre_dhaka_d.bray~Country*Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = blantyre_dhaka_meta_permanova, permutations = 1000)
-
-pn_blantyre_dhaka_csgaa_res <- pn_blantyre_dhaka_csgaa$aov.tab %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
-
+```{r}
+pn_blantyre_dhaka_csgaa_res <- read_delim(file.path(output_folder_blantyre_dhaka, '4_beta', 'permanova.results.tsv'))
 pn_blantyre_dhaka_csgaa_res %>% kbl %>% kable_styling()
-
 ```
 
 
 ## Alpha diversity
 
 ```{r}
-run_calc_alpha <- function(input_braken_folder, out_folder, level, country){
-  print('running calc alpha')
-  samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
-  data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
-  print('done reading data')
-  meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh')
-  View(data_table)
-  calculate_alpha(data_table, "kraken_assigned_reads", meta, quote("Group"), out_folder, "Phenotype", level, TRUE)  
-}
+meta_for_alpha <- metadata %>% select(isolate, Group, Sex, Country, Antibiotics_taken_before_sampling_yes_no_assumptions, age_bracket)
 
-
-run_calc_alpha("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output/species/", "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/phil_blantyre_dhaka/", "species", "Malawi")
 ```
 
 
+### all three
+
+ANOVA results
+
+```{r}
+anova_all_three_csgaa_res <- read_delim(file.path(output_folder_all_three, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
+anova_all_three_csgaa_res %>% kbl %>% kable_styling()
+```
+
+Plots
+
+```{r}
+all_three_shannon_alpha <- read_delim(file.path(output_folder_all_three, '3_alpha', 'shannon.alpha_results.tsv'))
+all_three_shannon_alpha <- left_join(all_three_shannon_alpha, meta_for_alpha, by = 'isolate', )
+
+ggplot(all_three_shannon_alpha, aes(x=Country, y=alpha, fill = Group)) + 
+  ggtitle("All three countries - country by group") + 
+  labs(x="", y="Alpha diversity") +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) #+
+  #geom_point(alpha = 0.3, position = "jitter")
+
+ggplot(all_three_shannon_alpha, aes(x=Country, y=alpha, fill = Antibiotics_taken_before_sampling_yes_no_assumptions)) + 
+  ggtitle("All three countries - country by group") + 
+  labs(x="", y="Alpha diversity") +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+### blantyre
+
+ANOVA
+
+```{r}
+
+anova_blantyre_sgaa_res <- read_delim(file.path(output_folder_blantyre, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
+anova_blantyre_sgaa_res %>% kbl %>% kable_styling()
+
+```
+
+Plots
+
+- The p-value on the graph is a kruskal wallis test (which is just wilcoxon i think?)
+
+```{r}
+blantyre_shannon_alpha <- read_delim(file.path(output_folder_blantyre, '3_alpha', 'shannon.alpha_results.tsv'))
+blantyre_shannon_alpha <- left_join(blantyre_shannon_alpha, meta_for_alpha, by = 'isolate')
+
+my_comparisons <- list(c('No', 'Yes'), c('No', 'Yes'), c('No', 'Yes'))
+
+ggplot(blantyre_shannon_alpha, aes(x=age_bracket, y=alpha, fill = Antibiotics_taken_before_sampling_yes_no_assumptions)) + 
+  #ggtitle("All three countries - country by group") + 
+  labs(x="", y="Alpha diversity") +
+  geom_boxplot(outlier.shape = NA, alpha = 0.2) +
+  #geom_point(aes(color=as.factor(Antibiotics_taken_before_sampling_yes_no_assumptions)), alpha = 0.3) +
+  geom_point(alpha = 0.5, position=position_dodge(width=0.75),aes(group=Antibiotics_taken_before_sampling_yes_no_assumptions, color=as.factor(Antibiotics_taken_before_sampling_yes_no_assumptions))) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  stat_compare_means(label.y = c(5.2, 5.5, 5.7), size = 4, label = "p.format")
+
+```
+
+
+### dhaka
+
+```{r}
+
+anova_dhaka_sgaa_res <- read_delim(file.path(output_folder_dhaka, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
+anova_dhaka_sgaa_res %>% kbl %>% kable_styling()
+
+```
+
+### kathmandu
+
+```{r}
+
+anova_kathmandu_sgaa_res <- read_delim(file.path(output_folder_kathmandu, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
+anova_kathmandu_sgaa_res %>% kbl %>% kable_styling()
+
+```
