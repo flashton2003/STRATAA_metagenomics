@@ -1,9 +1,9 @@
 
 
 
-
 ## Sources
 ```{r}
+library(kableExtra)
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
@@ -26,7 +26,7 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 
 ## Run beta diversity analysis
 
-
+* Beta diversity analysis is done on relative abundances (see call to sweep function on )
 ```{r}
 
 taxonomic_level <- "species"
@@ -88,11 +88,6 @@ run_permanova(output_folder_blantyre_dhaka, inc_country = TRUE)
 
 https://mibwurrepo.github.io/Microbial-bioinformatics-introductory-course-Material-2018/alpha-diversities.html
 
-
-START here:
-
-* need to do some basic stats on number of reads per sample
-* should do alpha diversity on normalised or unnormalised read numbers?
 * Not going to normalise before alpha diversity - https://www.nature.com/articles/s41579-018-0029-9
 "Measures of species richness (for example, the number of observed species or the Chao1 abundance estimator, which estimates true species diversity) and phylogenetic measures (Faith’s phylogenetic diversity) are sensitive to the number of sequences per sample, whereas measures that combine richness and evenness (Shannon index) are much less so. However, it should be noted that these methods have been evaluated exclusively for 16S rRNA data and may not apply to other microbiome data types."
 
@@ -109,11 +104,13 @@ run_calculate_alpha <- function(output_folder, tax_level, countries, fn_regex, b
   # if run_make_filtered_otu_table has already been run i.e. for the beta diversity analysi
   # then here, will just read in the otu table and return it, rather than gathering all the per sample files.
   filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries, fn_regex, braken_folder, meta)
-  calculate_alpha(filtered_otu.unnormalised, meta, quote("Group"), output_folder, "Phenotype")  
+  meta_subset <- meta %>% filter(Country %in% countries)
+  anova <- calculate_alpha(filtered_otu.unnormalised, meta_subset, quote("Group"), output_folder, "Phenotype")  
+  anova %>% kbl() 
 }
 
 # all_three_countries won't be needed if the beta diversity has already been calculated, but should include just in case.
-run_calculate_alpha(output_folder_blantyre, taxonomic_level, all_three_countries, filename_regex, braken_folder, metadata)
+run_calculate_alpha(output_folder_blantyre, taxonomic_level, just_malawi, filename_regex, braken_folder, metadata)
 
 
 ```

@@ -169,10 +169,6 @@ calculate_beta <- function(data, meta, output_folder){
   #calculate bray curtis distance matrix
   d.bray <- vegdist(data)
   
-  # permanova
-  #m <- adonis(d.bray~Sex, data = meta, permutations = 1000)
-  #print(m)
-  
   #transform it to a matrix to save it
   beta_matrix <- as.matrix(d.bray)
   #View(beta_matrix)
@@ -277,15 +273,42 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
   
   #calculate alpha diverities 
   #input_matrix <- acast(data, sample_ID ~ name, value.var = summary_column, fill=0)
+  View(data)
+  data <- t(data)
   
-  input_matrix <- t(data)
   
-  alpha <- vegan::diversity(input_matrix, index="shannon")
+  #make the first column headers
+  rownames(meta) <- meta[,1]
+  #meta <- meta %>% remove_rownames %>% column_to_rownames()
+  
+  #and order
+  meta <- meta[ order(row.names(meta)), ]
+  
+  #order data table as well to be sure
+  data <- data[ order(row.names(data)), ]
+  rownames(data) <- gsub("#","_",rownames(data))
+  rownames(data) <- gsub("X","",rownames(data))
+  #make sure that you have the same ids
+  meta_names <- rownames(meta)
+  data_names <- rownames(data)
+  View(meta_names)
+  View(data_names)
+  common.ids <- intersect(rownames(meta), rownames(data))
+  View(common.ids)
+  #browser()
+  #make sure you have the correct meta
+  meta <- meta[common.ids,]
+  data <- data[common.ids,]
+  
+  alpha <- vegan::diversity(data, index="shannon")
+  
+  s <- summary(aov(alpha ~ Sex *Group * age_bracket * Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta))
+  
   alpha_table <- tibble(isolate = names(alpha), alpha = alpha)
-  View(alpha_table)
+  #View(alpha_table)
   alpha_table <- alpha_table %>% mutate(isolate = substring(isolate, 2))
-  View(meta)
-  View(alpha_table)
+  #View(meta)
+  #View(alpha_table)
   alpha_table <- left_join(meta, alpha_table, by="isolate")
   #View(alpha_table)
   
@@ -311,7 +334,6 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
   title <- paste("Alpha div.(T test): ", prefix, sep = "")
   
   
-  
   alpha_table <- alpha_table %>% filter(!is.na(alpha))
   g1 <- ggplot(alpha_table, aes(x=Group, y=alpha)) + 
     #ggtitle(title) + 
@@ -321,7 +343,7 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
     geom_point(alpha = 0.3, position = "jitter") +
     stat_compare_means(comparisons = my_comparisons)
   g1
-  
+  return(s)
 }
 
 
