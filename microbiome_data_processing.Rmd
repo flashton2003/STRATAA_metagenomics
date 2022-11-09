@@ -55,18 +55,66 @@ run_calculate_beta(output_folder_blantyre_dhaka, taxonomic_level, malawi_and_ban
 
 ## Run PERMANOVA
 
+This takes some time (~2-10 minutes per dataset). R2 is essentially effect size, p-value is p-value (calc'd by permutation).
+
+https://groups.google.com/g/qiime-forum/c/qyDJAdECBnc/m/F44lWRsyKWIJ
+https://forum.qiime2.org/t/group-significance-changes-and-interpretation/2396
 
 
 ```{r cache=TRUE}
+run_permanova <- function(output_folder, inc_country){
+  d.bray <- readRDS(file.path(output_folder, '4_beta', 'd.bray.RDS'))
+  meta_permanova <- readRDS(file.path(output_folder, '4_beta', 'meta_for_permanova.RDS'))
+  if (isTRUE(inc_country)) {
+    pn <- adonis(d.bray~Country*Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta_permanova, permutations = 1000)
+  } else {
+    pn <- adonis(d.bray~Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta_permanova, permutations = 1000)
+  }
+  
+  pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
+  pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+  write_delim(pn_res, file.path(output_folder, '4_beta', 'permanova.results.tsv'), delim = '\t')
+}
 
-all_3_d.bray <- readRDS(file.path(output_folder_all_three, '4_beta', 'd.bray.RDS'))
-all_3_meta_permanova <- readRDS(file.path(output_folder_all_three, '4_beta', 'meta_for_permanova.RDS'))
-pn_all3_csgaa <- adonis(all_3_d.bray~Country*Sex*Group*age_bracket*Antibiotics_taken_before_sampling_yes_no_assumptions, data = all_3_meta_permanova, permutations = 100)
-pn_all3_csgaa_with_var_names <- cbind(rownames(pn_all3_csgaa$aov.tab), data.frame(pn_all3_csgaa$aov.tab, row.names = NULL))
-pn_all3_csgaa_res <- pn_all3_csgaa_with_var_names %>% rename(variable = `rownames(pn_all3_csgaa$aov.tab)`) %>% mutate(significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+run_permanova(output_folder_all_three, inc_country = TRUE)
+run_permanova(output_folder_blantyre, inc_country = FALSE)
+run_permanova(output_folder_dhaka, inc_country = FALSE)
+run_permanova(output_folder_kathmandu, inc_country = FALSE)
+run_permanova(output_folder_blantyre_dhaka, inc_country = TRUE)
+
+```
+
+## Run alpha diversity
+
+https://mibwurrepo.github.io/Microbial-bioinformatics-introductory-course-Material-2018/alpha-diversities.html
 
 
-write_delim(pn_all3_csgaa_res, file.path(output_folder_all_three, '4_beta', 'all_3.permanova.csgaa.tsv'), delim = '\t')
+START here:
+
+* need to do some basic stats on number of reads per sample
+* should do alpha diversity on normalised or unnormalised read numbers?
+* Not going to normalise before alpha diversity - https://www.nature.com/articles/s41579-018-0029-9
+"Measures of species richness (for example, the number of observed species or the Chao1 abundance estimator, which estimates true species diversity) and phylogenetic measures (Faith’s phylogenetic diversity) are sensitive to the number of sequences per sample, whereas measures that combine richness and evenness (Shannon index) are much less so. However, it should be noted that these methods have been evaluated exclusively for 16S rRNA data and may not apply to other microbiome data types."
+
+```{r}
+
+taxonomic_level <- "species"
+all_three_countries <- c('Malawi', 'Bangladesh', 'Nepal')
+just_malawi <- c('Malawi')
+just_bangladesh <- c('Bangladesh')
+just_nepal <- c('Nepal')
+malawi_and_bangladesh <- c('Malawi', 'Bangladesh')
+
+run_calculate_alpha <- function(output_folder, tax_level, countries, fn_regex, braken_folder, meta){
+  # if run_make_filtered_otu_table has already been run i.e. for the beta diversity analysi
+  # then here, will just read in the otu table and return it, rather than gathering all the per sample files.
+  filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries, fn_regex, braken_folder, meta)
+  calculate_alpha(filtered_otu.unnormalised, meta, quote("Group"), output_folder, "Phenotype")  
+}
+
+# all_three_countries won't be needed if the beta diversity has already been calculated, but should include just in case.
+run_calculate_alpha(output_folder_blantyre, taxonomic_level, all_three_countries, filename_regex, braken_folder, metadata)
+
 
 ```
 
