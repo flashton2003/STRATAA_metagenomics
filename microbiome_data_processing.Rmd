@@ -4,6 +4,7 @@
 ## Sources
 ```{r}
 library(kableExtra)
+library(dplyr)
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
@@ -105,8 +106,10 @@ run_calculate_alpha <- function(output_folder, tax_level, countries, fn_regex, b
   # then here, will just read in the otu table and return it, rather than gathering all the per sample files.
   filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries, fn_regex, braken_folder, meta)
   meta_subset <- meta %>% filter(Country %in% countries)
-  anova <- calculate_alpha(filtered_otu.unnormalised, meta_subset, quote("Group"), output_folder, "Phenotype")  
-  anova %>% kbl() 
+  anova_res <- calculate_alpha(filtered_otu.unnormalised, meta_subset, quote("Group"), output_folder, "Phenotype")  
+  anova_res <- anova_res[[1]] %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), `Pr(>F)`)
+
+  anova_res %>% kbl(digits = 2) 
 }
 
 # all_three_countries won't be needed if the beta diversity has already been calculated, but should include just in case.
