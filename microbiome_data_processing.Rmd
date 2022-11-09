@@ -56,7 +56,7 @@ run_calculate_beta(output_folder_blantyre_dhaka, taxonomic_level, malawi_and_ban
 
 ## Run PERMANOVA
 
-This takes some time (~2-10 minutes per dataset). R2 is essentially effect size, p-value is p-value (calc'd by permutation).
+We do this separately from the calculate_beta This takes some time (~2-10 minutes per dataset). R2 is essentially effect size, p-value is p-value (calc'd by permutation).
 
 https://groups.google.com/g/qiime-forum/c/qyDJAdECBnc/m/F44lWRsyKWIJ
 https://forum.qiime2.org/t/group-significance-changes-and-interpretation/2396
@@ -73,7 +73,7 @@ run_permanova <- function(output_folder, inc_country){
   }
   
   pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
-  pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+  pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
   write_delim(pn_res, file.path(output_folder, '4_beta', 'permanova.results.tsv'), delim = '\t')
 }
 
@@ -91,6 +91,7 @@ https://mibwurrepo.github.io/Microbial-bioinformatics-introductory-course-Materi
 
 * Not going to normalise before alpha diversity - https://www.nature.com/articles/s41579-018-0029-9
 "Measures of species richness (for example, the number of observed species or the Chao1 abundance estimator, which estimates true species diversity) and phylogenetic measures (Faith’s phylogenetic diversity) are sensitive to the number of sequences per sample, whereas measures that combine richness and evenness (Shannon index) are much less so. However, it should be noted that these methods have been evaluated exclusively for 16S rRNA data and may not apply to other microbiome data types."
+* Slightly unsatisfying that run_calculate_alpha has a different structure to run_calc_beta/run_permanova, with the stats bit done separately for beta, but integrated in alpha, but whaddya gonna do?
 
 ```{r}
 
@@ -101,19 +102,25 @@ just_bangladesh <- c('Bangladesh')
 just_nepal <- c('Nepal')
 malawi_and_bangladesh <- c('Malawi', 'Bangladesh')
 
-run_calculate_alpha <- function(output_folder, tax_level, countries, fn_regex, braken_folder, meta){
+run_calculate_alpha <- function(output_folder, tax_level, countries, fn_regex, braken_folder, meta, inc_country){
   # if run_make_filtered_otu_table has already been run i.e. for the beta diversity analysi
   # then here, will just read in the otu table and return it, rather than gathering all the per sample files.
   filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries, fn_regex, braken_folder, meta)
   meta_subset <- meta %>% filter(Country %in% countries)
-  anova_res <- calculate_alpha(filtered_otu.unnormalised, meta_subset, quote("Group"), output_folder, "Phenotype")  
-  anova_res <- anova_res[[1]] %>% mutate(significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(significant), `Pr(>F)`)
-
-  anova_res %>% kbl(digits = 2) 
+  anova_res <- calculate_alpha(filtered_otu.unnormalised, meta_subset, quote("Group"), output_folder, "Phenotype", inc_country)
+  # anova_res[[1]] is the output dataframe
+  anova_res_with_var_names <- cbind(rownames(anova_res[[1]]), data.frame(anova_res[[1]], row.names = NULL))
+  anova_res_with_var_names <- anova_res_with_var_names %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), `Pr..F.`)
+  write_delim(anova_res_with_var_names, file.path(output_folder, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
+  #View(anova_res_with_var_names)
+  anova_res_with_var_names %>% kbl(digits = 3)  %>% kable_styling()
 }
 
 # all_three_countries won't be needed if the beta diversity has already been calculated, but should include just in case.
-run_calculate_alpha(output_folder_blantyre, taxonomic_level, just_malawi, filename_regex, braken_folder, metadata)
+run_calculate_alpha(output_folder_all_three, taxonomic_level, all_three_countries, filename_regex, braken_folder, metadata, inc_country = TRUE)
+run_calculate_alpha(output_folder_blantyre, taxonomic_level, just_malawi, filename_regex, braken_folder, metadata, inc_country = FALSE)
+run_calculate_alpha(output_folder_dhaka, taxonomic_level, just_bangladesh, filename_regex, braken_folder, metadata, inc_country = FALSE)
+run_calculate_alpha(output_folder_kathmandu, taxonomic_level, just_nepal, filename_regex, braken_folder, metadata, inc_country = FALSE)
 
 
 ```

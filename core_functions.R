@@ -50,11 +50,11 @@ remove_rare <- function( table , cutoff_pro ) {
 
 run_make_filtered_otu_table <- function(output_folder, tax_level, countries, filename_regex, braken_folder, meta){
   species_dir <- file.path(output_folder, '1_species')
-  analysis_dir <- file.path(output_folder, '3_analysis')
+  alpha_dir <- file.path(output_folder, '3_alpha')
   
   if (!dir.exists(output_folder)){ dir.create(output_folder) }
   if (!dir.exists(species_dir)){ dir.create(species_dir) }
-  if (!dir.exists(analysis_dir)){ dir.create(analysis_dir) }
+  if (!dir.exists(alpha_dir)){ dir.create(alpha_dir) }
   
   samples_to_include <- meta %>% filter(Country %in% countries) %>% select('isolate')
   samples_to_include <- samples_to_include$isolate
@@ -269,11 +269,11 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
 }
 
 
-calculate_alpha <- function(data, meta, group, output_folder, prefix){
+calculate_alpha <- function(data, meta, group, output_folder, prefix, inc_country){
   
   #calculate alpha diverities 
   #input_matrix <- acast(data, sample_ID ~ name, value.var = summary_column, fill=0)
-  View(data)
+  #View(data)
   data <- t(data)
   
   
@@ -291,10 +291,10 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
   #make sure that you have the same ids
   meta_names <- rownames(meta)
   data_names <- rownames(data)
-  View(meta_names)
-  View(data_names)
+  #View(meta_names)
+  #View(data_names)
   common.ids <- intersect(rownames(meta), rownames(data))
-  View(common.ids)
+  #View(common.ids)
   #browser()
   #make sure you have the correct meta
   meta <- meta[common.ids,]
@@ -302,14 +302,21 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
   
   alpha <- vegan::diversity(data, index="shannon")
   
-  s <- summary(aov(alpha ~ Sex *Group * age_bracket * Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta))
+  if (isTRUE(inc_country)) {
+    s <- summary(aov(alpha ~ Country * Sex *Group * age_bracket * Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta))
+  } else {
+    s <- summary(aov(alpha ~ Sex *Group * age_bracket * Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta))
+  }
+  
+  
+
   
   alpha_table <- tibble(isolate = names(alpha), alpha = alpha)
   #View(alpha_table)
-  alpha_table <- alpha_table %>% mutate(isolate = substring(isolate, 2))
+  #alpha_table <- alpha_table %>% mutate(isolate = substring(isolate, 2))
   #View(meta)
   #View(alpha_table)
-  alpha_table <- left_join(meta, alpha_table, by="isolate")
+  #alpha_table <- left_join(meta, alpha_table, by="isolate")
   #View(alpha_table)
   
   #for t.test
@@ -318,7 +325,6 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
   #print(meta[,eval(group)])
   #print(levels(meta[,eval(group)]))
   #my_comparisons <- combn(levels(meta[,eval(meta$Group)]), 2, simplify = F)
-  my_comparisons <- list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Carrier', 'Control_HealthySerosurvey'))
   
   #pairwise t test
   f <- paste("alpha~", group, sep = "")
@@ -326,23 +332,16 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix){
   
   #gr <- pv$p <= 0.05
   
-  
-  file_path <- paste(output_folder, "3_alpha/", prefix, "_alpha.pdf", sep = "")
-  output_folder <- paste(output_folder, "3_alpha/", sep = "")
-  if (!dir.exists(output_folder)){ dir.create(output_folder) }
+  write_delim(alpha_table, file.path(output_folder, "3_alpha", "shannon.alpha_results.tsv"))
+  #output_folder <- paste(output_folder, "3_alpha/", sep = "")
+  #if (!dir.exists(output_folder)){ dir.create(output_folder) }
   
   title <- paste("Alpha div.(T test): ", prefix, sep = "")
   
   
   alpha_table <- alpha_table %>% filter(!is.na(alpha))
-  g1 <- ggplot(alpha_table, aes(x=Group, y=alpha)) + 
-    #ggtitle(title) + 
-    labs(x="", y="Alpha diversity") +
-    geom_boxplot(fill="slateblue", alpha=0.8) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    geom_point(alpha = 0.3, position = "jitter") +
-    stat_compare_means(comparisons = my_comparisons)
-  g1
+
+  
   return(s)
 }
 
