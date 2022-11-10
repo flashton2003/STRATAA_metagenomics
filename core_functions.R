@@ -7,6 +7,9 @@ library(reshape2)
 library(vegan)
 library(ggplot2)
 library(rlist)
+library(phyloseq)
+library(microbiome)
+library(edgeR)
 
 read_metadata <- function(path_to_metadata){
   meta <- read.csv(path_to_metadata, header=T, sep = "\t")
@@ -207,7 +210,10 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Country")) +
-      geom_point()
+      geom_point() +
+      coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
+    
+    
     output_plots <- list.append(output_plots, "country_plot" = country_plot)
   }
   
@@ -216,7 +222,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Group")) +
-      geom_point() 
+      geom_point() #+
+      #coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
     output_plots <- list.append(output_plots, "group_plot" = group_plot)
   }
   
@@ -225,7 +232,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Sex")) +
-      geom_point() 
+      geom_point() +
+      coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
     output_plots <- list.append(output_plots, "sex_plot" = sex_plot)
   }
   
@@ -234,7 +242,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Age bracket")) +
-      geom_point() 
+      geom_point() +
+      coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
     output_plots <- list.append(output_plots, "age_plot" = age_plot)
   }
   
@@ -243,7 +252,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Group/Country")) +
-      geom_point() 
+      geom_point() +
+      coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
     output_plots <- list.append(output_plots, "group_country_plot" = group_country_plot)
   }
   
@@ -252,7 +262,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
       ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
       guides(colour=guide_legend(title="Group/Antibiotic")) +
-      geom_point() 
+      geom_point() +
+      coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
     output_plots <- list.append(output_plots, "group_antibiotic_plot" = group_antibiotic_plot)
   }
   
@@ -346,4 +357,93 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix, inc_countr
 }
 
 
+calculate_dge <- function(our_metadata, output_folder, tax_level, otu){
+  # manipulate full_meta
+  rownames(our_metadata) <- our_metadata[,1]
+  sampledata <- sample_data(our_metadata)
 
+  #otu <- read.csv(otu_file, header=T, row.names=1, sep = "\t")
+  colnames(otu) = gsub(pattern = "X", replacement = "", x = colnames(otu)) 
+  OTU = otu_table(otu, taxa_are_rows = TRUE)
+  
+  #put them in a phyloseq object
+  OTU <- t(OTU)
+  pseq <- phyloseq(OTU, sampledata)
+  our_metadata <- meta(pseq)
+  otu <- abundances(pseq)
+  #View(pseq)
+  pseq_control_vs_acute <- subset_samples(pseq, Group =="Control_HealthySerosurvey" | Group =="Acute_Typhi")
+  subset_meta <- meta(pseq_control_vs_acute)
+  #View(subset_meta)
+  subset_otu <- t(abundances(pseq_control_vs_acute))
+  # this is Leo's function for running edgeR GLM.
+  result <- glm_edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')])
+  #result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu)
+  topTags(result, n=10)
+  dge_out_folder <- file.path(output_folder,'5_glm')
+  if (!dir.exists(dge_out_folder)){ dir.create(dge_out_folder) }
+  write.table(topTags(result, n=Inf)$table, file=file.path(dge_out_folder, 'results_all.country_sex_age_amu.edgeR.tsv'), sep='\t',quote=FALSE, col.names=NA)
+}
+
+
+glm_edgeR <- function(x, Y, covariates=NULL,use.fdr=TRUE, estimate.trended.disp=TRUE,verbose=TRUE) {
+  # x is the independent variable
+  # Y is a matrix of samples x dependent variables
+  # x is the Group
+  # y is the OTU
+  # returns p-values
+  # drop samples that are NA for, by default, the Group (i.e. acute typhi/healthy control/etc)
+  ix <- !is.na(x)
+  Y <- Y[ix,]
+  x <- x[ix]
+  # if covariates have been given
+  if(!is.null(covariates)){
+    # if the dimensions of them are null then it isn't a matrix/data frame, so convert it to one
+    if(is.null(dim(covariates))){
+      covariates <- as.data.frame(covariates)
+    }
+    # drop samples that are NA for the independent variable
+    covariates <- covariates[ix,,drop=F]
+    
+    # drop constant covariates
+    covariates <- covariates[,apply(covariates,2,function(xx) length(unique(xx)) > 1),drop=F]
+  }
+  
+  if(verbose) cat('Making DGEList...\n')
+  d <- DGEList(count=t(Y), group=x)
+  View(d)
+  if(verbose) cat('calcNormFactors...\n')
+  d <- calcNormFactors(d, method = "TMM" )
+  if(!is.null(covariates)){
+    covariates <- as.data.frame(covariates)
+    # combines the Group (i.e. acute typhi etc) back with the co-variates
+    covariates <- cbind(x, covariates)
+    covariates <- droplevels(covariates)
+    design <- model.matrix(~ ., data=covariates)
+    # this makes the below
+    # x <- data.frame(c('case', 'control', 'carrier'), c(5, 17, 8))
+    # model.matrix(~ ., data = x)
+    #  (Intercept) c..case....control....carrier..case c..case....control....carrier..control c.5..17..8.
+    # 1           1                                   1                                      0           5
+    # 2           1                                   0                                      1          17
+    # 3           1                                   0                                      0           8
+  } else {
+    design <- model.matrix(~x)
+  }
+  
+  if(verbose) cat('estimate common dispersion...\n')
+  d <- estimateGLMCommonDisp(d, design)
+  if(estimate.trended.disp){
+    if(verbose) cat('estimate trended dispersion...\n')
+    d <- estimateGLMTrendedDisp(d, design)
+  }
+  if(verbose) cat('estimate tagwise dispersion...\n')
+  d <- estimateGLMTagwiseDisp(d,design)
+  
+  if(verbose) cat('fit glm...\n')
+  fit <- glmFit(d,design)
+  if(verbose) cat('likelihood ratio test...\n')
+  lrt <- glmLRT(fit,coef=2)
+  
+  return(lrt)
+}

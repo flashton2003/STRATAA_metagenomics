@@ -1,5 +1,7 @@
 
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, cache = TRUE)
+```
 
 ## Sources
 ```{r}
@@ -123,5 +125,28 @@ run_calculate_alpha(output_folder_dhaka, taxonomic_level, just_bangladesh, filen
 run_calculate_alpha(output_folder_kathmandu, taxonomic_level, just_nepal, filename_regex, braken_folder, metadata, inc_country = FALSE)
 
 
+```
+
+
+## Run DGE
+
+```{r}
+
+taxonomic_level <- "species"
+all_three_countries <- c('Malawi', 'Bangladesh', 'Nepal')
+just_malawi <- c('Malawi')
+just_bangladesh <- c('Bangladesh')
+just_nepal <- c('Nepal')
+malawi_and_bangladesh <- c('Malawi', 'Bangladesh')
+
+run_calculate_dge <- function(meta, output_folder, tax_level, countries_to_include){
+  meta_subset <- meta %>% filter(Country %in% countries_to_include)
+  filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries_to_include, fn_regex, braken_folder, meta)
+  calculate_dge(meta_subset, output_folder, tax_level, filtered_otu.unnormalised)
+
+}
+
+
+run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi)
 ```
 
