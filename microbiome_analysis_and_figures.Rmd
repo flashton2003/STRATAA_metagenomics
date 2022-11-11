@@ -375,9 +375,9 @@ to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_d
 
 # the_date doesn't have to be todays date, it's just the current working dir
 the_date <- '2022.11.10'
-combine_and_compare_dges(to_combine, covars, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, groups_for_comparison)
+dge_output <- combine_and_compare_dges(to_combine, covars, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, groups_for_comparison)
 
-
+dge_output$sig_up_cases_controls %>% select(species, all_sites_logFC, all_sites_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% kbl() %>% kable_styling()
 
 #covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
 

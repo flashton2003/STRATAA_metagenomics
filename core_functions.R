@@ -374,22 +374,18 @@ calculate_dge <- function(our_metadata, output_folder, tax_level, otu, covariate
   pseq <- phyloseq(OTU, sampledata)
   our_metadata <- meta(pseq)
   otu <- abundances(pseq)
-  #View(pseq)
-  #group1_for_comp <- 
-  #group2 <-
-  #print(group1_for_comp)
   
+  # need to filter out the samples that aren't included in the comparison
+  # this is the old way of doing it, but subset_samples can't take variables as arguments (!)
   #pseq_control_vs_acute <- subset_samples(pseq, Group == group1_for_comp | Group == group2)
-  #prune_samples(!is.na(var_values), phyloseq_obj)
-  View(pseq)
-  View(sample_data(pseq))
+  # see below link for old bug report and work around
+  # https://github.com/joey711/phyloseq/issues/335
+  # take the pseq sample data
   var_values <- sample_data(pseq)
+  # make a boolean of the length sample_data(pseq) that evaluates whether the Group is in the groups to be compared
   var_bool <- var_values$Group %in% groups_for_comparison
-  View(var_bool)
-  #prune_samples(!is.na(var_values), phyloseq_obj)
-  
-  #filt_crit <- sampledata$Group %in% groups_for_comparison
-  #print(filt_crit)
+  # use this boolean to prune the pseq object samples
+  # i've checked, and this gives equivalent results to the previous way of doing it.
   pseq_control_vs_acute <- prune_samples(var_bool, pseq)
   subset_meta <- meta(pseq_control_vs_acute)
   #View(subset_meta)
@@ -481,18 +477,24 @@ combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three
   bangladesh_dpt <- read_delim(handles[[output_folder_dhaka]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   bangladesh_dpt <- rename(bangladesh_dpt, c(species=...1, bangladesh_logFC = logFC, bangladesh_logCPM = logCPM, bangladesh_LR = LR, bangladesh_PValue = PValue, bangladesh_FDR = FDR))
   bangladesh_dpt_sig <- filter(bangladesh_dpt, bangladesh_FDR <= 0.01)
+  print('Bangladesh FDR <= 0.01')
+  print(length(bangladesh_dpt_sig$species))
   bangladesh_dpt_sig_up <- filter(bangladesh_dpt_sig, bangladesh_logFC >= 1)
   bangladesh_dpt_sig_down <- filter(bangladesh_dpt_sig, bangladesh_logFC <= -1)
   
   malawi_dpt <- read_delim(handles[[output_folder_blantyre]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   malawi_dpt <- rename(malawi_dpt, c(species=...1, malawi_logFC = logFC, malawi_logCPM = logCPM, malawi_LR = LR, malawi_PValue = PValue, malawi_FDR = FDR))  
   malawi_dpt_sig <- filter(malawi_dpt, malawi_FDR <= 0.01)
+  print('Malawi FDR <= 0.01')
+  print(length(malawi_dpt_sig$species))
   malawi_dpt_sig_up <- filter(malawi_dpt_sig, malawi_logFC >= 1)
   malawi_dpt_sig_down <- filter(malawi_dpt_sig, malawi_logFC <= -1)
   
   nepal_dpt <- read_delim(handles[[output_folder_kathmandu]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   nepal_dpt <- rename(nepal_dpt, c(species=...1, nepal_logFC = logFC, nepal_logCPM = logCPM, nepal_LR = LR, nepal_PValue = PValue, nepal_FDR = FDR))  
   nepal_dpt_sig <- filter(nepal_dpt, nepal_FDR <= 0.01)
+  print('Nepal FDR <= 0.01')
+  print(length(nepal_dpt_sig$species))
   nepal_dpt_sig_up <- filter(nepal_dpt_sig, nepal_logFC >= 1)
   nepal_dpt_sig_down <- filter(nepal_dpt_sig, nepal_logFC <= -1)
   
@@ -505,17 +507,25 @@ combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three
   
   write_csv(combined_dpt, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'combined_dges.csv', sep = '.')))
   # do some inner joins of malawi and bangladesh to get the taxa that are dp between them
+  # then do a left join to pull in the info on the 
   
   malawi_and_bangladesh_sig_up <- inner_join(bangladesh_dpt_sig_up, malawi_dpt_sig_up, by = 'species')
+  malawi_and_bangladesh_sig_up <- malawi_and_bangladesh_sig_up %>% left_join(all_sites_dpt, by = 'species')
+  
   malawi_and_bangladesh_sig_down <- inner_join(bangladesh_dpt_sig_down, malawi_dpt_sig_down, by = 'species')
+  malawi_and_bangladesh_sig_down <- malawi_and_bangladesh_sig_down %>% left_join(all_sites_dpt, by = 'species')
+  
   #View(malawi_and_bangladesh_sig_up)
+  
+  
   write_csv(malawi_and_bangladesh_sig_up, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'bang_mal_up.filtered.csv', sep = '.')))
   write_csv(malawi_and_bangladesh_sig_down, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'bang_mal_down.filtered.csv', sep = '.')))
   
+  print(paste('Jaccard of unfiltered taxa of Bang, Mal, Nep = ', jaccard(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species)), sep = '')
   
   #   venn.diagram(x = list(bangladesh_dpt_sig_up$species, malawi_dpt_sig_up$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.venn_diagram.fdr_0.01.upreg.png', euler.d = FALSE, scaled = FALSE)
   # unfiltered
-  venn.diagram(x = list(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.no_filter.png', sep = '.')), euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  venn.diagram(x = list(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species), category.names = c('Bangladesh', 'Malawi', 'Nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.no_filter.png', sep = '.')), euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
   # fdr 0.01
   venn.diagram(x = list(bangladesh_dpt_sig$species, malawi_dpt_sig$species, nepal_dpt_sig$species), category.names = c('Bangladesh', 'Malawi', 'Nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.fdr_0.01.png', sep = '.')), euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
   # fdr 0.01 and logfc > 1
@@ -523,9 +533,8 @@ combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three
   # fdr 0.01 and logfc < -1
   venn.diagram(x = list(bangladesh_dpt_sig_down$species, malawi_dpt_sig_down$species, nepal_dpt_sig_down$species), category.names = c('Bangladesh', 'Malawi', 'Nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.fdr_0.01.downreg.png', sep = '.')), euler.d = FALSE, scaled = FALSE)
   
-  
-
-  
+  output <- list(sig_up_cases_controls = malawi_and_bangladesh_sig_up, sig_down_cases_controls = malawi_and_bangladesh_sig_down)
+  return(output)
 }
 
 
@@ -535,4 +544,17 @@ make_name <- function(output_folder, covars, comp){
   name=file.path(dge_out_folder, paste('results_all', comp, covar_initials, 'edgeR.tsv', sep = '.'))
   return(name)
 }
+
+jaccard <- function(input_1, input_2, input_3){
+  intersection = length(intersect(intersect(input_1, input_2), input_3))
+  union = length(union(union(input_1, input_2), input_3))
+  return (intersection/union)
+}
+
+a <- c('speciesA', 'speciesB', 'speciesC')
+b <- c('speciesA', 'speciesB')
+c <- c('speciesA', 'speciesB', 'speciesD')
+jaccard(a, b, c)
+
+
 
