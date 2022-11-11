@@ -1,12 +1,13 @@
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message=FALSE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 ```
 
 ## Sources
 ```{r}
 library(kableExtra)
 library(dplyr)
+library(stringr)
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
@@ -130,6 +131,8 @@ run_calculate_alpha(output_folder_kathmandu, taxonomic_level, just_nepal, filena
 
 ## Run DGE
 
+This takes some time 2-10 minutes per run.
+
 ```{r}
 
 taxonomic_level <- "species"
@@ -139,14 +142,20 @@ just_bangladesh <- c('Bangladesh')
 just_nepal <- c('Nepal')
 malawi_and_bangladesh <- c('Malawi', 'Bangladesh')
 
-run_calculate_dge <- function(meta, output_folder, tax_level, countries_to_include){
+run_calculate_dge <- function(meta, output_folder, tax_level, countries_to_include, covariates, groups_for_comparison){
   meta_subset <- meta %>% filter(Country %in% countries_to_include)
   filtered_otu.unnormalised <- run_make_filtered_otu_table(output_folder, tax_level, countries_to_include, fn_regex, braken_folder, meta)
-  calculate_dge(meta_subset, output_folder, tax_level, filtered_otu.unnormalised)
-
+  calculate_dge(meta_subset, output_folder, tax_level, filtered_otu.unnormalised, covariates, groups_for_comparison)
 }
 
-
-run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi)
+groups_for_comparison <- c("Control_HealthySerosurvey", "Acute_Typhi")
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
+run_calculate_dge(metadata, output_folder_all_three, taxonomic_level, all_three_countries, covars, groups_for_comparison)
+run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi, covars, groups_for_comparison)
+run_calculate_dge(metadata, output_folder_dhaka, taxonomic_level, just_bangladesh, covars, groups_for_comparison)
+run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal, covars, groups_for_comparison)
+run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
 ```
+
+
 

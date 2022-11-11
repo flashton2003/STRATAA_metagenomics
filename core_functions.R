@@ -1,15 +1,18 @@
-library(tidyr)
-library(readr)
-library(magrittr)
 library(dplyr)
-library(stringr)
-library(reshape2)
-library(vegan)
-library(ggplot2)
-library(rlist)
-library(phyloseq)
-library(microbiome)
 library(edgeR)
+library(ggplot2)
+library(magrittr)
+library(microbiome)
+library(phyloseq)
+library(readr)
+library(reshape2)
+library(rlist)
+library(stringr)
+library(tidyr)
+library(vegan)
+library(VennDiagram)
+
+#source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 
 read_metadata <- function(path_to_metadata){
   meta <- read.csv(path_to_metadata, header=T, sep = "\t")
@@ -357,7 +360,7 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix, inc_countr
 }
 
 
-calculate_dge <- function(our_metadata, output_folder, tax_level, otu){
+calculate_dge <- function(our_metadata, output_folder, tax_level, otu, covariates, groups_for_comparison){
   # manipulate full_meta
   rownames(our_metadata) <- our_metadata[,1]
   sampledata <- sample_data(our_metadata)
@@ -372,17 +375,33 @@ calculate_dge <- function(our_metadata, output_folder, tax_level, otu){
   our_metadata <- meta(pseq)
   otu <- abundances(pseq)
   #View(pseq)
-  pseq_control_vs_acute <- subset_samples(pseq, Group =="Control_HealthySerosurvey" | Group =="Acute_Typhi")
+  #group1_for_comp <- 
+  #group2 <-
+  #print(group1_for_comp)
+  
+  #pseq_control_vs_acute <- subset_samples(pseq, Group == group1_for_comp | Group == group2)
+  #prune_samples(!is.na(var_values), phyloseq_obj)
+  View(pseq)
+  View(sample_data(pseq))
+  var_values <- sample_data(pseq)
+  var_bool <- var_values$Group %in% groups_for_comparison
+  View(var_bool)
+  #prune_samples(!is.na(var_values), phyloseq_obj)
+  
+  #filt_crit <- sampledata$Group %in% groups_for_comparison
+  #print(filt_crit)
+  pseq_control_vs_acute <- prune_samples(var_bool, pseq)
   subset_meta <- meta(pseq_control_vs_acute)
   #View(subset_meta)
   subset_otu <- t(abundances(pseq_control_vs_acute))
   # this is Leo's function for running edgeR GLM.
-  result <- glm_edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')])
+  result <- glm_edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , covariates])
   #result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu)
   topTags(result, n=10)
   dge_out_folder <- file.path(output_folder,'5_glm')
   if (!dir.exists(dge_out_folder)){ dir.create(dge_out_folder) }
-  write.table(topTags(result, n=Inf)$table, file=file.path(dge_out_folder, 'results_all.country_sex_age_amu.edgeR.tsv'), sep='\t',quote=FALSE, col.names=NA)
+  covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
+  write.table(topTags(result, n=Inf)$table, file=file.path(dge_out_folder, paste('results_all', paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_'), covar_initials, 'edgeR.tsv', sep = '.')), sep='\t',quote=FALSE, col.names=NA)
 }
 
 
@@ -447,3 +466,73 @@ glm_edgeR <- function(x, Y, covariates=NULL,use.fdr=TRUE, estimate.trended.disp=
   
   return(lrt)
 }
+
+
+
+
+combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, groups_for_comparison) {
+  # dpt is differentially present taxa
+  comp <- paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_')
+  handles <- sapply(to_combine, make_name, covars = covars, comp = comp)
+  covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
+  all_sites_dpt <- read_delim(handles[[output_folder_all_three]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  all_sites_dpt <- rename(all_sites_dpt, c(species=...1, all_sites_logFC = logFC, all_sites_logCPM = logCPM, all_sites_LR = LR, all_sites_PValue = PValue, all_sites_FDR = FDR))
+  
+  bangladesh_dpt <- read_delim(handles[[output_folder_dhaka]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  bangladesh_dpt <- rename(bangladesh_dpt, c(species=...1, bangladesh_logFC = logFC, bangladesh_logCPM = logCPM, bangladesh_LR = LR, bangladesh_PValue = PValue, bangladesh_FDR = FDR))
+  bangladesh_dpt_sig <- filter(bangladesh_dpt, bangladesh_FDR <= 0.01)
+  bangladesh_dpt_sig_up <- filter(bangladesh_dpt_sig, bangladesh_logFC >= 1)
+  bangladesh_dpt_sig_down <- filter(bangladesh_dpt_sig, bangladesh_logFC <= -1)
+  
+  malawi_dpt <- read_delim(handles[[output_folder_blantyre]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  malawi_dpt <- rename(malawi_dpt, c(species=...1, malawi_logFC = logFC, malawi_logCPM = logCPM, malawi_LR = LR, malawi_PValue = PValue, malawi_FDR = FDR))  
+  malawi_dpt_sig <- filter(malawi_dpt, malawi_FDR <= 0.01)
+  malawi_dpt_sig_up <- filter(malawi_dpt_sig, malawi_logFC >= 1)
+  malawi_dpt_sig_down <- filter(malawi_dpt_sig, malawi_logFC <= -1)
+  
+  nepal_dpt <- read_delim(handles[[output_folder_kathmandu]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  nepal_dpt <- rename(nepal_dpt, c(species=...1, nepal_logFC = logFC, nepal_logCPM = logCPM, nepal_LR = LR, nepal_PValue = PValue, nepal_FDR = FDR))  
+  nepal_dpt_sig <- filter(nepal_dpt, nepal_FDR <= 0.01)
+  nepal_dpt_sig_up <- filter(nepal_dpt_sig, nepal_logFC >= 1)
+  nepal_dpt_sig_down <- filter(nepal_dpt_sig, nepal_logFC <= -1)
+  
+  combined_dpt <- left_join(all_sites_dpt, bangladesh_dpt, by = "species")
+  combined_dpt <- left_join(combined_dpt, malawi_dpt, by = "species")
+  combined_dpt <- left_join(combined_dpt, nepal_dpt, by = "species")
+  
+  combined_output_folder <- file.path(combined_output_root, 'dge')
+  if (!dir.exists(combined_output_folder)){ dir.create(combined_output_folder) }
+  
+  write_csv(combined_dpt, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'combined_dges.csv', sep = '.')))
+  # do some inner joins of malawi and bangladesh to get the taxa that are dp between them
+  
+  malawi_and_bangladesh_sig_up <- inner_join(bangladesh_dpt_sig_up, malawi_dpt_sig_up, by = 'species')
+  malawi_and_bangladesh_sig_down <- inner_join(bangladesh_dpt_sig_down, malawi_dpt_sig_down, by = 'species')
+  #View(malawi_and_bangladesh_sig_up)
+  write_csv(malawi_and_bangladesh_sig_up, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'bang_mal_up.filtered.csv', sep = '.')))
+  write_csv(malawi_and_bangladesh_sig_down, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'bang_mal_down.filtered.csv', sep = '.')))
+  
+  
+  #   venn.diagram(x = list(bangladesh_dpt_sig_up$species, malawi_dpt_sig_up$species), category.names = c('bangladesh', 'malawi'), filename = '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/combined_dge/results/2022.06.07/2022.06.07.venn_diagram.fdr_0.01.upreg.png', euler.d = FALSE, scaled = FALSE)
+  # unfiltered
+  venn.diagram(x = list(bangladesh_dpt$species, malawi_dpt$species, nepal_dpt$species), category.names = c('bangladesh', 'malawi', 'nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.no_filter.png', sep = '.')), euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  # fdr 0.01
+  venn.diagram(x = list(bangladesh_dpt_sig$species, malawi_dpt_sig$species, nepal_dpt_sig$species), category.names = c('Bangladesh', 'Malawi', 'Nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.fdr_0.01.png', sep = '.')), euler.d = FALSE, scaled = FALSE, height=2200, width=2200)
+  # fdr 0.01 and logfc > 1
+  venn.diagram(x = list(bangladesh_dpt_sig_up$species, malawi_dpt_sig_up$species, nepal_dpt_sig_up$species), category.names = c('Bangladesh', 'Malawi', 'Nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.fdr_0.01.upreg.png', sep = '.')), euler.d = FALSE, scaled = FALSE)
+  # fdr 0.01 and logfc < -1
+  venn.diagram(x = list(bangladesh_dpt_sig_down$species, malawi_dpt_sig_down$species, nepal_dpt_sig_down$species), category.names = c('Bangladesh', 'Malawi', 'Nepal'), filename = file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'venn_diagram.fdr_0.01.downreg.png', sep = '.')), euler.d = FALSE, scaled = FALSE)
+  
+  
+
+  
+}
+
+
+make_name <- function(output_folder, covars, comp){
+  dge_out_folder <- file.path(output_folder,'5_glm')
+  covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
+  name=file.path(dge_out_folder, paste('results_all', comp, covar_initials, 'edgeR.tsv', sep = '.'))
+  return(name)
+}
+

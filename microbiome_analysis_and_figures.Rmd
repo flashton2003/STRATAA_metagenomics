@@ -12,7 +12,7 @@ output:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 
 ```
 
@@ -358,5 +358,31 @@ It looks like some might be being trimmed by the coordinate limits in the plot_b
 ```{r fig.height= 3, fig.width = 3}
 #b_g / d_g | k_g / plot_spacer() + plot_layout(guides = 'collect')
 b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
+```
+
+
+## Taxa associated with participant groups
+
+```{r}
+
+combined_output_root <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/phil/2022.11.08/combined_analysis'
+if (!dir.exists(combined_output_root)){ dir.create(combined_output_root) }
+
+groups_for_comparison <- c("Control_HealthySerosurvey", "Acute_Typhi")
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
+
+to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu)
+
+# the_date doesn't have to be todays date, it's just the current working dir
+the_date <- '2022.11.10'
+combine_and_compare_dges(to_combine, covars, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, groups_for_comparison)
+
+
+
+#covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
+
+#combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))
+
+
 ```
 
