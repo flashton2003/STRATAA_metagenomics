@@ -369,16 +369,30 @@ combined_output_root <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/
 if (!dir.exists(combined_output_root)){ dir.create(combined_output_root) }
 
 groups_for_comparison <- c("Control_HealthySerosurvey", "Acute_Typhi")
+comp <- paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_')
 covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
+covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
 
-to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu)
+
+to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, output_folder_blantyre_dhaka)
 
 # the_date doesn't have to be todays date, it's just the current working dir
 the_date <- '2022.11.10'
-dge_output <- combine_and_compare_dges(to_combine, covars, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, groups_for_comparison)
+dge_output <- combine_and_compare_dges(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp)
+#options(scipen = 999)
+#options(scipen = 0) # to switch scientific notation back on
 
-dge_output$sig_up_cases_controls %>% select(species, all_sites_logFC, all_sites_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% kbl() %>% kable_styling()
+View(dge_output$sig_up_cases_controls)
 
+sig_up_cases_controls_for_writing <- dge_output$sig_up_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
+
+write_csv(sig_up_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
+
+
+sig_down_cases_controls_for_writing <- dge_output$sig_down_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
+
+
+write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
 #covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
 
 #combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))

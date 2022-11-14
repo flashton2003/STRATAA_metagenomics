@@ -466,11 +466,11 @@ glm_edgeR <- function(x, Y, covariates=NULL,use.fdr=TRUE, estimate.trended.disp=
 
 
 
-combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, groups_for_comparison) {
+combine_and_compare_dges <- function(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp) {
+  # this function is atrociously repetitive.
   # dpt is differentially present taxa
-  comp <- paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_')
   handles <- sapply(to_combine, make_name, covars = covars, comp = comp)
-  covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
+
   all_sites_dpt <- read_delim(handles[[output_folder_all_three]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   all_sites_dpt <- rename(all_sites_dpt, c(species=...1, all_sites_logFC = logFC, all_sites_logCPM = logCPM, all_sites_LR = LR, all_sites_PValue = PValue, all_sites_FDR = FDR))
   
@@ -481,6 +481,8 @@ combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three
   print(length(bangladesh_dpt_sig$species))
   bangladesh_dpt_sig_up <- filter(bangladesh_dpt_sig, bangladesh_logFC >= 1)
   bangladesh_dpt_sig_down <- filter(bangladesh_dpt_sig, bangladesh_logFC <= -1)
+  bangladesh_dpt_sig_up$bangladesh_FDR <- formatC(bangladesh_dpt_sig_up$bangladesh_FDR, format = 'e', digits = 1)
+  bangladesh_dpt_sig_down$bangladesh_FDR <- formatC(bangladesh_dpt_sig_down$bangladesh_FDR, format = 'e', digits = 1)
   
   malawi_dpt <- read_delim(handles[[output_folder_blantyre]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   malawi_dpt <- rename(malawi_dpt, c(species=...1, malawi_logFC = logFC, malawi_logCPM = logCPM, malawi_LR = LR, malawi_PValue = PValue, malawi_FDR = FDR))  
@@ -489,6 +491,8 @@ combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three
   print(length(malawi_dpt_sig$species))
   malawi_dpt_sig_up <- filter(malawi_dpt_sig, malawi_logFC >= 1)
   malawi_dpt_sig_down <- filter(malawi_dpt_sig, malawi_logFC <= -1)
+  malawi_dpt_sig_up$malawi_FDR <- formatC(malawi_dpt_sig_up$malawi_FDR, format = 'e', digits = 1)
+  malawi_dpt_sig_down$malawi_FDR <- formatC(malawi_dpt_sig_down$malawi_FDR, format = 'e', digits = 1)
   
   nepal_dpt <- read_delim(handles[[output_folder_kathmandu]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
   nepal_dpt <- rename(nepal_dpt, c(species=...1, nepal_logFC = logFC, nepal_logCPM = logCPM, nepal_LR = LR, nepal_PValue = PValue, nepal_FDR = FDR))  
@@ -498,24 +502,35 @@ combine_and_compare_dges <- function(to_combine, covars, output_folder_all_three
   nepal_dpt_sig_up <- filter(nepal_dpt_sig, nepal_logFC >= 1)
   nepal_dpt_sig_down <- filter(nepal_dpt_sig, nepal_logFC <= -1)
   
+  malawi_bangladesh_dpt <- read_delim(handles[[output_folder_blantyre_dhaka]], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  malawi_bangladesh_dpt <- rename(malawi_bangladesh_dpt, c(species=...1, malawi_bangladesh_logFC = logFC, malawi_bangladesh_logCPM = logCPM, malawi_bangladesh_LR = LR, malawi_bangladesh_PValue = PValue, malawi_bangladesh_FDR = FDR))  
+  malawi_bangladesh_dpt_sig <- filter(malawi_bangladesh_dpt, malawi_bangladesh_FDR <= 0.01)
+  print('malawi_bangladesh FDR <= 0.01')
+  print(length(malawi_bangladesh_dpt_sig$species))
+  malawi_bangladesh_dpt_sig_up <- filter(malawi_bangladesh_dpt_sig, malawi_bangladesh_logFC >= 1)
+  malawi_bangladesh_dpt_sig_down <- filter(malawi_bangladesh_dpt_sig, malawi_bangladesh_logFC <= -1)
+  malawi_bangladesh_dpt_sig_up$malawi_bangladesh_FDR <- formatC(malawi_bangladesh_dpt_sig_up$malawi_bangladesh_FDR, format = 'e', digits = 1)
+  malawi_bangladesh_dpt_sig_down$malawi_bangladesh_FDR <- formatC(malawi_bangladesh_dpt_sig_down$malawi_bangladesh_FDR, format = 'e', digits = 1)
+  
   combined_dpt <- left_join(all_sites_dpt, bangladesh_dpt, by = "species")
   combined_dpt <- left_join(combined_dpt, malawi_dpt, by = "species")
   combined_dpt <- left_join(combined_dpt, nepal_dpt, by = "species")
+  combined_dpt <- left_join(combined_dpt, malawi_bangladesh_dpt, by = "species")
   
   combined_output_folder <- file.path(combined_output_root, 'dge')
   if (!dir.exists(combined_output_folder)){ dir.create(combined_output_folder) }
   
   write_csv(combined_dpt, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'combined_dges.csv', sep = '.')))
   # do some inner joins of malawi and bangladesh to get the taxa that are dp between them
-  # then do a left join to pull in the info on the 
-  
+  # then do a left join to pull in the info on those taxa from teh combined malawi_bangladesh analysis
+  # i.e. the edgeR that pooled samples from both sites.
+  View(malawi_bangladesh_dpt)
   malawi_and_bangladesh_sig_up <- inner_join(bangladesh_dpt_sig_up, malawi_dpt_sig_up, by = 'species')
-  malawi_and_bangladesh_sig_up <- malawi_and_bangladesh_sig_up %>% left_join(all_sites_dpt, by = 'species')
-  
+  malawi_and_bangladesh_sig_up <- malawi_and_bangladesh_sig_up %>% left_join(malawi_bangladesh_dpt, by = 'species')
   malawi_and_bangladesh_sig_down <- inner_join(bangladesh_dpt_sig_down, malawi_dpt_sig_down, by = 'species')
-  malawi_and_bangladesh_sig_down <- malawi_and_bangladesh_sig_down %>% left_join(all_sites_dpt, by = 'species')
+  malawi_and_bangladesh_sig_down <- malawi_and_bangladesh_sig_down %>% left_join(malawi_bangladesh_dpt, by = 'species')
   
-  #View(malawi_and_bangladesh_sig_up)
+  View(malawi_and_bangladesh_sig_up)
   
   
   write_csv(malawi_and_bangladesh_sig_up, file= file.path(combined_output_folder, paste(the_date, comp, covar_initials, 'bang_mal_up.filtered.csv', sep = '.')))
