@@ -363,6 +363,8 @@ b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
 
 ## Taxa associated with participant groups
 
+### EdgeR
+
 ```{r}
 
 combined_output_root <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/phil/2022.11.08/combined_analysis'
@@ -378,7 +380,7 @@ to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_d
 
 # the_date doesn't have to be todays date, it's just the current working dir
 the_date <- '2022.11.10'
-dge_output <- combine_and_compare_dges(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp)
+dge_output <- combine_and_compare_edgeRs(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp)
 #options(scipen = 999)
 #options(scipen = 0) # to switch scientific notation back on
 
@@ -386,10 +388,15 @@ View(dge_output$sig_up_cases_controls)
 
 sig_up_cases_controls_for_writing <- dge_output$sig_up_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
 
+sig_up_cases_controls_for_writing %>% kbl() %>% kable_styling()
+
+
 write_csv(sig_up_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
 
 
 sig_down_cases_controls_for_writing <- dge_output$sig_down_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
+
+sig_down_cases_controls_for_writing %>% kbl() %>% kable_styling()
 
 
 write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
@@ -399,4 +406,35 @@ write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, '
 
 
 ```
+
+### maaslin
+
+
+
+
+```{r}
+
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
+
+bang_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+
+malawi_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+
+bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+
+combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
+
+combined_maaslins_positive_coef <- combined_maaslins$positive_coef
+combined_maaslins_negative_coef <- combined_maaslins$negative_coef
+
+combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, 'combined_maaslins_positive_coef'))
+combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_negative_coef, file.path(maaslin_output_root_folder, 'combined_maaslins_negative_coef'))
+
+```
+
 

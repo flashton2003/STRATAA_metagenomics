@@ -24,6 +24,7 @@ metadata <- read_metadata(metadata_handle)
 
 ```{r}
 filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
+metaphlan_input_date <- "2023.05.03"
 ```
 
 
@@ -129,7 +130,7 @@ run_calculate_alpha(output_folder_kathmandu, taxonomic_level, just_nepal, filena
 ```
 
 
-## Run DGE
+## Run EdegR DGE
 
 This takes some time 2-10 minutes per run.
 
@@ -155,6 +156,23 @@ run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi
 run_calculate_dge(metadata, output_folder_dhaka, taxonomic_level, just_bangladesh, covars, groups_for_comparison)
 run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal, covars, groups_for_comparison)
 run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
+```
+
+
+
+## Run MAASLIN2 DGE
+
+```{r}
+
+strataa_metaphlan_data = read.csv(file = file.path(metaphlan_input_folder, paste(metaphlan_input_date, 'strataa.metaphlan.merged.csv', sep = '.')), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_metaphlan_metadata = read.csv(file = file.path(metaphlan_input_folder, paste(metaphlan_input_date, 'strataa_metadata.metaphlan.csv', sep = '.')), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
+#bgd_acute_healthy_output_dir <- file.path(maaslin_output_root_folder, paste())
+
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
 ```
 
 

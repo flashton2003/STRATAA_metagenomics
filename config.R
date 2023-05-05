@@ -1,0 +1,9 @@
+metadata_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/0_metadata/full_meta.tsv"
+braken_folder = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/1_taxonomic_profiling/bracken_output"
+output_folder_all_three <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/phil/2022.11.08/all_three/"
+output_folder_blantyre <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/phil/2022.11.08/blantyre/"
+output_folder_dhaka <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/phil/2022.11.08/dhaka/"
+output_folder_kathmandu <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/phil/2022.11.08/kathmandu/"
+output_folder_blantyre_dhaka <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/phil/2022.11.08/blantyre_dhaka/"
+metaphlan_input_folder <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.03'
+maaslin_output_root_folder <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.03'

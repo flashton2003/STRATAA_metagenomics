@@ -11,6 +11,8 @@ library(stringr)
 library(tidyr)
 library(vegan)
 library(VennDiagram)
+library(Maaslin2)
+
 
 #source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 
@@ -466,8 +468,9 @@ glm_edgeR <- function(x, Y, covariates=NULL,use.fdr=TRUE, estimate.trended.disp=
 
 
 
-combine_and_compare_dges <- function(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp) {
+combine_and_compare_edgeRs <- function(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp) {
   # this function is atrociously repetitive.
+  # should just merge all of them to start with and then do filters on multiple columns.
   # dpt is differentially present taxa
   handles <- sapply(to_combine, make_name, covars = covars, comp = comp)
 
@@ -566,10 +569,81 @@ jaccard <- function(input_1, input_2, input_3){
   return (intersection/union)
 }
 
-a <- c('speciesA', 'speciesB', 'speciesC')
-b <- c('speciesA', 'speciesB')
-c <- c('speciesA', 'speciesB', 'speciesD')
-jaccard(a, b, c)
+
+run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans){
+  metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis)
+  vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+  Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
+           normalization  = norm,
+           transform = trans,
+           output         = output_dir, 
+           fixed_effects  = variables_for_analysis)
+}
+
+
+combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
+  combined_df <- bangladesh_maaslin %>%
+    inner_join(malawi_maaslin, by = "feature", suffix = c("_bang", "_mal"))
+  
+  # Filter the combined data frame based on the conditions for coef > 0
+  filtered_df_positive_coef <- combined_df %>%
+    group_by(feature) %>%
+    filter(
+      qval_bang < 0.05 & qval_mal < 0.05 & 
+        (coef_bang > 0 & coef_mal > 0)
+    )
+  
+  # Filter the combined data frame based on the conditions for coef < 0
+  filtered_df_negative_coef <- combined_df %>%
+    group_by(feature) %>%
+    filter(
+      qval_1 < 0.05 & qval_2 < 0.05 & 
+        (coef_1 < 0 & coef_2 < 0)
+    )
+  
+  # Return the two filtered data frames
+  return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef))
+}
+
+
+
+
+
+combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
+  # thanks chatgpt!
+  combined_df <- bangladesh_maaslin %>%
+    inner_join(malawi_maaslin, by = "feature", suffix = c("_bang", "_mal"))
+  
+  # Filter the combined data frame based on the conditions for coef > 0
+  filtered_df_positive_coef <- combined_df %>%
+    filter(
+      qval_bang < 0.05 & qval_mal < 0.05 & 
+        (coef_bang > 0 & coef_mal > 0)
+    )
+  
+  # Filter the combined data frame based on the conditions for coef < 0
+  filtered_df_negative_coef <- combined_df %>%
+    filter(
+      qval_bang < 0.05 & qval_mal < 0.05 & 
+        (coef_bang < 0 & coef_mal < 0)
+    )
+  
+  # Return the two filtered data frames
+  return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef))
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
