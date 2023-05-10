@@ -409,8 +409,7 @@ write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, '
 
 ### maaslin
 
-
-
+Combine the maaslins, and print out the species that are sig in both and share directions.
 
 ```{r}
 
@@ -418,9 +417,9 @@ variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sam
 vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 
-bang_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+bang_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
 
-malawi_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+malawi_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
 
 bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
 malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
@@ -431,9 +430,18 @@ combined_maaslins_positive_coef <- combined_maaslins$positive_coef
 combined_maaslins_negative_coef <- combined_maaslins$negative_coef
 
 combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
-write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, 'combined_maaslins_positive_coef'))
+write_csv(combined_maaslins_positive_coef, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_positive_coef.csv'))
 combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
-write_csv(combined_maaslins_negative_coef, file.path(maaslin_output_root_folder, 'combined_maaslins_negative_coef'))
+write_csv(combined_maaslins_negative_coef, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_negative_coef.csv'))
+```
+
+Print the results for all the P. copri clades
+
+```{r}
+
+all_taxa_maaslin <- combined_maaslins$all_features
+p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
+write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
 
 ```
 

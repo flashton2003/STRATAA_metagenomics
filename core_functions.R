@@ -571,6 +571,7 @@ jaccard <- function(input_1, input_2, input_3){
 
 
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans){
+  ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis)
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
@@ -582,38 +583,13 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
 }
 
 
-combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
-  combined_df <- bangladesh_maaslin %>%
-    inner_join(malawi_maaslin, by = "feature", suffix = c("_bang", "_mal"))
-  
-  # Filter the combined data frame based on the conditions for coef > 0
-  filtered_df_positive_coef <- combined_df %>%
-    group_by(feature) %>%
-    filter(
-      qval_bang < 0.05 & qval_mal < 0.05 & 
-        (coef_bang > 0 & coef_mal > 0)
-    )
-  
-  # Filter the combined data frame based on the conditions for coef < 0
-  filtered_df_negative_coef <- combined_df %>%
-    group_by(feature) %>%
-    filter(
-      qval_1 < 0.05 & qval_2 < 0.05 & 
-        (coef_1 < 0 & coef_2 < 0)
-    )
-  
-  # Return the two filtered data frames
-  return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef))
-}
-
-
 
 
 
 combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
   # thanks chatgpt!
   combined_df <- bangladesh_maaslin %>%
-    inner_join(malawi_maaslin, by = "feature", suffix = c("_bang", "_mal"))
+    inner_join(malawi_maaslin, by = c("feature", 'metadata', 'value'), suffix = c("_bang", "_mal"))
   
   # Filter the combined data frame based on the conditions for coef > 0
   filtered_df_positive_coef <- combined_df %>%
@@ -630,7 +606,7 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
     )
   
   # Return the two filtered data frames
-  return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef))
+  return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef, all_features = combined_df))
 }
 
 

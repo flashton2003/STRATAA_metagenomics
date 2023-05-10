@@ -12,19 +12,25 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
 
-## read in metadata
+## paths
 
 ```{r}
-metadata <- read_metadata(metadata_handle)
-
+strataa_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
+strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
 ```
-
 
 ## Setting general params
 
 ```{r}
 filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 metaphlan_input_date <- "2023.05.03"
+```
+
+## read in metadata
+
+```{r}
+metadata <- read_metadata(metadata_handle)
+
 ```
 
 
@@ -169,11 +175,28 @@ strataa_metaphlan_metadata = read.csv(file = file.path(metaphlan_input_folder, p
 
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
-#bgd_acute_healthy_output_dir <- file.path(maaslin_output_root_folder, paste())
+#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
 
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
 ```
+## run maaslin2 functional
 
+```{r}
+
+strataa_bigmap_data = read.csv(strataa_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+# strataa_bigmap_metadata is the same as strataa_metaphlan_metadata
+strataa_bigmap_metadata = read.csv(file = strataa_bigmap_metadata_path, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+
+strataa_bigmap_metadata <- strataa_bigmap_metadata %>% filter(Gender != '#N/A')
+strataa_bigmap_metadata$Age <- as.numeric(as.character(strataa_bigmap_metadata$Age))
+variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+#variables_for_analysis <- c("Group")
+groups_to_analyse <- c('Acute_Typhi', 'Control_Healthy')
+#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
+
+run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+```
 
 
