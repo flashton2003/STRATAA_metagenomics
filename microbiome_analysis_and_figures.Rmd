@@ -221,7 +221,7 @@ run_plot_beta <- function(output_folder, meta, vars_to_plot){
   pcoa.var <- read_delim(pcoa.var.handle, delim = " ", escape_double = FALSE, trim_ws = TRUE)
   #pcoa.data <- read_tsv(pcoa.data.handle)
   
-  meta_for_beta <- meta %>% select(isolate, Country, Group, Sex, age_bracket, Antibiotics_taken_before_sampling_yes_no_assumptions, group_country, group_antibiotic)
+  meta_for_beta <- meta %>% select(isolate, Country, Group, Sex, age_bracket, Antibiotics_taken_before_sampling_yes_no_assumptions, group_country, group_antibiotic, sequencing_lane)
   
   pcoa.data <- left_join(pcoa.data, meta_for_beta, by = c('Sample' = 'isolate'))
 
@@ -270,13 +270,14 @@ pn_all3_csgaa_res %>% kbl %>% kable_styling()
 #### Plots
 
 ```{r}
-blantyre_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
-blantyre_plots <- run_plot_beta(output_folder_blantyre, metadata, all_three_vars_to_plot)
+blantyre_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic', 'sequencing_lane')
+blantyre_plots <- run_plot_beta(output_folder_blantyre, metadata, blantyre_vars_to_plot)
 b_g <- blantyre_plots$group_plot
 b_g
 blantyre_plots$sex_plot
 blantyre_plots$age_plot
 blantyre_plots$group_antibiotic_plot
+blantyre_plots$sequencing_lane
 ```
 
 #### PERMANOVA
@@ -292,13 +293,14 @@ pn_blantyre_sgaa_res %>% kbl %>% kable_styling()
 #### Plots
 
 ```{r}
-dhaka_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
-dhaka_plots <- run_plot_beta(output_folder_dhaka, metadata, all_three_vars_to_plot)
+dhaka_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic', 'sequencing_lane')
+dhaka_plots <- run_plot_beta(output_folder_dhaka, metadata, dhaka_vars_to_plot)
 d_g <- dhaka_plots$group_plot
 d_g
 dhaka_plots$sex_plot
 dhaka_plots$age_plot
 dhaka_plots$group_antibiotic_plot
+dhaka_plots$sequencing_lane
 ```
 
 #### PERMANOVA
@@ -314,7 +316,7 @@ pn_dhaka_sgaa_res %>% kbl %>% kable_styling()
 #### Plots
 
 ```{r}
-kathmandu_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
+kathmandu_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic', 'sequencing_lane')
 kathmandu_plots <- run_plot_beta(output_folder_kathmandu, metadata, all_three_vars_to_plot)
 k_g <- kathmandu_plots$group_plot
 k_g
@@ -409,17 +411,39 @@ write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, '
 
 ### maaslin
 
-Combine the maaslins, and print out the species that are sig in both and share directions.
+Combine the taxonomic maaslins, and print out the species that are sig in both and share directions.
+
+Because sequencing run and participant type are totally confounded for Bangladesh, need to exclude sequencing run from the final model for Bangladesh (otherwise, wipes out the signals).
+
+Things in common 
+
+```{r}
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+#mwi_variables_for_analysis <- c("Group")
+#bang_variables_for_analysis <- c("Group")
+mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
+bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
+```
+
+
+between acute <-> health.
 
 ```{r}
 
-variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+#mwi_variables_for_analysis <- c("Group")
+#bang_variables_for_analysis <- c("Group")
+mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
+bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
+
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
+groups_for_dirname <- paste(groups_to_analyse, collapse = '.')
 
-bang_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+bang_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), bang_vars_for_dirname, sep = '_'))
 
-malawi_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+malawi_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), mwi_vars_for_dirname, sep = '_'))
 
 bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
 malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
@@ -429,11 +453,51 @@ combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
 combined_maaslins_positive_coef <- combined_maaslins$positive_coef
 combined_maaslins_negative_coef <- combined_maaslins$negative_coef
 
-combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
-write_csv(combined_maaslins_positive_coef, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_positive_coef.csv'))
-combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
-write_csv(combined_maaslins_negative_coef, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_negative_coef.csv'))
+
+vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
+#combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_positive_coef, file.path(maaslin_taxonomic_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
+#combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_negative_coef, file.path(maaslin_taxonomic_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_negative_coef.csv', sep = '.')))
 ```
+
+Carrier <-> health
+
+```{r}
+
+
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
+groups_for_dirname <- paste(groups_to_analyse, collapse = '.')
+
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
+bang_variables_for_analysis <- c("Group", "Sex", "Age")
+#mwi_variables_for_analysis <- c("Group")
+#bang_variables_for_analysis <- c("Group")
+mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
+bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
+
+
+bang_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), bang_vars_for_dirname, sep = '_'))
+
+malawi_maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), mwi_vars_for_dirname, sep = '_'))
+
+bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+
+combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
+
+combined_maaslins_positive_coef <- combined_maaslins$positive_coef
+combined_maaslins_negative_coef <- combined_maaslins$negative_coef
+
+
+vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
+#vars_for_output_dirname <- mwi_vars_for_dirname
+#combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_positive_coef, file.path(maaslin_taxonomic_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
+#combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_negative_coef, file.path(maaslin_taxonomic_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_negative_coef.csv', sep = '.')))
+```
+
 
 Print the results for all the P. copri clades
 

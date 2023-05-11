@@ -271,6 +271,16 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
       coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
     output_plots <- list.append(output_plots, "group_antibiotic_plot" = group_antibiotic_plot)
   }
+    
+  if ("sequencing_lane" %in% to_plot) {
+    sequencing_lane_plot <- ggplot(pcoa.data, aes(x=X, y=Y, colour = sequencing_lane)) + 
+      xlab(paste("MDS1 - ", pcoa.var[[1]][1], "%", sep="")) + 
+      ylab(paste("MDS2 - ", pcoa.var[[1]][2], "%", sep="")) + 
+      guides(colour=guide_legend(title="sequencing_lane")) +
+      geom_point() +
+      coord_cartesian(xlim = c(-0.5, 0.5), ylim = c(-0.5, 0.5))
+  output_plots <- list.append(output_plots, "sequencing_lane" = sequencing_lane_plot)
+  }
   
   
   #+
@@ -570,16 +580,18 @@ jaccard <- function(input_1, input_2, input_3){
 }
 
 
-run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans){
+run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis)
+  View(metadata_to_analyse)
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
   Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
            normalization  = norm,
            transform = trans,
            output         = output_dir, 
-           fixed_effects  = variables_for_analysis)
+           fixed_effects  = variables_for_analysis,
+           reference = reference_groups)
 }
 
 

@@ -23,7 +23,6 @@ strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-ma
 
 ```{r}
 filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
-metaphlan_input_date <- "2023.05.03"
 ```
 
 ## read in metadata
@@ -168,21 +167,43 @@ run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malaw
 
 ## Run MAASLIN2 DGE
 
-```{r}
+```{r  include=FALSE}
 
-strataa_metaphlan_data = read.csv(file = file.path(metaphlan_input_folder, paste(metaphlan_input_date, 'strataa.metaphlan.merged.csv', sep = '.')), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
-strataa_metaphlan_metadata = read.csv(file = file.path(metaphlan_input_folder, paste(metaphlan_input_date, 'strataa_metadata.metaphlan.csv', sep = '.')), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+strataa_metaphlan_data = read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_metaphlan_metadata = read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+
+
+#variables_for_analysis <- c("Group")
+groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
-#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
-
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32580_7"))
+
+
+
+# not including antibiotics becayse they're all "No"
+
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
+#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
+variables_for_analysis <- c("Group", "Sex", "Age")
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
+
+#variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG',  c("sequencing_lane,32580_7"))
+
+
+
+
+
 ```
 ## run maaslin2 functional
 
-```{r}
+```{r echo = T, results = 'hide'}
 
 strataa_bigmap_data = read.csv(strataa_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 # strataa_bigmap_metadata is the same as strataa_metaphlan_metadata
