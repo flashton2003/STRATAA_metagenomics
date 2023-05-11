@@ -405,19 +405,17 @@ dge_output <- combine_and_compare_edgeRs(to_combine, to_combine_strings_for_join
 #options(scipen = 999)
 #options(scipen = 0) # to switch scientific notation back on
 
-View(dge_output$sig_up_cases_controls)
+sig_up_for_writing <- dge_output$sig_up %>% select(species, logFC_bang, FDR_bang, logFC_mal, FDR_mal) 
 
-sig_up_cases_controls_for_writing <- dge_output$sig_up_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
+sig_up_for_writing %>% kbl() %>% kable_styling()
 
-sig_up_cases_controls_for_writing %>% kbl() %>% kable_styling()
+write_csv(sig_up_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
 
-write_csv(sig_up_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
+sig_down_for_writing <- dge_output$sig_down %>% select(species, logFC_bang, FDR_bang, logFC_mal, FDR_mal)
 
-sig_down_cases_controls_for_writing <- dge_output$sig_down_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
+sig_down_for_writing %>% kbl() %>% kable_styling()
 
-sig_down_cases_controls_for_writing %>% kbl() %>% kable_styling()
-
-write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
+write_csv(sig_down_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
 #covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
 
 #combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))
