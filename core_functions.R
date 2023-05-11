@@ -566,6 +566,10 @@ combine_and_compare_edgeRs <- function(to_combine, covar_initials, output_folder
 }
 
 
+new_combine_and_compare_edgeRs <- function(){
+  
+}
+
 make_name <- function(output_folder, covars, comp){
   dge_out_folder <- file.path(output_folder,'5_glm')
   covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')

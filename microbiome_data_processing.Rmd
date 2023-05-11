@@ -155,9 +155,21 @@ run_calculate_dge <- function(meta, output_folder, tax_level, countries_to_inclu
 }
 
 groups_for_comparison <- c("Control_HealthySerosurvey", "Acute_Typhi")
-covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
 run_calculate_dge(metadata, output_folder_all_three, taxonomic_level, all_three_countries, covars, groups_for_comparison)
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
 run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi, covars, groups_for_comparison)
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
+run_calculate_dge(metadata, output_folder_dhaka, taxonomic_level, just_bangladesh, covars, groups_for_comparison)
+run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal, covars, groups_for_comparison)
+run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
+
+groups_for_comparison <- c("Control_HealthySerosurvey", "Carrier")
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
+run_calculate_dge(metadata, output_folder_all_three, taxonomic_level, all_three_countries, covars, groups_for_comparison)
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
+run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi, covars, groups_for_comparison)
+covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
 run_calculate_dge(metadata, output_folder_dhaka, taxonomic_level, just_bangladesh, covars, groups_for_comparison)
 run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal, covars, groups_for_comparison)
 run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
