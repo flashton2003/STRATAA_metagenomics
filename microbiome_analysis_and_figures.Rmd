@@ -445,4 +445,44 @@ write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'comb
 
 ```
 
+## functional groups associated with health
+
+
+
+```{r}
+variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+groups_to_analyse <- c('Acute_Typhi', 'Control_Healthy')
+
+bang_maaslin_output_dir <- file.path(maaslin_functional_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+
+malawi_maaslin_output_dir <- file.path(maaslin_functional_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+
+bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+
+combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
+
+combined_maaslins_positive_coef <- combined_maaslins$positive_coef
+combined_maaslins_negative_coef <- combined_maaslins$negative_coef
+
+# hacky as hell thing to split the feature name to extract the organism and the enzyme class.
+# because separate isn't working with .. or \\.\\. which is the actual separator used.
+combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+
+combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+
+
+
+combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
+
+combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+
+write_csv(combined_maaslins_positive_coef, file.path(maaslin_functional_output_root_folder, 'combined_maaslins_positive_coef.csv'))
+combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+write_csv(combined_maaslins_negative_coef, file.path(maaslin_functional_output_root_folder, 'combined_maaslins_negative_coef.csv'))
+
+```
+
+
 

@@ -196,7 +196,7 @@ groups_to_analyse <- c('Acute_Typhi', 'Control_Healthy')
 #bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
 
 run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
 ```
 
 
