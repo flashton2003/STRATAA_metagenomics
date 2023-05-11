@@ -368,7 +368,6 @@ b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
 ### EdgeR
 
 ```{r}
-
 combined_output_root <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/phil/2022.11.08/combined_analysis'
 if (!dir.exists(combined_output_root)){ dir.create(combined_output_root) }
 
@@ -377,12 +376,32 @@ comp <- paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_
 covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
 covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
 
+#to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, output_folder_blantyre_dhaka)
 
-to_combine <- c(output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, output_folder_blantyre_dhaka)
+blantyre_output_path <- file.path(output_folder_blantyre, '5_glm', paste('results_all', comp, covar_initials, 'edgeR.tsv', sep = '.'))
+dhaka_output_path <- file.path(output_folder_dhaka, '5_glm', paste('results_all', comp, covar_initials, 'edgeR.tsv', sep = '.'))
+View(blantyre_output_path)
+blantyre_output <- read_delim(blantyre_output_path, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+dhaka_output <- read_delim(dhaka_output_path, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+
+
+# this is the ridiculous shit you have to do in R to get a list of dataframes.
+to_combine_paths <- c(blantyre_output_path, dhaka_output_path)
+# this is a vec of strings that will be passed to dge_output to give sensible names to the joined output
+# needs to be same order as to_combine_paths
+to_combine_strings_for_join <- c("_mal", "_bang")
+to_combine <- list()
+for (i in seq_along(to_combine_paths)) {
+  to_combine[[i]] <- read_delim(to_combine_paths[i], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  to_combine[[i]] <- to_combine[[i]] %>% rename(species=...1)
+}
 
 # the_date doesn't have to be todays date, it's just the current working dir
 the_date <- '2022.11.10'
-dge_output <- combine_and_compare_edgeRs(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp)
+
+dge_output <- combine_and_compare_edgeRs(to_combine, to_combine_strings_for_join)
+
+#dge_output <- old_combine_and_compare_edgeRs(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp)
 #options(scipen = 999)
 #options(scipen = 0) # to switch scientific notation back on
 
@@ -392,20 +411,16 @@ sig_up_cases_controls_for_writing <- dge_output$sig_up_cases_controls %>% select
 
 sig_up_cases_controls_for_writing %>% kbl() %>% kable_styling()
 
-
 write_csv(sig_up_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
-
 
 sig_down_cases_controls_for_writing <- dge_output$sig_down_cases_controls %>% select(species, malawi_bangladesh_logFC, malawi_bangladesh_FDR, bangladesh_logFC, bangladesh_FDR, malawi_logFC, malawi_FDR) %>% arrange(malawi_bangladesh_FDR, malawi_bangladesh_logFC)
 
 sig_down_cases_controls_for_writing %>% kbl() %>% kable_styling()
 
-
 write_csv(sig_down_cases_controls_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
 #covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
 
 #combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))
-
 
 ```
 

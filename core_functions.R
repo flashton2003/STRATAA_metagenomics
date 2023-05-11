@@ -478,7 +478,7 @@ glm_edgeR <- function(x, Y, covariates=NULL,use.fdr=TRUE, estimate.trended.disp=
 
 
 
-combine_and_compare_edgeRs <- function(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp) {
+old_combine_and_compare_edgeRs <- function(to_combine, covar_initials, output_folder_all_three, output_folder_blantyre, output_folder_dhaka, output_folder_kathmandu, combined_output_root, the_date, comp) {
   # this function is atrociously repetitive.
   # should just merge all of them to start with and then do filters on multiple columns.
   # dpt is differentially present taxa
@@ -566,8 +566,30 @@ combine_and_compare_edgeRs <- function(to_combine, covar_initials, output_folder
 }
 
 
-new_combine_and_compare_edgeRs <- function(){
+combine_and_compare_edgeRs <- function(to_combine, location_names){
+  #View(to_combine)
+  print(length(to_combine))
+  if (length(to_combine) == 2) {
+    combined_dpt <- left_join(to_combine[[1]], to_combine[[2]], by = 'species', suffix = location_names[1:2])
+  }
+  else {
+    print('combine_and_compare_edgeRs only setup for combining 2 dfs right now')
+    quit()
+  }
+  #if (length(to_combine) == 3) {
+  #  combined_dpt <- left_join(to_combine[[1]], to_combine[[2]], by = 'species', suffix = location_names[1:2])
+  #  combined_dpt <- left_join(combined_dpt, to_combine[[3]], by = 'species', suffix = c(NA, location_names[3]))
+  #}
   
+  # across selects all the columns that start with FDR, and combined with the filter, selects only rows with FDR < 0.05
+  # i'm not really sure what the ~ .x is about though?
+  sig <- combined_dpt %>% filter(across(starts_with('FDR'), ~ .x < 0.05))
+  sig_up <- sig %>% filter(across(starts_with('logFC'), ~ .x >= 1))
+  sig_down <- sig %>% filter(across(starts_with('logFC'), ~ .x <= -1))
+  View(sig_up)
+  View(sig_down)
+  
+  return(combined_dpt)
 }
 
 make_name <- function(output_folder, covars, comp){
