@@ -522,18 +522,16 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis)
   View(metadata_to_analyse)
-  vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
-  Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
-           normalization  = norm,
-           transform = trans,
-           output         = output_dir, 
-           fixed_effects  = variables_for_analysis,
-           reference = reference_groups)
+  View(unique(metadata_to_analyse$Group))
+  #vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+  #output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+  #Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
+          #  normalization  = norm,
+          #  transform = trans,
+          #  output         = output_dir, 
+          #  fixed_effects  = variables_for_analysis,
+          #  reference = reference_groups)
 }
-
-
-
 
 
 combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
@@ -560,7 +558,6 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
 }
 
 
-
 run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_output_root_folder){
   mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
   bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
@@ -578,7 +575,6 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
   
   combined_maaslins_positive_coef <- combined_maaslins$positive_coef
   combined_maaslins_negative_coef <- combined_maaslins$negative_coef
-  
   
   vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
   #combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()

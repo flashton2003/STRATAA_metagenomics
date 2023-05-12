@@ -16,7 +16,7 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 
 ```{r}
 strataa_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
-strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
+#strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
 ```
 
 ## Setting general params
@@ -165,14 +165,14 @@ run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal
 run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
 
 groups_for_comparison <- c("Control_HealthySerosurvey", "Carrier")
-covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
-run_calculate_dge(metadata, output_folder_all_three, taxonomic_level, all_three_countries, covars, groups_for_comparison)
+#covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
+#run_calculate_dge(metadata, output_folder_all_three, taxonomic_level, all_three_countries, covars, groups_for_comparison)
 covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_lane')
 run_calculate_dge(metadata, output_folder_blantyre, taxonomic_level, just_malawi, covars, groups_for_comparison)
 covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
 run_calculate_dge(metadata, output_folder_dhaka, taxonomic_level, just_bangladesh, covars, groups_for_comparison)
-run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal, covars, groups_for_comparison)
-run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
+#run_calculate_dge(metadata, output_folder_kathmandu, taxonomic_level, just_nepal, covars, groups_for_comparison)
+#run_calculate_dge(metadata, output_folder_blantyre_dhaka, taxonomic_level, malawi_and_bangladesh, covars, groups_for_comparison)
 ```
 
 
@@ -195,8 +195,6 @@ variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sam
 
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32580_7"))
 
-
-
 # not including antibiotics becayse they're all "No"
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
@@ -208,10 +206,6 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG',  c("sequencing_lane,32580_7"))
 
-
-
-
-
 ```
 ## run maaslin2 functional
 
@@ -219,17 +213,41 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 
 strataa_bigmap_data = read.csv(strataa_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 # strataa_bigmap_metadata is the same as strataa_metaphlan_metadata
-strataa_bigmap_metadata = read.csv(file = strataa_bigmap_metadata_path, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+#strataa_bigmap_metadata = read.csv(file = strataa_bigmap_metadata_path, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 
-strataa_bigmap_metadata <- strataa_bigmap_metadata %>% filter(Gender != '#N/A')
-strataa_bigmap_metadata$Age <- as.numeric(as.character(strataa_bigmap_metadata$Age))
-variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-#variables_for_analysis <- c("Group")
-groups_to_analyse <- c('Acute_Typhi', 'Control_Healthy')
-#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
+#strataa_bigmap_metadata <- strataa_bigmap_metadata %>% filter(Gender != '#N/A')
+#strataa_bigmap_metadata$Age <- as.numeric(as.character(strataa_bigmap_metadata$Age))
 
-run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
-run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+strataa_bigmap_metadata <- metadata %>% mutate(isolate_bigmap = str_replace_all(isolate, '_', '.'))
+rownames(strataa_bigmap_metadata) <- strataa_bigmap_metadata$isolate_bigmap
+
+
 ```
 
+typhi vs health
+
+```{r}
+
+groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
+
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", 'Lane')
+run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32580_7"))
+
+```
+
+carrier vs health
+
+```{r}
+
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
+
+#variables_for_analysis <- c("Group", "Sex", "Age")
+variables_for_analysis <- c("Group")
+run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
+variables_for_analysis <- c("Group", "Gender", "Age", 'Lane')
+run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32580_7"))
+
+```
 
