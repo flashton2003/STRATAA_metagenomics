@@ -561,6 +561,70 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
 
 
 
+run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_output_root_folder){
+  mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
+  bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
+  
+  groups_for_dirname <- paste(groups_to_analyse, collapse = '.')
+  
+  bang_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), bang_vars_for_dirname, sep = '_'))
+  
+  malawi_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), mwi_vars_for_dirname, sep = '_'))
+  
+  bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+  malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+  
+  combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
+  
+  combined_maaslins_positive_coef <- combined_maaslins$positive_coef
+  combined_maaslins_negative_coef <- combined_maaslins$negative_coef
+  
+  
+  vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
+  #combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
+  write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
+  #combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+  write_csv(combined_maaslins_negative_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_negative_coef.csv', sep = '.')))
+}
+
+
+run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_covars){
+  comp <- paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_')
+  bang_covar_initials <- paste(str_sub(bangladesh_covars, 1, 6), sep = '', collapse = '')
+  mal_covar_initials <- paste(str_sub(malawi_covars, 1, 6), sep = '', collapse = '')
+  
+  blantyre_output_path <- file.path(output_folder_blantyre, '5_glm', paste('results_all', comp, mal_covar_initials, 'edgeR.tsv', sep = '.'))
+  dhaka_output_path <- file.path(output_folder_dhaka, '5_glm', paste('results_all', comp, bang_covar_initials, 'edgeR.tsv', sep = '.'))
+  
+  blantyre_output <- read_delim(blantyre_output_path, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  dhaka_output <- read_delim(dhaka_output_path, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+  
+  # this is the ridiculous shit you have to do in R to get a list of dataframes.
+  to_combine_paths <- c(blantyre_output_path, dhaka_output_path)
+  # this is a vec of strings that will be passed to dge_output to give sensible names to the joined output
+  # needs to be same order as to_combine_paths
+  to_combine_strings_for_join <- c("_mal", "_bang")
+  to_combine <- list()
+  for (i in seq_along(to_combine_paths)) {
+    to_combine[[i]] <- read_delim(to_combine_paths[i], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
+    to_combine[[i]] <- to_combine[[i]] %>% rename(species=...1)
+  }
+  
+  dge_output <- combine_and_compare_edgeRs(to_combine, to_combine_strings_for_join)
+  
+  #options(scipen = 999)
+  #options(scipen = 0) # to switch scientific notation back on
+  
+  sig_up_for_writing <- dge_output$sig_up %>% select(species, logFC_bang, FDR_bang, logFC_mal, FDR_mal) 
+  sig_up_for_writing %>% kbl() %>% kable_styling()
+  write_csv(sig_up_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
+  
+  sig_down_for_writing <- dge_output$sig_down %>% select(species, logFC_bang, FDR_bang, logFC_mal, FDR_mal)
+  sig_down_for_writing %>% kbl() %>% kable_styling()
+  write_csv(sig_down_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
+  #covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
+  #combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))
+}
 
 
 
