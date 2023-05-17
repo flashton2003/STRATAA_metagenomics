@@ -73,8 +73,6 @@ comparisons_countries <- list(c('Bangladesh', 'Malawi'), c('Bangladesh', 'Nepal'
 ggboxplot(metadata, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons_groups) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") # +rotate_x_text(angle = 45)
 ggboxplot(metadata, facet.by = "Group", y = "Age", x = "Country", color = "Country") + stat_compare_means(comparisons = comparisons_countries) + rotate_x_text(angle = 45)
 
-
-
 ```
 
 ```{r fig.width = 4, fig.height= 8}
