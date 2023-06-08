@@ -63,13 +63,16 @@ plot_per_country_abundance <- function(phyla_clean_metadata, country){
             group_order_numeric = as.numeric(Group),  # Create a new numeric variable based on the order of group
             sample = fct_reorder(sample, group_order_numeric))  # Reorder sample based on group_order_numeric
 
-    ggplot(data = phyla_clean_country_fct, aes(x = sample, y = relative_abundance, fill = clade_name)) + 
+    p <- ggplot(data = phyla_clean_country_fct, aes(x = sample, y = relative_abundance, fill = clade_name)) + 
         geom_bar(stat = "identity") + 
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-        scale_x_discrete(breaks=phyla_clean_country_fct$sample, labels=phyla_clean_country_fct$Group)
+        theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+        scale_x_discrete(breaks=phyla_clean_country_fct$sample, labels=phyla_clean_country_fct$Group) + 
+        ggtitle(country) +
+        ylim(0, 100)
+    p
 }
 
-ggplot(data = phyla_clean_nepal_fct, aes(x = sample, y = relative_abundance, fill = clade_name)) + 
-    geom_bar(stat = "identity") + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-    scale_x_discrete(breaks=phyla_clean_nepal_fct$sample, labels=phyla_clean_nepal_fct$Group)
+
+plot_per_country_abundance(phyla_clean_metadata, "Nepal")
+plot_per_country_abundance(phyla_clean_metadata, "Bangladesh")
+plot_per_country_abundance(phyla_clean_metadata, "Malawi")

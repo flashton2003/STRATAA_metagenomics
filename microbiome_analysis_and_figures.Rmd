@@ -378,7 +378,7 @@ run_combine_edgeR(groups_for_comparison = c("Control_HealthySerosurvey", "Carrie
 
 ```
 
-### maaslin
+### maaslin taxonomic
 
 Combine the taxonomic maaslins, and print out the species that are sig in both and share directions.
 
@@ -390,8 +390,7 @@ between acute <-> health.
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-
-run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder)
+run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
 ```
 
 
@@ -399,26 +398,26 @@ run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variabl
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age")
-
-run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder)
+run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
 ```
 
 
 Print the results for all the P. copri clades
 
 ```{r}
-
 all_taxa_maaslin <- combined_maaslins$all_features
 p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
 write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
-
 ```
 
-## functional groups 
+## maaslin functional groups 
 
 Functional groups associated with health
 
+
 ```{r}
+# This needs to be replaced by combine_maaslins
+
 variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
 groups_to_analyse <- c('Acute_Typhi', 'Control_Healthy')
@@ -438,13 +437,9 @@ combined_maaslins_negative_coef <- combined_maaslins$negative_coef
 # hacky as hell thing to split the feature name to extract the organism and the enzyme class.
 # because separate isn't working with .. or \\.\\. which is the actual separator used.
 combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
-
 combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
 
-
-
 combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
-
 combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
 
 write_csv(combined_maaslins_positive_coef, file.path(maaslin_functional_output_root_folder, 'combined_maaslins_positive_coef.csv'))
@@ -453,5 +448,11 @@ write_csv(combined_maaslins_negative_coef, file.path(maaslin_functional_output_r
 
 ```
 
+```{r}
 
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
+mwi_variables_for_analysis <- c("Group", "Sex", "Age")
+bang_variables_for_analysis <- c("Group", "Sex", "Age")
+run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_functional_output_root_folder, 'bigmap')
+```
 

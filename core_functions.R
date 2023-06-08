@@ -522,15 +522,17 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis)
   View(metadata_to_analyse)
-  View(unique(metadata_to_analyse$Group))
-  #vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-  #output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
-  #Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
-          #  normalization  = norm,
-          #  transform = trans,
-          #  output         = output_dir, 
-          #  fixed_effects  = variables_for_analysis,
-          #  reference = reference_groups)
+  # View(unique(metadata_to_analyse$Group))
+  # View(unique(metadata_to_analyse$Sex))
+  View(feature_data)
+  vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+  Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
+           normalization  = norm,
+           transform = trans,
+           output         = output_dir, 
+           fixed_effects  = variables_for_analysis,
+           reference = reference_groups)
 }
 
 
@@ -558,7 +560,7 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
 }
 
 
-run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_output_root_folder){
+run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_output_root_folder, analysis_type){
   mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
   bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
   
@@ -575,8 +577,16 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
   
   combined_maaslins_positive_coef <- combined_maaslins$positive_coef
   combined_maaslins_negative_coef <- combined_maaslins$negative_coef
+  if (analysis_type == 'bigmap') {
+    combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+    combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+  }
   
-  vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
+
+  # one of these two lines should be hashed out, depending on if all the covars were used for both sites or not
+  vars_for_output_dirname <- mwi_vars_for_dirname
+  # vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
+  
   #combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
   write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
   #combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()

@@ -15,7 +15,9 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 ## paths
 
 ```{r}
-strataa_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
+strataa_disease_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
+strataa_carrier_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.12/analyse_output_healthy_carrier/tsv-results/all_RPKMs.transpose.csv"
+
 #strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
 ```
 
@@ -212,6 +214,13 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 ```{r echo = T, results = 'hide'}
 
 strataa_bigmap_data = read.csv(strataa_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_disease_health_bigmap_data = read.csv(file = strataa_disease_health_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_carrier_health_bigmap_data = read.csv(file = strataa_carrier_health_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+
+rownames(strataa_carrier_health_bigmap_data) <- rownames(strataa_carrier_health_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
+rownames(strataa_disease_health_bigmap_data) <- rownames(strataa_disease_health_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
+
+
 # strataa_bigmap_metadata is the same as strataa_metaphlan_metadata
 #strataa_bigmap_metadata = read.csv(file = strataa_bigmap_metadata_path, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 
@@ -231,9 +240,9 @@ typhi vs health
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
+run_maaslin(strataa_disease_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", 'Lane')
-run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32580_7"))
+run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32580_7"))
 
 ```
 
@@ -243,11 +252,11 @@ carrier vs health
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 
-#variables_for_analysis <- c("Group", "Sex", "Age")
-variables_for_analysis <- c("Group")
-run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
-variables_for_analysis <- c("Group", "Gender", "Age", 'Lane')
-run_maaslin(strataa_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32580_7"))
+variables_for_analysis <- c("Group", "Sex", "Age")
+# variables_for_analysis <- c("Group")
+run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
+variables_for_analysis <- c("Group", "Sex", "Age")
+run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32712_2"))
 
 ```
 
