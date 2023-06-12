@@ -517,6 +517,97 @@ jaccard <- function(input_1, input_2, input_3){
   return (intersection/union)
 }
 
+# add a fucntion make_clean to take in the maaslin_prevalence and 
+# make it into a clean table
+
+make_clean <- function(maaslin_prevalence, variable) {
+  # Filter the maaslin_prevalence by variable
+  maaslin_filtered <- maaslin_prevalence %>% 
+    filter(variable == {{ variable }})
+  
+  # Select the columns that aren't NA for that variable
+  maaslin_clean <- maaslin_filtered %>% 
+    select_if(~ !all(is.na(.)))
+  # View(maaslin_clean)
+  # Combine the last four columns into a single string column
+  maaslin_clean <- maaslin_clean %>% 
+    unite("prevalence", -c(1:2), sep = ";", na.rm = TRUE)
+  # View(maaslin_clean)
+  # Return the clean data frame
+  return(maaslin_clean)
+}
+
+run_make_clean <- function(maaslin_prevalence) {
+  # this function runs make_clean for different variables
+  # and then combines the output into a single data frame
+  group_clean <- make_clean(maaslin_prevalence, variable = "Group")
+  sex_clean <- make_clean(maaslin_prevalence, variable = "Sex")
+  antibiotics_clean <- make_clean(maaslin_prevalence, variable = "Antibiotics_taken_before_sampling_yes_no_assumptions")
+  clean_output <- rbind(group_clean, sex_clean, antibiotics_clean)
+  View(clean_output)
+  return(clean_output)
+}
+
+add_prevalence_to_maaslin_output <- function(output_dir, prevalence) {
+  # Load the MaAsLin output file
+  maaslin_output <- read_tsv(file.path(output_dir, "all_results.tsv"))
+  # rename the feature values in the maaslin output and the prevalence (from the metaphlan output) - annoying, not sure why this needed to be done.
+  maaslin_output <- maaslin_output %>% mutate(feature = str_replace_all(feature, "\\.", "_"))
+  prevalence <- prevalence %>% mutate(feature = str_replace_all(feature, "\\|", "_"))
+  
+  # Pivot the prevalence data frame to make it wider - each row now contains the median prevalence for each feature in each sample for each variable
+  prevalence_wider <- prevalence %>% 
+    pivot_wider(names_from = value, values_from = Median_Prevalence)
+  # View(prevalence_wider)
+  # get the clean prevalence data frame, which contains the prevalence in the two different groups for each variable separated by semi-colons
+  clean_prevalence <- run_make_clean(prevalence_wider)
+  # Join the MaAsLin output file with the metadata
+  maaslin_prevalence <- maaslin_output %>% 
+    left_join(clean_prevalence, by = join_by("feature" == "feature", "metadata" == "variable"))
+  # View(maaslin_prevalence)
+  
+  # Write the prevalence data frame to a file
+  write_tsv(maaslin_prevalence, file.path(output_dir, "all_results.prevalence.tsv"))
+}
+
+calculate_prevalence <- function(feature_data, metadata, country, groups_for_analysis, variables_for_analysis) {
+  
+  # Filter the metadata to get the correct country and groups for analysis
+  metadata_filtered <- metadata %>% 
+    filter(Country == country, Group %in% groups_for_analysis)
+  # set SampleID column instead of rownames.
+  metadata_filtered <- metadata_filtered %>% 
+    mutate(SampleID = rownames(metadata_filtered))
+  rownames(metadata_filtered) <- NULL
+  # for the feature data as well
+  feature_data <- feature_data %>% 
+    mutate(feature = rownames(feature_data))
+  rownames(feature_data) <- NULL
+  # feature data is in a square matrix, so pivot it to long format
+  feature_data <- feature_data %>% 
+    pivot_longer(cols = -feature, names_to = "SampleID", values_to = "prevalence")
+  
+  # Join the feature data with the metadata
+  # remove everything with NA for group, these are things from the feature data that aren't in the filtered metadata
+  feature_metadata <- feature_data %>% 
+    left_join(metadata_filtered, by = "SampleID") %>% filter(!is.na(Group))
+  # View(feature_metadata)
+  # Remove the columns that aren't needed
+  feature_metadata <- feature_metadata %>% mutate(sequencing_lane = NULL, Age = NULL, Country = NULL)
+  # pivot feature_metadata to long format, before, was multiple metadata columns per row, after this will be one metadata column per row
+  feature_metadata_longer <- feature_metadata %>% 
+    pivot_longer(cols = -c(feature, SampleID, prevalence), names_to = "variable", values_to = "value")
+  
+  # View(feature_metadata_longer)
+  # variable is e.g. Group/Sex, value is e.g. AcuteTyphoid/Male etc.
+  prevalence <- feature_metadata_longer %>% 
+    group_by(feature, variable, value) %>% 
+    summarize(Median_Prevalence = median(prevalence))
+  
+  # View(prevalence)
+  # Return the prevalence data frame
+  return(prevalence)
+}
 
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
@@ -525,14 +616,19 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
   # View(feature_data)
+  # prevalence is a data frame where each row is the prevalence of a feature in a sample, and there is a row for each metadata group that a sample belongs to
+  # e.g. feature 1, group 1, prevalence 0.5
+  #      feature 1, group 2, prevalence 0.5
+  prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, variables_for_analysis)
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
-  Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
-           normalization  = norm,
-           transform = trans,
-           output         = output_dir, 
-           fixed_effects  = variables_for_analysis,
-           reference = reference_groups)
+  # Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
+  #          normalization  = norm,
+  #          transform = trans,
+  #          output         = output_dir, 
+  #          fixed_effects  = variables_for_analysis,
+  #          reference = reference_groups)
+  add_prevalence_to_maaslin_output(output_dir, prevalence)
 }
 
 

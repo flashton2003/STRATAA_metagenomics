@@ -191,7 +191,7 @@ strataa_metaphlan_metadata = read.csv(file = file.path(metaphlan_input_folder, '
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG')
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA)
 
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 
@@ -234,6 +234,8 @@ rownames(strataa_bigmap_metadata) <- strataa_bigmap_metadata$isolate_bigmap
 ```
 
 typhi vs health
+
+- todo = haven't changed the function for including the prevalence, probably just need to filter/select the meta-data or something?
 
 ```{r}
 
