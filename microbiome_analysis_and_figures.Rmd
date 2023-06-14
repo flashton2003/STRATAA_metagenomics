@@ -25,6 +25,7 @@ library(ggplot2)
 library(ggpubr)
 library(patchwork)
 library(vegan)
+library(gt)
 ```
 
 
@@ -61,10 +62,17 @@ baseline_chars <- get_baseline_characteristics(metadata)
 baseline_chars$pct_anti
 baseline_chars$pct_anti %>% na_if(0)
 
+
 # BEWARE - na_if(0.0) will convert ALL 0s to NAs, this is ok as they're only in the antibiotics of carriers and controls
 # at the moment, but if others get added in, will screw with it.
-baseline_chars %>% rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% pivot_longer(!c(Country, Group)) %>% rename(variable_name = name) %>% pivot_wider(names_from = Group, values_from = value) %>% filter(variable_name != 'number') %>% na_if(0.0) %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
+# baseline_chars %>% rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% pivot_longer(!c(Country, Group)) %>% rename(variable_name = name) %>% pivot_wider(names_from = Group, values_from = value) %>% filter(variable_name != 'number') %>% na_if(0.0) %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
 
+# na_if stopped working, so had to do this instead
+baseline_chars_table <- baseline_chars %>% rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% pivot_longer(!c(Country, Group)) %>% rename(variable_name = name) %>% pivot_wider(names_from = Group, values_from = value) %>% filter(variable_name != 'number') 
+
+baseline_chars_table$Carrier <- replace(tmp$Carrier,which(tmp$Carrier==0),NA)
+baseline_chars_table$`Healthy Control` <- replace(tmp$`Healthy Control`,which(tmp$`Healthy Control`==0),NA)
+baseline_chars_table %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
 
 ggplot(metadata, aes(x = Country, y = Age, fill = Group)) + geom_boxplot() + stat_compare_means(method = 'kruskal.test', label = "p")
 comparisons_groups <- list(c("Acute typhoid", "Carrier"), c("Acute typhoid", "Healthy Control"), c("Carrier", "Healthy Control"))
