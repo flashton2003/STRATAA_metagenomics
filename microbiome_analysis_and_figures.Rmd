@@ -25,7 +25,6 @@ library(ggplot2)
 library(ggpubr)
 library(patchwork)
 library(vegan)
-library(gt)
 ```
 
 
@@ -214,10 +213,43 @@ anova_kathmandu_sgaa_res %>% kbl %>% kable_styling()
 ```
 
 
-## Beta diversity
+
+
+
+## Beta diversity - metaphlan
+
+```{r}
+
+strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_metaphlan_metadata <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
+
+strataa_metaphlan_data_mat <- strataa_metaphlan_data |> 
+  as.matrix() |>
+  t()
+
+dist_mat <- vegdist(strataa_metaphlan_data_mat)
+cmd_res <- cmdscale(dist_mat, 
+                   k = (nrow(strataa_metaphlan_data_mat) - 1),
+                   eig = TRUE)
+pcoa_df <- tibble(PC1 = cmd_res$points[,1], 
+                 PC2 = cmd_res$points[,2],
+                 PC3 = cmd_res$points[,3],
+                 PC4 = cmd_res$points[,4])
+
+pcoa_df <- mutate(pcoa_df, SampleID = rownames(strataa_metaphlan_data_mat)) %>% left_join(strataa_metaphlan_metadata, by = 'SampleID')
+
+
+View(pcoa_df)
+
+p <- ggplot(pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + geom_point()
+p
+
+```
+
+## Beta diversity - EdgeR
 
 Information on interpretation of PERMANOVA R2 from here - https://forum.qiime2.org/t/group-significance-changes-and-interpretation/2396 , some info on the p-values here https://forum.qiime2.org/t/understanding-beta-group-significance-permanova-results/12648
-
 
 ```{r}
 run_plot_beta <- function(output_folder, meta, vars_to_plot){
