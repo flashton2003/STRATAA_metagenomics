@@ -636,7 +636,7 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
   # thanks chatgpt!
   combined_df <- bangladesh_maaslin %>%
     inner_join(malawi_maaslin, by = c("feature", 'metadata', 'value'), suffix = c("_bang", "_mal"))
-  
+  write_csv(combined_df, "/Users/flashton/Desktop/tmp.csv")
   # Filter the combined data frame based on the conditions for coef > 0
   filtered_df_positive_coef <- combined_df %>%
     filter(
@@ -663,9 +663,7 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
   groups_for_dirname <- paste(groups_to_analyse, collapse = '.')
   
   bang_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), bang_vars_for_dirname, sep = '_'))
-  
   malawi_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), mwi_vars_for_dirname, sep = '_'))
-  
   bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
   malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
   
