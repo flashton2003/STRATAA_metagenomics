@@ -218,6 +218,7 @@ anova_kathmandu_sgaa_res %>% kbl %>% kable_styling()
 
 Information on interpretation of PERMANOVA R2 from here - https://forum.qiime2.org/t/group-significance-changes-and-interpretation/2396 , some info on the p-values here https://forum.qiime2.org/t/understanding-beta-group-significance-permanova-results/12648
 
+
 ```{r}
 run_plot_beta <- function(output_folder, meta, vars_to_plot){
   pcoa.data.handle <- file.path(output_folder, '4_beta', "first_2d_coords.txt")
