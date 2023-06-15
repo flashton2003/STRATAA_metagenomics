@@ -295,6 +295,50 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
 }
 
 
+metaphlan_beta <- function(metaphlan_data, metadata, country_of_interest){
+  metadata_coi <- metadata %>% filter(Country %in% country_of_interest) 
+  metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
+  metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
+  
+  metaphlan_data_mat <- metaphlan_data_coi |> 
+    as.matrix() |>
+    t()
+
+  dist_mat <- vegdist(metaphlan_data_mat)
+  cmd_res <- cmdscale(dist_mat, 
+                    k = (nrow(metaphlan_data_mat) - 1),
+                    eig = TRUE)
+  pcoa_df <- tibble(PC1 = cmd_res$points[,1], 
+                  PC2 = cmd_res$points[,2],
+                  PC3 = cmd_res$points[,3],
+                  PC4 = cmd_res$points[,4])
+
+  pcoa_df <- mutate(pcoa_df, SampleID = rownames(metaphlan_data_mat)) %>% left_join(metadata, by = 'SampleID')
+  # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 100)
+  # View(pn)
+  pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 100)
+  # View(pn)
+  # pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
+  # pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
+  pn_res <- pn %>% mutate(is_it_significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(`Pr(>F)`, desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumOfSqs, F))
+  # View(pn_res)
+
+  # View(pcoa_df)
+  title <- paste("PCoA of metaphlan data for", paste(country_of_interest, collapse = "_"), sep = " ")
+  pc12 <- ggplot(pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
+    geom_point() +
+    ggtitle(title) +
+    coord_fixed() + 
+    stat_ellipse()
+  pc34 <- ggplot(pcoa_df, aes(x = PC3, y = PC4, colour = Group)) + 
+    geom_point() +
+    ggtitle(title) +
+    coord_fixed() + 
+    stat_ellipse()
+  p <- list(pc12 = pc12, pc34 = pc34, pn_res = pn_res)
+  return(p)
+}
+
 calculate_alpha <- function(data, meta, group, output_folder, prefix, inc_country){
   
   #calculate alpha diverities 
@@ -622,12 +666,12 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, variables_for_analysis)
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
-  # Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
-  #          normalization  = norm,
-  #          transform = trans,
-  #          output         = output_dir, 
-  #          fixed_effects  = variables_for_analysis,
-  #          reference = reference_groups)
+  Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
+           normalization  = norm,
+           transform = trans,
+           output         = output_dir, 
+           fixed_effects  = variables_for_analysis,
+           reference = reference_groups)
   add_prevalence_to_maaslin_output(output_dir, prevalence)
 }
 

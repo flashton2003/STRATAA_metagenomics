@@ -224,26 +224,47 @@ strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '202
 strataa_metaphlan_metadata <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
 
-strataa_metaphlan_data_mat <- strataa_metaphlan_data |> 
-  as.matrix() |>
-  t()
+```
 
-dist_mat <- vegdist(strataa_metaphlan_data_mat)
-cmd_res <- cmdscale(dist_mat, 
-                   k = (nrow(strataa_metaphlan_data_mat) - 1),
-                   eig = TRUE)
-pcoa_df <- tibble(PC1 = cmd_res$points[,1], 
-                 PC2 = cmd_res$points[,2],
-                 PC3 = cmd_res$points[,3],
-                 PC4 = cmd_res$points[,4])
+All three countries
 
-pcoa_df <- mutate(pcoa_df, SampleID = rownames(strataa_metaphlan_data_mat)) %>% left_join(strataa_metaphlan_metadata, by = 'SampleID')
+```{r}
+all_countries_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'))
+all_countries_beta$pn_res %>% kbl %>% kable_styling()
+# all_countries_beta_plot$pc12
+# all_countries_beta_plot$pc34
+
+bgd_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'))
+bgd_beta$pn_res %>% kbl %>% kable_styling()
+# bgd_beta_plot$pc12
+# bgd_beta_plot$pc34
+
+mal_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'))
+mal_beta$pn_res %>% kbl %>% kable_styling()
+
+# mal_beta_plot$pc12
+# mal_beta_plot$pc34
+
+nep_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'))
+# nep_beta_plot
+nep_beta$pn_res %>% kbl %>% kable_styling()
+
+bgd_beta$pc12 / mal_beta$pc12 / nep_beta$pc12
+
+```
+
+Permanova
+```{r}
 
 
-View(pcoa_df)
+```
 
-p <- ggplot(pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + geom_point()
-p
+Just Bangladesh
+
+```{r}
+# filter strataa_metaphlan_metadata to get the samples from Bangladesh
+# then select those from the strataa_metaphlan_data
+
 
 ```
 

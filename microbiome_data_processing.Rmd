@@ -197,6 +197,9 @@ variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sam
 
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32580_7"))
 
+variables_for_analysis <- c("Group")
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG',  NA)
+
 # not including antibiotics becayse they're all "No"
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
@@ -207,6 +210,10 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 #variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG',  c("sequencing_lane,32580_7"))
+
+
+
+
 
 ```
 ## run maaslin2 functional
