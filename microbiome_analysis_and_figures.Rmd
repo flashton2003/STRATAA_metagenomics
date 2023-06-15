@@ -32,7 +32,7 @@ library(vegan)
 
 The file handles are set in config.R as they're used by both this script and data_cleaning.
 
-```{r}
+```{r source}
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
@@ -43,7 +43,7 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
 
 
-```{r}
+```{r metadata_basics}
 metadata <- read_metadata(metadata_handle)
 
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Healthy Control', Group))
@@ -69,8 +69,8 @@ baseline_chars$pct_anti %>% na_if(0)
 # na_if stopped working, so had to do this instead
 baseline_chars_table <- baseline_chars %>% rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% pivot_longer(!c(Country, Group)) %>% rename(variable_name = name) %>% pivot_wider(names_from = Group, values_from = value) %>% filter(variable_name != 'number') 
 
-baseline_chars_table$Carrier <- replace(tmp$Carrier,which(tmp$Carrier==0),NA)
-baseline_chars_table$`Healthy Control` <- replace(tmp$`Healthy Control`,which(tmp$`Healthy Control`==0),NA)
+baseline_chars_table$Carrier <- replace(baseline_chars_table$Carrier,which(baseline_chars_table$Carrier==0),NA)
+baseline_chars_table$`Healthy Control` <- replace(baseline_chars_table$`Healthy Control`,which(baseline_chars_table$`Healthy Control`==0),NA)
 baseline_chars_table %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
 
 ggplot(metadata, aes(x = Country, y = Age, fill = Group)) + geom_boxplot() + stat_compare_means(method = 'kruskal.test', label = "p")
@@ -82,7 +82,7 @@ ggboxplot(metadata, facet.by = "Group", y = "Age", x = "Country", color = "Count
 
 ```
 
-```{r fig.width = 4, fig.height= 8}
+```{r metadata_basic_plots, fig.width = 4, fig.height= 8}
 country_group_sex <- metadata %>% group_by(Country, Group, Sex) %>% summarise(count = n()) 
 
 plot_sex <- function(eg1, c){
@@ -106,7 +106,7 @@ m_sex / b_sex / n_sex
 
 ## Alpha diversity
 
-```{r}
+```{r alpha_diversity}
 meta_for_alpha <- metadata %>% select(isolate, Group, Sex, Country, Antibiotics_taken_before_sampling_yes_no_assumptions, age_bracket)
 
 ```
@@ -116,14 +116,14 @@ meta_for_alpha <- metadata %>% select(isolate, Group, Sex, Country, Antibiotics_
 
 ANOVA results
 
-```{r}
+```{r alpha_anova_read_in}
 anova_all_three_csgaa_res <- read_delim(file.path(output_folder_all_three, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
 anova_all_three_csgaa_res %>% kbl %>% kable_styling()
 ```
 
 Plots
 
-```{r}
+```{r alpha_anova}
 all_three_shannon_alpha <- read_delim(file.path(output_folder_all_three, '3_alpha', 'shannon.alpha_results.tsv'))
 all_three_shannon_alpha <- left_join(all_three_shannon_alpha, meta_for_alpha, by = 'isolate', )
 all_three_shannon_alpha <- all_three_shannon_alpha %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Healthy Control', Group))
@@ -165,7 +165,7 @@ ggboxplot(all_three_shannon_alpha, facet.by = "Country", y = "alpha", x = "Antib
 
 ANOVA
 
-```{r}
+```{r blantre_alpha_anova}
 
 anova_blantyre_sgaa_res <- read_delim(file.path(output_folder_blantyre, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
 anova_blantyre_sgaa_res %>% kbl %>% kable_styling()
@@ -176,7 +176,7 @@ Plots
 
 - The p-value on the graph is a kruskal wallis test (which is just wilcoxon i think?)
 
-```{r}
+```{r alpha_blantyre_plots}
 blantyre_shannon_alpha <- read_delim(file.path(output_folder_blantyre, '3_alpha', 'shannon.alpha_results.tsv'))
 blantyre_shannon_alpha <- left_join(blantyre_shannon_alpha, meta_for_alpha, by = 'isolate')
 
@@ -218,208 +218,64 @@ anova_kathmandu_sgaa_res %>% kbl %>% kable_styling()
 
 ## Beta diversity - metaphlan
 
-```{r}
-
+```{r read_in_beta_diversity}
 strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 strataa_metaphlan_metadata <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
-
 ```
 
-All three countries
-
+All groups.
 ```{r}
-all_countries_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'))
-all_countries_beta$pn_res %>% kbl %>% kable_styling()
-# all_countries_beta_plot$pc12
-# all_countries_beta_plot$pc34
+all_countries_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'))
-bgd_beta$pn_res %>% kbl %>% kable_styling()
-# bgd_beta_plot$pc12
-# bgd_beta_plot$pc34
+bgd_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+bgd_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+# bgd_beta_all_groups$pc12
+# bgd_beta_all_groups$pc34
 
-mal_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'))
-mal_beta$pn_res %>% kbl %>% kable_styling()
+mal_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+# mal_beta_all_groups$pc12
+# mal_beta_all_groups$pc34
 
-# mal_beta_plot$pc12
-# mal_beta_plot$pc34
 
-nep_beta <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'))
-# nep_beta_plot
-nep_beta$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta$pc12 / mal_beta$pc12 / nep_beta$pc12
+nep_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+nep_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+
+
+all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_groups$pc12
 
 ```
 
-Permanova
+Acute vs healthy.
 ```{r}
 
+all_countries_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+all_countries_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-```
+bgd_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+bgd_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-Just Bangladesh
+mal_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+mal_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-```{r}
-# filter strataa_metaphlan_metadata to get the samples from Bangladesh
-# then select those from the strataa_metaphlan_data
+nep_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+nep_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-
-```
-
-## Beta diversity - EdgeR
-
-Information on interpretation of PERMANOVA R2 from here - https://forum.qiime2.org/t/group-significance-changes-and-interpretation/2396 , some info on the p-values here https://forum.qiime2.org/t/understanding-beta-group-significance-permanova-results/12648
-
-```{r}
-run_plot_beta <- function(output_folder, meta, vars_to_plot){
-  pcoa.data.handle <- file.path(output_folder, '4_beta', "first_2d_coords.txt")
-  pcoa.var.handle <- file.path(output_folder, '4_beta', "pcoa_var.txt")
-  pcoa.data <- read_delim(pcoa.data.handle, delim = " ", escape_double = FALSE, trim_ws = TRUE)
-  #pcoa.data <- pcoa.data %>% separate(col = Y, sep = '\t', into = c('x', 'y')) %>% rename(ID = X)
-  pcoa.var <- read_delim(pcoa.var.handle, delim = " ", escape_double = FALSE, trim_ws = TRUE)
-  #pcoa.data <- read_tsv(pcoa.data.handle)
-  
-  meta_for_beta <- meta %>% select(isolate, Country, Group, Sex, age_bracket, Antibiotics_taken_before_sampling_yes_no_assumptions, group_country, group_antibiotic, sequencing_lane)
-  
-  pcoa.data <- left_join(pcoa.data, meta_for_beta, by = c('Sample' = 'isolate'))
-
-  # add some different plots to the below
-  # or, change this function to take the variable to colour by
-  plots <- plot_beta(pcoa.data, pcoa.var, vars_to_plot)
-  return(plots)
-}
-```
-
-### All three countries
-
-#### Plots
-
-```{r}
-all_three_vars_to_plot <- c('Country', 'Group', 'Sex', 'age_bracket', 'group_country', 'group_antibiotic')
-all_three_plots <- run_plot_beta(output_folder_all_three, metadata, all_three_vars_to_plot)
-
-a3_c <- all_three_plots$country_plot
-a3_c
-a3_g <- all_three_plots$group_plot
-a3_g
-all_three_plots$sex_plot
-all_three_plots$age_plot
-all_three_plots$group_country_plot
-all_three_plots$group_antibiotic_plot
-
-
-```
-
-```{r fig.height = 3, fig.width = 3}
-a3_c / a3_g
+all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_acute_healthy$pc12 + nep_beta_acute_healthy$pc12
 ```
 
 
-#### PERMANOVA
-
-```{r}
-pn_all3_csgaa_res <- read_delim(file.path(output_folder_all_three, '4_beta', 'permanova.results.tsv'))
-pn_all3_csgaa_res %>% kbl %>% kable_styling()
-```
 
 
-### Just Blantyre
-
-#### Plots
-
-```{r}
-blantyre_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic', 'sequencing_lane')
-blantyre_plots <- run_plot_beta(output_folder_blantyre, metadata, blantyre_vars_to_plot)
-b_g <- blantyre_plots$group_plot
-b_g
-blantyre_plots$sex_plot
-blantyre_plots$age_plot
-blantyre_plots$group_antibiotic_plot
-blantyre_plots$sequencing_lane
-```
-
-#### PERMANOVA
-
-```{r}
-pn_blantyre_sgaa_res <- read_delim(file.path(output_folder_blantyre, '4_beta', 'permanova.results.tsv'))
-pn_blantyre_sgaa_res %>% kbl %>% kable_styling()
-
-```
-
-### Just Dhaka
-
-#### Plots
-
-```{r}
-dhaka_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic', 'sequencing_lane')
-dhaka_plots <- run_plot_beta(output_folder_dhaka, metadata, dhaka_vars_to_plot)
-d_g <- dhaka_plots$group_plot
-d_g
-dhaka_plots$sex_plot
-dhaka_plots$age_plot
-dhaka_plots$group_antibiotic_plot
-dhaka_plots$sequencing_lane
-```
-
-#### PERMANOVA
-
-```{r}
-pn_dhaka_sgaa_res <- read_delim(file.path(output_folder_dhaka, '4_beta', 'permanova.results.tsv'))
-pn_dhaka_sgaa_res %>% kbl %>% kable_styling()
-```
-
-
-### Just Kathmandu
-
-#### Plots
-
-```{r}
-kathmandu_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic', 'sequencing_lane')
-kathmandu_plots <- run_plot_beta(output_folder_kathmandu, metadata, all_three_vars_to_plot)
-k_g <- kathmandu_plots$group_plot
-k_g
-kathmandu_plots$sex_plot
-kathmandu_plots$age_plot
-kathmandu_plots$group_antibiotic_plot
-```
-
-#### PERMANOVA
-
-```{r}
-pn_kathmandu_sgaa_res <- read_delim(file.path(output_folder_kathmandu, '4_beta', 'permanova.results.tsv'))
-pn_kathmandu_sgaa_res %>% kbl %>% kable_styling()
-```
-
-### Blantyre and Dhaka
-
-
-#### Plots
-
-```{r}
-blantyre_dhaka_vars_to_plot <- c('Group', 'Sex', 'age_bracket', 'group_antibiotic')
-blantyre_dhaka_plots <- run_plot_beta(output_folder_blantyre_dhaka, metadata, all_three_vars_to_plot)
-blantyre_dhaka_plots$group_plot
-blantyre_dhaka_plots$sex_plot
-blantyre_dhaka_plots$age_plot
-blantyre_dhaka_plots$group_antibiotic_plot
-```
-
-#### PERMANOVA
-
-```{r}
-pn_blantyre_dhaka_csgaa_res <- read_delim(file.path(output_folder_blantyre_dhaka, '4_beta', 'permanova.results.tsv'))
-pn_blantyre_dhaka_csgaa_res %>% kbl %>% kable_styling()
-```
-
-### Combined plots
 
 It looks like some might be being trimmed by the coordinate limits in the plot_beta function, but they're not (i've checked both blantyre and dhaka).
 
-```{r fig.height= 3, fig.width = 3}
+```{r fig.height= 3, fig.width = 3, eval=FALSE}
 #b_g / d_g | k_g / plot_spacer() + plot_layout(guides = 'collect')
-b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
+# b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
 ```
 
 
@@ -427,7 +283,7 @@ b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
 
 ### EdgeR
 
-```{r}
+```{r, eval = FALSE}
 combined_output_root <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/phil/2022.11.08/combined_analysis'
 if (!dir.exists(combined_output_root)){ dir.create(combined_output_root) }
 
@@ -448,7 +304,7 @@ Because sequencing run and participant type are totally confounded for Banglades
 
 between acute <-> health.
 
-```{r}
+```{r, eval = FALSE}
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
@@ -456,7 +312,7 @@ run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variabl
 ```
 
 
-```{r}
+```{r, eval = FALSE}
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age")
@@ -466,7 +322,7 @@ run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variabl
 
 Print the results for all the P. copri clades
 
-```{r}
+```{r, eval = FALSE}
 all_taxa_maaslin <- combined_maaslins$all_features
 p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
 write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
@@ -477,7 +333,7 @@ write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'comb
 Functional groups associated with health
 
 
-```{r}
+```{r, eval = FALSE}
 # This needs to be replaced by combine_maaslins
 
 variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
@@ -510,7 +366,7 @@ write_csv(combined_maaslins_negative_coef, file.path(maaslin_functional_output_r
 
 ```
 
-```{r}
+```{r, eval = FALSE}
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age")
