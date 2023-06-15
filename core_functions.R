@@ -295,8 +295,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
 }
 
 
-metaphlan_beta <- function(metaphlan_data, metadata, country_of_interest){
-  metadata_coi <- metadata %>% filter(Country %in% country_of_interest) 
+metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest){
+  metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
   metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
   metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
   
@@ -316,7 +316,7 @@ metaphlan_beta <- function(metaphlan_data, metadata, country_of_interest){
   pcoa_df <- mutate(pcoa_df, SampleID = rownames(metaphlan_data_mat)) %>% left_join(metadata, by = 'SampleID')
   # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 100)
   # View(pn)
-  pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 100)
+  pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 1000)
   # View(pn)
   # pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
   # pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
@@ -338,6 +338,31 @@ metaphlan_beta <- function(metaphlan_data, metadata, country_of_interest){
   p <- list(pc12 = pc12, pc34 = pc34, pn_res = pn_res)
   return(p)
 }
+
+
+metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_interest, groups_of_interest, comparisons) {
+  alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
+  
+  alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
+  
+  alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+  alpha_anova_summary <- summary(alpha_anova)
+  
+  alpha_anova_summary_with_var_names <- cbind(rownames(alpha_anova_summary[[1]]), data.frame(alpha_anova_summary[[1]], row.names = NULL))
+  alpha_anova_summary_with_var_names <- alpha_anova_summary_with_var_names %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), `Pr..F.`)
+  
+
+
+  p <- ggplot(alpha_meta, aes(x=Country, y=Shannon)) + 
+    labs(x="", y="Alpha diversity") +
+    geom_boxplot() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
+    stat_compare_means(size = 4, label = "p.format", comparisons = comparisons)
+  show(p)
+  return(alpha_anova_summary_with_var_names)
+
+}
+
 
 calculate_alpha <- function(data, meta, group, output_folder, prefix, inc_country){
   
