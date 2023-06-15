@@ -26,6 +26,7 @@ library(ggplot2)
 library(ggpubr)
 library(patchwork)
 library(vegan)
+library(dplyr)
 ```
 
 
@@ -107,37 +108,43 @@ m_sex / b_sex / n_sex
 
 ## Alpha diversity - metaphlan
 
-```{r read_in_beta_diversity}
+```{r read_in_metaphlan}
 strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 strataa_metaphlan_metadata <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
+
+strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("<1", "1-5", "6-15", ">15")))
 ```
-Stats
-```{r alpha_diversity}
 
-all_three_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Bangladesh', 'Malawi'), c('Malawi', 'Nepal'), c('Bangladesh', 'Nepal')))
+Alpha diversity - all countries, all groups
 
+```{r alpha_diversity_all_countries_all_groups}
+all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Control_HealthySerosurvey', 'Carrier')))
+all_countries_all_groups_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+all_countries_all_groups_alpha$alpha_plot_group
+all_countries_all_groups_alpha$alpha_plot_antibiotics
 
 ```
-Plots
-```{r alpha_diversity}
 
-country_comps <- list(c('Bangladesh', 'Malawi'), c('Malawi', 'Nepal'), c('Bangladesh', 'Nepal'))
-ggplot(all_three_shannon_alpha, aes(x=Country, y=alpha)) + 
-  ggtitle("By country") + 
-  labs(x="", y="Alpha diversity") +
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
-  stat_compare_means(size = 4, label = "p.format", comparisons = country_comps)
+Alpha diversity - all countries, healthy and acute
 
-group_comps <- list(c(1, 2), c(2, 3), c(1, 3))
-ggplot(all_three_shannon_alpha, aes(x=Group, y=alpha)) + 
-  ggtitle("By group") + 
-  labs(x="", y="Alpha diversity") +
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
-  stat_compare_means(size = 4, label = "p.format", comparisons = group_comps)
-  #geom_point(alpha = 0.3, position = "jitter")
+```{r alpha_diversity_healthy_acute}
+
+all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
+all_countries_healthy_acute_alpha$alpha_by_country
+all_countries_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+all_countries_healthy_acute_alpha$alpha_plot_group
+all_countries_healthy_acute_alpha$alpha_plot_antibiotics
+
+```
+
+alpha diversity, malawi only
+
+```{r alpha_diversity_malawi}
+malawi_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Malawi'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
+malawi_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+malawi_healthy_acute_alpha$alpha_plot_group
+malawi_healthy_acute_alpha$alpha_plot_antibiotics
 ```
 
 ## Alpha diversity

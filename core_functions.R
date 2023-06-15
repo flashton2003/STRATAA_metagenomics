@@ -1,6 +1,7 @@
 library(dplyr)
 library(edgeR)
 library(ggplot2)
+library(ggpubr)
 library(magrittr)
 library(microbiome)
 library(phyloseq)
@@ -324,7 +325,7 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
   # View(pn_res)
 
   # View(pcoa_df)
-  title <- paste("PCoA of metaphlan data for", paste(country_of_interest, collapse = "_"), sep = " ")
+  title <- paste("PCoA of metaphlan data for", paste(countries_of_interest, collapse = "_"), sep = " ")
   pc12 <- ggplot(pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
@@ -345,21 +346,63 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   
   alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
   
-  alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+  # if the length of countries of interest is greater than 1, then include Country in the model
+  if (length(countries_of_interest) > 1) {
+    alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+  } else if (length(countries_of_interest) == 1) {
+     alpha_anova <- aov(Shannon ~ Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+  }
+  
   alpha_anova_summary <- summary(alpha_anova)
   
   alpha_anova_summary_with_var_names <- cbind(rownames(alpha_anova_summary[[1]]), data.frame(alpha_anova_summary[[1]], row.names = NULL))
   alpha_anova_summary_with_var_names <- alpha_anova_summary_with_var_names %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), `Pr..F.`)
   
+  # this makes a list of vectors, each of which contains a pair of countries to compare
+  if (length(countries_of_interest) > 1){
+    country_comps <- combn(countries_of_interest, 2)
+    country_comps <- split(country_comps, col(country_comps))
+    alpha_by_country <- ggplot(alpha_meta, aes(x=Country, y=Shannon)) + 
+      labs(x="", y="Shannon diversity") +
+      geom_boxplot() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
+      stat_compare_means(size = 4, label = "p.format", comparisons = country_comps, symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns")))
+
+  } else {
+    alpha_by_country <- NULL
+  }
+  
+  alpha_plot_group <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Group", color = "Group") + 
+    stat_compare_means(comparisons = comparisons, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
+    rremove("x.text") + 
+    rremove("xlab") + 
+    rremove("x.ticks") # +rotate_x_text(angle = 45)
+
+  antibiotic_comps <- list(c('Yes', 'No'))
+  alpha_plot_antibiotics <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Antibiotics_taken_before_sampling_yes_no_assumptions", color = "Antibiotics_taken_before_sampling_yes_no_assumptions") + 
+    stat_compare_means(comparisons = antibiotic_comps, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
+    rremove("x.text") + 
+    rremove("xlab") + 
+    rremove("x.ticks") # +rotate_x_text(angle = 45)
+
+    # stat_compare_means(comparisons = antibiotic_comps, label = 'p.signif', symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
 
 
-  p <- ggplot(alpha_meta, aes(x=Country, y=Shannon)) + 
-    labs(x="", y="Alpha diversity") +
-    geom_boxplot() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
-    stat_compare_means(size = 4, label = "p.format", comparisons = comparisons)
-  show(p)
-  return(alpha_anova_summary_with_var_names)
+  df <- data.frame(country = c(rep("Bangladesh", 6), rep("Malawi", 6), rep("Nepal", 6)),
+                  antibiotic_sampling = rep(c("Pre", "Post"), 9),
+                  age_bracket = rep(c("0-4", "5-14", "15-24"), each = 6),
+                  value = rnorm(18))
+
+# Create a box plot for each combination of country, antibiotic_sampling, and age_bracket
+alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions != 'Unknown')
+p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill =  Antibiotics_taken_before_sampling_yes_no_assumptions)) +
+  geom_boxplot() +
+  facet_grid(cols = vars(Country )) +
+  labs(title = "Box plot by country, antibiotic_sampling, and age_bracket")
+show(p)
+# show(alpha_plot)
+results <- list(alpha_by_country = alpha_by_country, alpha_anova_summary_with_var_names = alpha_anova_summary_with_var_names, alpha_plot_group = alpha_plot_group, alpha_plot_antibiotics = alpha_plot_antibiotics)
+return(results)
 
 }
 
