@@ -27,6 +27,8 @@ library(ggpubr)
 library(patchwork)
 library(vegan)
 library(dplyr)
+library(forcats)
+
 ```
 
 
@@ -147,119 +149,6 @@ malawi_healthy_acute_alpha$alpha_plot_group
 malawi_healthy_acute_alpha$alpha_plot_antibiotics
 ```
 
-
-## Alpha diversity
-
-```{r alpha_diversity}
-meta_for_alpha <- metadata %>% select(isolate, Group, Sex, Country, Antibiotics_taken_before_sampling_yes_no_assumptions, age_bracket)
-
-```
-
-
-### all three
-
-ANOVA results
-
-```{r alpha_anova_read_in}
-anova_all_three_csgaa_res <- read_delim(file.path(output_folder_all_three, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
-anova_all_three_csgaa_res %>% kbl %>% kable_styling()
-```
-
-Plots
-
-```{r alpha_anova}
-all_three_shannon_alpha <- read_delim(file.path(output_folder_all_three, '3_alpha', 'shannon.alpha_results.tsv'))
-all_three_shannon_alpha <- left_join(all_three_shannon_alpha, meta_for_alpha, by = 'isolate', )
-all_three_shannon_alpha <- all_three_shannon_alpha %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Healthy Control', Group))
-all_three_shannon_alpha <- all_three_shannon_alpha %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% arrange(Country)
-
-
-country_comps <- list(c('Bangladesh', 'Malawi'), c('Malawi', 'Nepal'), c('Bangladesh', 'Nepal'))
-ggplot(all_three_shannon_alpha, aes(x=Country, y=alpha)) + 
-  ggtitle("By country") + 
-  labs(x="", y="Alpha diversity") +
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
-  stat_compare_means(size = 4, label = "p.format", comparisons = country_comps)
-
-group_comps <- list(c(1, 2), c(2, 3), c(1, 3))
-ggplot(all_three_shannon_alpha, aes(x=Group, y=alpha)) + 
-  ggtitle("By group") + 
-  labs(x="", y="Alpha diversity") +
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), axis.text.y = element_text(size = 12), axis.title = element_text(size = 14, face = 'bold')) +
-  stat_compare_means(size = 4, label = "p.format", comparisons = group_comps)
-  #geom_point(alpha = 0.3, position = "jitter")
-
-country_group_comps <- list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Healthy Control'), c('Healthy Control', 'Carrier'))
-
-ggboxplot(all_three_shannon_alpha, facet.by = "Country", y = "alpha", x = "Group", color = "Group") + stat_compare_means(comparisons = country_group_comps, label = 'p.signif') + rremove("x.text") + rremove("xlab") + rremove("x.ticks") # +rotate_x_text(angle = 45)
-
-
-ggboxplot(all_three_shannon_alpha, facet.by = "Group", y = "alpha", x = "Country", color = "Country") + stat_compare_means(comparisons = country_comps) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") # +rotate_x_text(angle = 45)
-
-
-antibiotic_comps <- list(c('Yes', 'No'))
-ggboxplot(all_three_shannon_alpha, facet.by = "Country", y = "alpha", x = "Antibiotics_taken_before_sampling_yes_no_assumptions", color = "Antibiotics_taken_before_sampling_yes_no_assumptions", legend.title = 'Antibiotics') + stat_compare_means(comparisons = antibiotic_comps) + rremove("x.text") + rremove("xlab") + rremove("x.ticks")
-
-
-```
-
-### blantyre
-
-ANOVA
-
-```{r blantre_alpha_anova}
-
-anova_blantyre_sgaa_res <- read_delim(file.path(output_folder_blantyre, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
-anova_blantyre_sgaa_res %>% kbl %>% kable_styling()
-
-```
-
-Plots
-
-- The p-value on the graph is a kruskal wallis test (which is just wilcoxon i think?)
-
-```{r alpha_blantyre_plots}
-blantyre_shannon_alpha <- read_delim(file.path(output_folder_blantyre, '3_alpha', 'shannon.alpha_results.tsv'))
-blantyre_shannon_alpha <- left_join(blantyre_shannon_alpha, meta_for_alpha, by = 'isolate')
-
-my_comparisons <- list(c('No', 'Yes'), c('No', 'Yes'), c('No', 'Yes'))
-
-ggplot(blantyre_shannon_alpha, aes(x=age_bracket, y=alpha, fill = Antibiotics_taken_before_sampling_yes_no_assumptions)) + 
-  #ggtitle("All three countries - country by group") + 
-  labs(x="Age bracket", y="Alpha diversity", fill='Antibiotics', color = 'Antibiotics') +
-  geom_boxplot(outlier.shape = NA, alpha = 0.2) +
-  #geom_point(aes(color=as.factor(Antibiotics_taken_before_sampling_yes_no_assumptions)), alpha = 0.3) +
-  geom_point(alpha = 0.5, position=position_dodge(width=0.75),aes(group=Antibiotics_taken_before_sampling_yes_no_assumptions, color=as.factor(Antibiotics_taken_before_sampling_yes_no_assumptions))) +
-  stat_compare_means(label.y = c(5.2, 5.5, 5.7), size = 4, label = "p.format")
-  
-
-```
-
-
-### dhaka
-
-```{r}
-
-anova_dhaka_sgaa_res <- read_delim(file.path(output_folder_dhaka, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
-anova_dhaka_sgaa_res %>% kbl %>% kable_styling()
-
-```
-
-### kathmandu
-
-```{r}
-
-anova_kathmandu_sgaa_res <- read_delim(file.path(output_folder_kathmandu, '3_alpha', 'shannon.anova.results.tsv'), delim = '\t')
-anova_kathmandu_sgaa_res %>% kbl %>% kable_styling()
-
-```
-
-
-
-
-
 ## Beta diversity - metaphlan
 
 All groups.
@@ -277,11 +166,8 @@ mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 # mal_beta_all_groups$pc12
 # mal_beta_all_groups$pc34
 
-
-
 nep_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 nep_beta_all_groups$pn_res %>% kbl %>% kable_styling()
-
 
 all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_groups$pc12
 
@@ -305,17 +191,87 @@ nep_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_acute_healthy$pc12 + nep_beta_acute_healthy$pc12
 ```
 
+## Plot phyla bar plots
+
+```{r phyla_barplots}
+
+# get the taxa that are phyla, not classes, or below (species etc), and tidy the data.
+phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!clade_name, names_to = "sample", values_to = "relative_abundance")
+
+# relative_abundance > 1 returns a list of TRUE/FALSE values, which is then summed to get the number of samples in which the phylum is present at > 1% relative abundance.
+# then we filter to only keep phyla that are present at 1% in at least 10% of samples.
+phyla_to_exclude <- phyla %>% group_by(clade_name) %>% 
+    summarise(count = sum(relative_abundance > 1)) %>% 
+    filter(count < (length(unique(phyla$sample)) / 10)) %>% 
+    pull(clade_name)
+View(phyla_to_exclude)
+
+# in order to make each sample add up to 100, we need to add the excluded taxa back in as a single "rare taxa" phylum.
+# first we need to calculate the relative abundance of the excluded taxa in each sample.
+excluded_phyla <- phyla %>%
+  filter(clade_name %in% phyla_to_exclude) %>% group_by(sample) %>% summarise(relative_abundance = sum(relative_abundance))
+# then make a column with the name "rare_taxa" for each sample, annd bind it to the excluded taxa data.
+rare_taxa_column <- data.frame(clade_name = c(rep("rare_taxa", nrow(excluded_phyla))))
+excluded_phyla <- cbind(rare_taxa_column, excluded_phyla)
+
+# then remove the excluded taxa from the phyla data.
+phyla_clean <- phyla %>%
+  filter(!(clade_name %in% phyla_to_exclude))
+# and add the excluded taxa back in.
+phyla_clean <- rbind(phyla_clean, excluded_phyla)
 
 
+colnames(strataa_metaphlan_metadata)
+metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
 
 
-It looks like some might be being trimmed by the coordinate limits in the plot_beta function, but they're not (i've checked both blantyre and dhaka).
+phyla_clean_metadata <- phyla_clean %>% left_join(metadata_select, by = c("sample" = "SampleID"))
+phyla_clean_metadata <- phyla_clean_metadata %>% mutate(Group = ifelse(Group == "Acute_Typhi", "Typhi", Group)) %>% mutate(Group = ifelse(Group == "Control_HealthySerosurvey", "Healthy", Group))
 
-```{r fig.height= 3, fig.width = 3, eval=FALSE}
-#b_g / d_g | k_g / plot_spacer() + plot_layout(guides = 'collect')
-# b_g + d_g + k_g + guide_area() + plot_layout(ncol = 2, guides = 'collect')
+order_of_groups <- c("Typhi", "Healthy")
+
+plot_per_country_abundance <- function(phyla_clean_metadata, country, group_order){
+    # thanks chatgpt!
+    phyla_clean_country <- phyla_clean_metadata %>% filter(Country == country) %>% filter(Group %in% group_order)
+
+    phyla_clean_country_fct <- phyla_clean_country %>%
+    mutate(Group = factor(Group, levels = group_order),  # Convert group to a factor with the desired order
+            group_order_numeric = as.numeric(Group),  # Create a new numeric variable based on the order of group
+            sample = fct_reorder(sample, group_order_numeric))  # Reorder sample based on group_order_numeric
+
+    p <- ggplot(data = phyla_clean_country_fct, aes(x = sample, y = relative_abundance, fill = clade_name)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1), axis.title.x = element_blank()) + 
+        scale_x_discrete(breaks=phyla_clean_country_fct$sample, labels=phyla_clean_country_fct$Group) + 
+        ggtitle(country) +
+        ylim(0, 100.01)
+    p
+}
+
+bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
+# bangladesh_phyla_plot
+malawi_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Malawi", group_order = order_of_groups)
+nepal_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Nepal", group_order = order_of_groups)
+
+bangladesh_phyla_plot / malawi_phyla_plot / nepal_phyla_plot
+
+
 ```
 
+```{r phyla_table}
+
+# going back to phyla so that get all the weird rare ones.
+# need to join to meta-data
+# remove carriers
+# group by clade, group, country
+# summarise to get the median.
+# pivot wider to get the table.
+# dplyr::select(order(colnames(.))) rearranges the columns in alphabetical order
+# relocate moves the clade_name column to the first column.
+phyla %>% left_join(metadata_select, by = c("sample" = "SampleID")) %>% filter(Group != 'Carrier') %>% group_by(clade_name, Group, Country) %>% summarise(median_prevalence = median(relative_abundance)) %>% pivot_wider(names_from = c('Country', 'Group'), values_from =  'median_prevalence') %>% dplyr::select(order(colnames(.))) %>% relocate(clade_name, .before = 1) %>% kbl() %>% kable_styling()
+
+
+```
 
 ## Taxa associated with participant groups
 
