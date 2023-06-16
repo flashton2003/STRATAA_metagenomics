@@ -147,6 +147,7 @@ malawi_healthy_acute_alpha$alpha_plot_group
 malawi_healthy_acute_alpha$alpha_plot_antibiotics
 ```
 
+
 ## Alpha diversity
 
 ```{r alpha_diversity}
