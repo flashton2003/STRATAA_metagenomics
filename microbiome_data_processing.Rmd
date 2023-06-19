@@ -67,6 +67,7 @@ run_calculate_beta(output_folder_blantyre_dhaka, taxonomic_level, malawi_and_ban
 
 ## Run PERMANOVA
 
+
 We do this separately from the calculate_beta This takes some time (~2-10 minutes per dataset). R2 is essentially effect size, p-value is p-value (calc'd by permutation).
 
 https://groups.google.com/g/qiime-forum/c/qyDJAdECBnc/m/F44lWRsyKWIJ
