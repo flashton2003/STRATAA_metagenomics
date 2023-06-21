@@ -277,11 +277,20 @@ phyla %>% left_join(metadata_select, by = c("sample" = "SampleID")) %>% filter(G
 
 Maaslin basics
 
-```{r basic_stats_maaslin_taxonomic}
+TODO - REFACTOR SO THAT READ IN THE MAASLIN RESULTS FOR EACH SITE HERE, AND PASS THROUGH, RATHER THAN READING IN MULTIPLE TIMES.
+THEN, WE CAN FILTER IT TO ONLY HAVE SPECIES, ONLY HAVE GROUP ETC.
+
+
+```{r basics_for_maaslin_taxonomic}
+
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+
+```
+
+```{r basic_stats_maaslin_taxonomic}
 
 malawi_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, mwi_variables_for_analysis, 'Malawi', maaslin_taxonomic_output_root_folder)
 bangladesh_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, bang_variables_for_analysis, 'Bangladesh', maaslin_taxonomic_output_root_folder)
@@ -299,11 +308,11 @@ Because sequencing run and participant type are totally confounded for Banglades
 
 between acute <-> health.
 
+### associated at both sites
+
 
 ```{r combine_maaslins_taxonomic}
-groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
-mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
-bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+
 combined_results <- run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
 combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
@@ -318,6 +327,13 @@ combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %
   kbl() %>% kable_styling()
 ```
 
+### associated at only one site
+
+```{r only_one_site_maaslins_taxonomic}
+
+
+
+```
 
 Print the results for all the P. copri clades
 
@@ -326,6 +342,10 @@ all_taxa_maaslin <- combined_maaslins$all_features
 p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
 write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
 ```
+
+### plots of species of interest
+
+
 
 ## maaslin functional groups 
 

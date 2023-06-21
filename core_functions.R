@@ -826,11 +826,11 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
     combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% relocate(lowest_taxonomic_level, .after = feature)
   }
   
-
-  # such a pain in the arse to split on a period and take the last element
-  # x <- str_split(combined_maaslins_positive_coef$feature, '\\.')
-  # x <- lapply(x, function(x) x[length(x)])
-  # combined_maaslins_positive_coef$lowest_taxonomic_level <- x
+  bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(feature %in% combined_maaslins_positive_coef$feature | feature %in% combined_maaslins_negative_coef$feature)
+  View(bang_maaslin_only)
+  print(nrow(bang_maaslin_only) + nrow(combined_maaslins_positive_coef) + nrow(combined_maaslins_negative_coef))
+  print(nrow(bang_maaslin %>% filter(qval < 0.05)))
+  
   # one of these two lines should be hashed out, depending on if all the covars were used for both sites or not
   vars_for_output_dirname <- mwi_vars_for_dirname
   # vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
