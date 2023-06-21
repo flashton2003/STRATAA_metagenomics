@@ -275,22 +275,23 @@ phyla %>% left_join(metadata_select, by = c("sample" = "SampleID")) %>% filter(G
 
 ## Taxa associated with participant groups
 
-### EdgeR
+Maaslin basics
 
-```{r, eval = FALSE}
-combined_output_root <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/phil/2022.11.08/combined_analysis'
-if (!dir.exists(combined_output_root)){ dir.create(combined_output_root) }
+```{r basic_stats_maaslin_taxonomic}
+groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 
+malawi_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, mwi_variables_for_analysis, 'Malawi', maaslin_taxonomic_output_root_folder)
+bangladesh_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, bang_variables_for_analysis, 'Bangladesh', maaslin_taxonomic_output_root_folder)
+nepal_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, nep_variables_for_analysis, 'Nepal', maaslin_taxonomic_output_root_folder)
 
-bangladesh_covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')
-malawi_covars <- c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions', 'sequencing_run')
-
-run_combine_edgeR(groups_for_comparison = c("Control_HealthySerosurvey", "Acute_Typhi"), bangladesh_covars, malawi_covars)
-run_combine_edgeR(groups_for_comparison = c("Control_HealthySerosurvey", "Carrier"), bangladesh_covars, malawi_covars)
+malawi_maaslin_stats$volcano_plot / bangladesh_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
 
 ```
 
-### maaslin taxonomic
+There were `r nrow(malawi_maaslin_stats$maaslin_results_species_group_sig)` species significantly (q-val < 0.05) associated with health/disease in Malawi, `r nrow(bangladesh_maaslin_stats$maaslin_results_species_group_sig)` in Bangladesh, and `r nrow(nepal_maaslin_stats$maaslin_results_species_group_sig)` in Nepal.
 
 Combine the taxonomic maaslins, and print out the species that are sig in both and share directions.
 
@@ -298,19 +299,23 @@ Because sequencing run and participant type are totally confounded for Banglades
 
 between acute <-> health.
 
-```{r, eval = FALSE}
+
+```{r combine_maaslins_taxonomic}
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
-```
+combined_results <- run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
+combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
 
-
-```{r, eval = FALSE}
-groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
-mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
-bang_variables_for_analysis <- c("Group", "Sex", "Age")
-run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
+combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
 ```
 
 

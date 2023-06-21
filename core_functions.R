@@ -616,12 +616,14 @@ combine_and_compare_edgeRs <- function(to_combine, location_names){
   return(output)
 }
 
+
 make_name <- function(output_folder, covars, comp){
   dge_out_folder <- file.path(output_folder,'5_glm')
   covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
   name=file.path(dge_out_folder, paste('results_all', comp, covar_initials, 'edgeR.tsv', sep = '.'))
   return(name)
 }
+
 
 jaccard <- function(input_1, input_2, input_3){
   intersection = length(intersect(intersect(input_1, input_2), input_3))
@@ -649,6 +651,7 @@ make_clean <- function(maaslin_prevalence, variable) {
   return(maaslin_clean)
 }
 
+
 run_make_clean <- function(maaslin_prevalence) {
   # this function runs make_clean for different variables
   # and then combines the output into a single data frame
@@ -659,6 +662,7 @@ run_make_clean <- function(maaslin_prevalence) {
   View(clean_output)
   return(clean_output)
 }
+
 
 add_prevalence_to_maaslin_output <- function(output_dir, prevalence) {
   # Load the MaAsLin output file
@@ -681,6 +685,7 @@ add_prevalence_to_maaslin_output <- function(output_dir, prevalence) {
   # Write the prevalence data frame to a file
   write_tsv(maaslin_prevalence, file.path(output_dir, "all_results.prevalence.tsv"))
 }
+
 
 calculate_prevalence <- function(feature_data, metadata, country, groups_for_analysis, variables_for_analysis) {
   
@@ -721,9 +726,11 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
   return(prevalence)
 }
 
+
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
-  metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis)
+  metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions %in% c('Yes', 'No'))
+  View(metadata_to_analyse)
   # View(metadata_to_analyse)
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
@@ -741,6 +748,30 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
            fixed_effects  = variables_for_analysis,
            reference = reference_groups)
   add_prevalence_to_maaslin_output(output_dir, prevalence)
+}
+
+
+basic_maaslin_stats <- function(groups_to_analysis, variables_for_analysis, country, maaslin_taxonomic_output_root_folder){
+  vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+  maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste(country, paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+  maaslin_results <- read_delim(file.path(maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+  maaslin_results_species <- maaslin_results %>% filter(grepl('s__', feature)) %>% filter(!grepl('t__', feature))
+  maaslin_results_species_group <- maaslin_results_species %>% filter(metadata == "Group")
+  # View(maaslin_results_species_group)
+  volcano_plot <- ggplot(aes(x = coef, y = -log10(qval)), data = maaslin_results_species_group) + 
+    geom_point() + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+    ggtitle(paste(country, variables_for_analysis, 'covars=', vars_for_dirname, sep = '_'))
+  # show(volcano_plot)
+  maaslin_results_species_group_sig <- maaslin_results_species_group %>% filter(qval < 0.05)
+  basic_maaslin_results <- list(volcano_plot = volcano_plot, maaslin_results_species_group_sig = maaslin_results_species_group_sig)
+  return(basic_maaslin_results)
+  # geom_text(aes(label = feature), size = 2, vjust = 1, hjust = 1) + 
+  # View(maaslin_results_clean_sig)
+  # sig_per_metadata <- maaslin_results_clean_sig %>% group_by(metadata) %>% summarize(n_sig = n())
+  # View(sig_per_metadata)
 }
 
 
@@ -786,9 +817,20 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
   if (analysis_type == 'bigmap') {
     combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
     combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+  } 
+  # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
+  if (analysis_type == 'metaphlan') {
+    combined_maaslins_positive_coef$lowest_taxonomic_level <- sapply(str_split(combined_maaslins_positive_coef$feature, "\\."), function(x) x[length(x)])
+    combined_maaslins_negative_coef$lowest_taxonomic_level <- sapply(str_split(combined_maaslins_negative_coef$feature, "\\."), function(x) x[length(x)])
+    combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% relocate(lowest_taxonomic_level, .after = feature)
+    combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% relocate(lowest_taxonomic_level, .after = feature)
   }
   
 
+  # such a pain in the arse to split on a period and take the last element
+  # x <- str_split(combined_maaslins_positive_coef$feature, '\\.')
+  # x <- lapply(x, function(x) x[length(x)])
+  # combined_maaslins_positive_coef$lowest_taxonomic_level <- x
   # one of these two lines should be hashed out, depending on if all the covars were used for both sites or not
   vars_for_output_dirname <- mwi_vars_for_dirname
   # vars_for_output_dirname <- paste(mwi_vars_for_dirname, 'mwi_only', sep = '_')
@@ -797,6 +839,8 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
   write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
   #combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
   write_csv(combined_maaslins_negative_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_negative_coef.csv', sep = '.')))
+  combined_results <- list(positive_coef = combined_maaslins_positive_coef, negative_coef = combined_maaslins_negative_coef)
+  return(combined_results)
 }
 
 
