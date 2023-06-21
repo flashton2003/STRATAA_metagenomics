@@ -751,22 +751,36 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
 }
 
 
-basic_maaslin_stats <- function(groups_to_analysis, variables_for_analysis, country, maaslin_taxonomic_output_root_folder){
+read_in_maaslin <- function(country, groups_to_analyse, variables_for_analysis){
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste(country, paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
   maaslin_results <- read_delim(file.path(maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+  # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
+  maaslin_results$lowest_taxonomic_level <- sapply(str_split(maaslin_results$feature, "\\."), function(x) x[length(x)])
+  maaslin_results <- maaslin_results %>% relocate(lowest_taxonomic_level, .after = feature)
+
+  return(maaslin_results)
+}
+
+filter_taxonomic_maaslin <- function(maaslin_results){
   maaslin_results_species <- maaslin_results %>% filter(grepl('s__', feature)) %>% filter(!grepl('t__', feature))
   maaslin_results_species_group <- maaslin_results_species %>% filter(metadata == "Group")
+  return(maaslin_results_species_group)
+}
+
+
+basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_for_analysis, vars_for_dirname){
   # View(maaslin_results_species_group)
-  volcano_plot <- ggplot(aes(x = coef, y = -log10(qval)), data = maaslin_results_species_group) + 
+  vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+  volcano_plot <- ggplot(aes(x = coef, y = -log10(qval)), data = taxonomic_maaslin_filtered) + 
     geom_point() + 
     theme_bw() + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
     ggtitle(paste(country, variables_for_analysis, 'covars=', vars_for_dirname, sep = '_'))
   # show(volcano_plot)
-  maaslin_results_species_group_sig <- maaslin_results_species_group %>% filter(qval < 0.05)
-  basic_maaslin_results <- list(volcano_plot = volcano_plot, maaslin_results_species_group_sig = maaslin_results_species_group_sig)
+  maaslin_results_sig <- taxonomic_maaslin_filtered %>% filter(qval < 0.05)
+  basic_maaslin_results <- list(volcano_plot = volcano_plot, maaslin_results_sig = maaslin_results_sig)
   return(basic_maaslin_results)
   # geom_text(aes(label = feature), size = 2, vjust = 1, hjust = 1) + 
   # View(maaslin_results_clean_sig)
@@ -799,16 +813,7 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
 }
 
 
-run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_output_root_folder, analysis_type){
-  mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
-  bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
-  
-  groups_for_dirname <- paste(groups_to_analyse, collapse = '.')
-  
-  bang_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), bang_vars_for_dirname, sep = '_'))
-  malawi_maaslin_output_dir <- file.path(maaslin_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), mwi_vars_for_dirname, sep = '_'))
-  bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-  malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+run_combine_maaslins <- function(bang_maaslin, malawi_maaslin){
   
   combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
   
@@ -818,13 +823,6 @@ run_combine_maaslins <- function(groups_to_analyse, mwi_variables_for_analysis, 
     combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
     combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
   } 
-  # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
-  if (analysis_type == 'metaphlan') {
-    combined_maaslins_positive_coef$lowest_taxonomic_level <- sapply(str_split(combined_maaslins_positive_coef$feature, "\\."), function(x) x[length(x)])
-    combined_maaslins_negative_coef$lowest_taxonomic_level <- sapply(str_split(combined_maaslins_negative_coef$feature, "\\."), function(x) x[length(x)])
-    combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% relocate(lowest_taxonomic_level, .after = feature)
-    combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% relocate(lowest_taxonomic_level, .after = feature)
-  }
   
   bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(feature %in% combined_maaslins_positive_coef$feature | feature %in% combined_maaslins_negative_coef$feature)
   View(bang_maaslin_only)

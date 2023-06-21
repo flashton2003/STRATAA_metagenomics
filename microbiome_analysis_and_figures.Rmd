@@ -284,23 +284,40 @@ THEN, WE CAN FILTER IT TO ONLY HAVE SPECIES, ONLY HAVE GROUP ETC.
 ```{r basics_for_maaslin_taxonomic}
 
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
-mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 
 ```
 
-```{r basic_stats_maaslin_taxonomic}
-
-malawi_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, mwi_variables_for_analysis, 'Malawi', maaslin_taxonomic_output_root_folder)
-bangladesh_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, bang_variables_for_analysis, 'Bangladesh', maaslin_taxonomic_output_root_folder)
-nepal_maaslin_stats <- basic_maaslin_stats(groups_to_analysis, nep_variables_for_analysis, 'Nepal', maaslin_taxonomic_output_root_folder)
-
-malawi_maaslin_stats$volcano_plot / bangladesh_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
-
+```{r read_in_maaslin_taxonomic}
+bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis)
+malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis)
+nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis)
 ```
 
-There were `r nrow(malawi_maaslin_stats$maaslin_results_species_group_sig)` species significantly (q-val < 0.05) associated with health/disease in Malawi, `r nrow(bangladesh_maaslin_stats$maaslin_results_species_group_sig)` in Bangladesh, and `r nrow(nepal_maaslin_stats$maaslin_results_species_group_sig)` in Nepal.
+```{r filter_maaslin_taxonomic}
+bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
+malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
+nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
+```
+
+
+```{r basic_stats_maaslin_taxonomic}
+bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
+malawi_maaslin_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
+nepal_maaslin_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
+```
+
+```{r volcano_plots_maaslin_taxonomic}
+
+malawi_maaslin_stats$volcano_plot / bangladesh_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
+nrow(malawi_maaslin_stats$maaslin_results_sig)
+nrow(bangladesh_maaslin_stats$maaslin_results_sig)
+nrow(nepal_maaslin_stats$maaslin_results_sig)
+```
+
+There were `r nrow(malawi_maaslin_stats$maaslin_results_sig)` species significantly (q-val < 0.05) associated with health/disease in Malawi, `r nrow(bangladesh_maaslin_stats$maaslin_results_species_group_sig)` in Bangladesh, and `r nrow(nepal_maaslin_stats$maaslin_results_species_group_sig)` in Nepal.
 
 Combine the taxonomic maaslins, and print out the species that are sig in both and share directions.
 
@@ -313,7 +330,7 @@ between acute <-> health.
 
 ```{r combine_maaslins_taxonomic}
 
-combined_results <- run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_taxonomic_output_root_folder, 'metaphlan')
+combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
 combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
