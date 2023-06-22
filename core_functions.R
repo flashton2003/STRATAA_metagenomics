@@ -342,6 +342,7 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
 
 
 metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_interest, groups_of_interest, comparisons) {
+  metaphlan_data <- metaphlan_data %>% select(!lowest_taxonomic_level)
   alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
   
   alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)

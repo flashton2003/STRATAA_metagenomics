@@ -28,7 +28,11 @@ data_table <- filter(data_table, Group != 'Carrier')
 plot_count <- function(taxon_to_plot, working_data_table){
   to_plot <- filter(working_data_table, taxon == taxon_to_plot)
   View(to_plot)
-  p <- ggplot(to_plot, aes(x = taxon, y = value, fill = factor(Group))) + geom_boxplot() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0.5)) + ylab(y_lab_text) + xlab('Species')
+  p <- ggplot(to_plot, aes(x = taxon, y = value, fill = factor(Group))) + 
+    geom_boxplot() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0.5)) + 
+    ylab(y_lab_text) + 
+    xlab('Species')
   p
 }
 

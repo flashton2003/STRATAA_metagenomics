@@ -47,11 +47,16 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
 
 
-```{r metadata_basics}
+```{r metadata_read_in}
 metadata <- read_metadata(metadata_handle)
 
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Healthy Control', Group))
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group))
+
+```
+
+```{r metadata_basics}
+
 number_per_country <- metadata %>% group_by(Country) %>% summarise(count = n())
 
 number_per_country %>% kbl() %>% kable_styling()
@@ -106,17 +111,17 @@ n_sex <- plot_sex(country_group_sex, 'Nepal')
 m_sex / b_sex / n_sex 
 ```
 
-
-
-## Alpha diversity - metaphlan
-
+## read in metaphlan data
 ```{r read_in_metaphlan}
 strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(strataa_metaphlan_data), "\\|"), function(x) x[length(x)])
+
 strataa_metaphlan_metadata <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
-
 strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("<1", "1-5", "6-15", ">15")))
 ```
+
+## Alpha diversity - metaphlan
 
 Alpha diversity - all countries, all groups
 
@@ -152,7 +157,7 @@ malawi_healthy_acute_alpha$alpha_plot_antibiotics
 ## Beta diversity - metaphlan
 
 All groups.
-```{r}
+```{r beta_diversity_all_groups}
 all_countries_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
@@ -174,7 +179,7 @@ all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_gro
 ```
 
 Acute vs healthy.
-```{r}
+```{r beta_diversity_healthy_acute}
 
 all_countries_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 all_countries_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
@@ -196,7 +201,7 @@ all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_a
 ```{r phyla_barplots}
 
 # get the taxa that are phyla, not classes, or below (species etc), and tidy the data.
-phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!clade_name, names_to = "sample", values_to = "relative_abundance")
+phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
 
 # relative_abundance > 1 returns a list of TRUE/FALSE values, which is then summed to get the number of samples in which the phylum is present at > 1% relative abundance.
 # then we filter to only keep phyla that are present at 1% in at least 10% of samples.
@@ -211,7 +216,7 @@ View(phyla_to_exclude)
 excluded_phyla <- phyla %>%
   filter(clade_name %in% phyla_to_exclude) %>% group_by(sample) %>% summarise(relative_abundance = sum(relative_abundance))
 # then make a column with the name "rare_taxa" for each sample, annd bind it to the excluded taxa data.
-rare_taxa_column <- data.frame(clade_name = c(rep("rare_taxa", nrow(excluded_phyla))))
+rare_taxa_column <- data.frame(lowest_taxonomic_level = c(rep("rare_taxa", nrow(excluded_phyla))), clade_name = c(rep("rare_taxa", nrow(excluded_phyla))))
 excluded_phyla <- cbind(rare_taxa_column, excluded_phyla)
 
 # then remove the excluded taxa from the phyla data.
@@ -219,7 +224,8 @@ phyla_clean <- phyla %>%
   filter(!(clade_name %in% phyla_to_exclude))
 # and add the excluded taxa back in.
 phyla_clean <- rbind(phyla_clean, excluded_phyla)
-
+View(phyla_clean)
+View(excluded_phyla)
 
 colnames(strataa_metaphlan_metadata)
 metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
@@ -275,11 +281,8 @@ phyla %>% left_join(metadata_select, by = c("sample" = "SampleID")) %>% filter(G
 
 ## Taxa associated with participant groups
 
+### basics, stats and plots
 Maaslin basics
-
-TODO - REFACTOR SO THAT READ IN THE MAASLIN RESULTS FOR EACH SITE HERE, AND PASS THROUGH, RATHER THAN READING IN MULTIPLE TIMES.
-THEN, WE CAN FILTER IT TO ONLY HAVE SPECIES, ONLY HAVE GROUP ETC.
-
 
 ```{r basics_for_maaslin_taxonomic}
 
@@ -301,7 +304,6 @@ bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_tax
 malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
 nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
 ```
-
 
 ```{r basic_stats_maaslin_taxonomic}
 bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
@@ -327,7 +329,6 @@ between acute <-> health.
 
 ### associated at both sites
 
-
 ```{r combine_maaslins_taxonomic}
 
 combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
@@ -352,11 +353,46 @@ There were `r nrow(combined_results$mwi_maaslin_only)` species significantly (q-
 
 ### associated at only one site
 
-```{r only_one_site_maaslins_taxonomic}
+The ones associated at only one site are written out to a file, you can look at them manually there.
 
 
+### plots of species of interest
+
+```{r plot_species_of_interest_taxonomic}
+
+strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) %>% pivot_longer(!c(feature, lowest_taxonomic_level), names_to = "SampleID", values_to = "prevalence")
+strataa_metaphlan_data_longer_meta <- strataa_metaphlan_data_longer %>% left_join(strataa_metaphlan_metadata, by = c("SampleID" = "SampleID"))
+
+give.n <- function(x){
+  return(c(y = 12, label = length(x)))
+  #return(data.frame(y = 55, label = paste0('n = ', length(x)))) 
+  # experiment with the multiplier to find the perfect position
+}
+
+plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest){
+  # View(prevalence_meta)
+  prevalence_meta_filtered <- prevalence_meta %>% filter(lowest_taxonomic_level == species_of_interest) %>% filter(Country == country_of_interest) %>% filter(Group %in% groups_of_interest)
+  abundance_compared <- compare_means(prevalence ~ Group, data = prevalence_meta_filtered, group.by = "age_bracket")
+  p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence, fill = factor(Group))) + 
+    geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+    geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
+    ylab('Percentage P. copri') + 
+    ggtitle('Bangladesh') +
+    theme(legend.position="none") + 
+    stat_summary(fun.data = give.n, geom = "text", fun = median,
+                 position = position_dodge(width = 0.75)) +
+    annotate("text", x = 3, y = 47, label = paste0('p = ', toString(abundance_compared[,6]$p.adj)))
+  # p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence)) + geom_boxplot()
+  show(p)
+  return(abundance_compared)
+
+}
+
+a <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
 
 ```
+
+## P. copri clades
 
 Print the results for all the P. copri clades
 
@@ -370,10 +406,10 @@ write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'comb
 
 
 
+
 ## maaslin functional groups 
 
 Functional groups associated with health
-
 
 ```{r, eval = FALSE}
 # This needs to be replaced by combine_maaslins
