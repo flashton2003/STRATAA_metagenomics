@@ -752,13 +752,21 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
 }
 
 
-read_in_maaslin <- function(country, groups_to_analyse, variables_for_analysis){
+read_in_maaslin <- function(country, groups_to_analyse, variables_for_analysis, type_of_input){
+  if (type_of_input == 'metaphlan'){
+    root_folder <- maaslin_taxonomic_output_root_folder
+  } else if (type_of_input == 'bigmap'){
+    root_folder <- maaslin_functional_output_root_folder
+  }
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-  maaslin_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste(country, paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+  maaslin_output_dir <- file.path(root_folder, paste(country, paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
   maaslin_results <- read_delim(file.path(maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-  # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
-  maaslin_results$lowest_taxonomic_level <- sapply(str_split(maaslin_results$feature, "\\."), function(x) x[length(x)])
+  
+  if (type_of_input == 'metaphlan'){
+      maaslin_results$lowest_taxonomic_level <- sapply(str_split(maaslin_results$feature, "\\."), function(x) x[length(x)])
   maaslin_results <- maaslin_results %>% relocate(lowest_taxonomic_level, .after = feature)
+  }
+  # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
 
   return(maaslin_results)
 }
@@ -928,13 +936,13 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
     
   # because there is an outlier for s__Lachnospiraceae_bacterium in Malawi, we use ggforce facet zoom to show a zoomed in version alongside the full version.
   if (species_of_interest == 's__Lachnospiraceae_bacterium' & country_of_interest == 'Malawi'){
-    p <- p + ggforce::facet_zoom(ylim = c(0, 1))
+    p <- p + ggforce::facet_zoom(ylim = c(0, 3))
     return(p)
   } else if (species_of_interest == 's__Prevotella_copri_clade_A' & country_of_interest == 'Bangladesh') {
     p <- p + ggforce::facet_zoom(ylim = c(0, 10))
     return(p)
   } else if (species_of_interest == 's__GGB4266_SGB5809' & country_of_interest == 'Bangladesh') {
-    p <- p + ggforce::facet_zoom(ylim = c(0, 10))
+    p <- p + ggforce::facet_zoom(ylim = c(0, 17))
     return(p)
   } else {
     return(p)

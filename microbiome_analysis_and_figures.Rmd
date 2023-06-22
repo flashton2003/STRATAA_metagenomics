@@ -295,9 +295,9 @@ nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before
 ```
 
 ```{r read_in_maaslin_taxonomic}
-bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis)
-malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis)
-nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis)
+bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
+malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
+nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
 ```
 
 ```{r filter_maaslin_taxonomic}
@@ -392,21 +392,22 @@ write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'comb
 
 Functional groups associated with health
 
-```{r, eval = FALSE}
-# This needs to be replaced by combine_maaslins
+```{r read_in_maaslin_functional}
 
-variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-groups_to_analyse <- c('Acute_Typhi', 'Control_Healthy')
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+# variables_for_analysis <- c("Group", "Gender", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+# vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 
-bang_maaslin_output_dir <- file.path(maaslin_functional_output_root_folder, paste('Bangladesh', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+bang_func_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
+mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
+```
 
-malawi_maaslin_output_dir <- file.path(maaslin_functional_output_root_folder, paste('Malawi', paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+```{r maaslin_functional_groups}
 
-bang_maaslin <- read_delim(file.path(bang_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-malawi_maaslin <- read_delim(file.path(malawi_maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-
-combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
+combined_maaslins <- combine_maaslins(bang_func_maaslin, mal_func_maaslin)
 
 combined_maaslins_positive_coef <- combined_maaslins$positive_coef
 combined_maaslins_negative_coef <- combined_maaslins$negative_coef
