@@ -374,35 +374,6 @@ lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachn
 
 # pc + cs + SGB5809 + hp + rt + lb
 
-
-m_pc / b_pc
-
-m_cs <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-b_cs <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-
-m_cs / b_cs
-
-m_SGB5809 <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-b_SGB5809 <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-
-m_SGB5809 / b_SGB5809
-
-plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-
-
-m_rt <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-b_rt <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-
-m_rt / b_rt
-
-m_lb <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-b_lb <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-
-m_lb / b_lb
-
-ggsave(file.path(maaslin_taxonomic_output_root_folder, 's__Prevotella_copri_clade_A_Malawi_vs_Bangladesh.png'), m_pc / b_pc, width = 10, height = 7)
-
 ```
 
 ## P. copri clades

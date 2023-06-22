@@ -944,6 +944,7 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
 
 
 run_plot_species_of_interest <- function(prevalence_meta, species_of_interest){
+  # we do this so that we can combine plots for the same species from bang and mal together
   m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
   b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
   p <- m / b
