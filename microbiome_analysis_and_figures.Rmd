@@ -24,6 +24,7 @@ library(rbiom)
 library(kableExtra)
 library(ggplot2)
 library(ggpubr)
+library(ggforce)
 library(patchwork)
 library(vegan)
 library(dplyr)
@@ -363,32 +364,114 @@ The ones associated at only one site are written out to a file, you can look at 
 strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) %>% pivot_longer(!c(feature, lowest_taxonomic_level), names_to = "SampleID", values_to = "prevalence")
 strataa_metaphlan_data_longer_meta <- strataa_metaphlan_data_longer %>% left_join(strataa_metaphlan_metadata, by = c("SampleID" = "SampleID"))
 
-give.n <- function(x){
-  return(c(y = 12, label = length(x)))
-  #return(data.frame(y = 55, label = paste0('n = ', length(x)))) 
-  # experiment with the multiplier to find the perfect position
-}
+
+
 
 plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest){
   # View(prevalence_meta)
+  country_species_y_value <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=8, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809' = 14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7, 's__Lachnospiraceae_bacterium'=2), 'Malawi'=list('s__Prevotella_copri_clade_A'=47, 's__Clostridium_SGB6179'=0.6, 's__GGB4266_SGB5809'=5.5, 's__Haemophilus_parainfluenzae'=3, 's__Romboutsia_timonensis'=2, 's__Lachnospiraceae_bacterium'=2))
   prevalence_meta_filtered <- prevalence_meta %>% filter(lowest_taxonomic_level == species_of_interest) %>% filter(Country == country_of_interest) %>% filter(Group %in% groups_of_interest)
-  abundance_compared <- compare_means(prevalence ~ Group, data = prevalence_meta_filtered, group.by = "age_bracket")
+  abundance_compared <- compare_means(prevalence ~ Group, data = prevalence_meta_filtered, group.by = "age_bracket") %>% arrange(age_bracket)
+  View(abundance_compared)
   p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence, fill = factor(Group))) + 
     geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
     geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
-    ylab('Percentage P. copri') + 
-    ggtitle('Bangladesh') +
+    ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
+    ggtitle(country_of_interest) +
     theme(legend.position="none") + 
-    stat_summary(fun.data = give.n, geom = "text", fun = median,
-                 position = position_dodge(width = 0.75)) +
-    annotate("text", x = 3, y = 47, label = paste0('p = ', toString(abundance_compared[,6]$p.adj)))
-  # p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence)) + geom_boxplot()
-  show(p)
-  return(abundance_compared)
+    stat_summary(fun.data = give.n, geom = "text", fun = median, position = position_dodge(width = 0.75))
+
+  if (country_of_interest == 'Malawi'){
+    p <- p + annotate("text", x = 3, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj)))
+  } else if (country_of_interest == 'Bangladesh'){
+    p <- p + 
+      annotate("text", x = 2, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[1]]))) +
+      annotate("text", x = 3, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[2]]))) +
+      annotate("text", x = 4, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[3]])))
+  }
+    
+  # because there is an outlier for s__Lachnospiraceae_bacterium in Malawi, we use ggforce facet zoom to show a zoomed in version alongside the full version.
+  if (species_of_interest == 's__Lachnospiraceae_bacterium' & country_of_interest == 'Malawi'){
+    p <- p + ggforce::facet_zoom(ylim = c(0, 1))
+    show(p)
+  } else if (species_of_interest == 's__Prevotella_copri_clade_A' & country_of_interest == 'Bangladesh') {
+    p <- p + ggforce::facet_zoom(ylim = c(0, 10))
+    show(p)
+  } else if (species_of_interest == 's__GGB4266_SGB5809' & country_of_interest == 'Bangladesh') {
+    p <- p + ggforce::facet_zoom(ylim = c(0, 10))
+    show(p)
+  } else {
+    show(p)
+  }
 
 }
+#     stat_summary(fun.data = give.n, geom = "text", fun = median, position = position_dodge(width = 0.75)) +
 
-a <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+give.n <- function(x){
+  return(c(y = 45, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+give.n <- function(x){
+  return(c(y = 6, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+
+give.n <- function(x){
+  return(c(y = 0.5, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+give.n <- function(x){
+  return(c(y = 4.5, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+give.n <- function(x){
+  return(c(y = 5, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+give.n <- function(x){
+  return(c(y = 10, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+give.n <- function(x){
+  return(c(y = 2.5, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+give.n <- function(x){
+  return(c(y = 1.25, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+
+give.n <- function(x){
+  return(c(y = 1.5, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+
+give.n <- function(x){
+  return(c(y = 6, label = length(x)))
+}
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+
+give.n <- function(x){
+  return(c(y = 1.5, label = length(x)))
+}
+
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
+give.n <- function(x){
+  return(c(y = 1.75, label = length(x)))
+}
+
+plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+
 
 ```
 
@@ -401,9 +484,6 @@ all_taxa_maaslin <- combined_maaslins$all_features
 p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
 write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
 ```
-
-### plots of species of interest
-
 
 
 
