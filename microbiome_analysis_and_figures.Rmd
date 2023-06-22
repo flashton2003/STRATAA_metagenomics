@@ -330,7 +330,8 @@ between acute <-> health.
 
 ```{r combine_maaslins_taxonomic}
 
-combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
+combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+
 combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
@@ -342,7 +343,12 @@ combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
+
+nrow(combined_results$mwi_maaslin_only)
+nrow(combined_results$bang_maaslin_only)
 ```
+
+There were `r nrow(combined_results$mwi_maaslin_only)` species significantly (q-val < 0.05) associated with health/disease in Malawi only and `r nrow(combined_results$bang_maaslin_only)` in Bangladesh only.
 
 ### associated at only one site
 

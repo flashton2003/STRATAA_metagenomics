@@ -791,10 +791,12 @@ basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_f
 
 combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
   # thanks chatgpt!
+  # we include the lowest taxonomic level in the join so that it doesn't get duplicated as bang/mal
   combined_df <- bangladesh_maaslin %>%
-    inner_join(malawi_maaslin, by = c("feature", 'metadata', 'value'), suffix = c("_bang", "_mal"))
-  write_csv(combined_df, "/Users/flashton/Desktop/tmp.csv")
+    inner_join(malawi_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'), suffix = c("_bang", "_mal"))
   # Filter the combined data frame based on the conditions for coef > 0
+  # View(combined_df)
+
   filtered_df_positive_coef <- combined_df %>%
     filter(
       qval_bang < 0.05 & qval_mal < 0.05 & 
@@ -813,7 +815,10 @@ combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
 }
 
 
-run_combine_maaslins <- function(bang_maaslin, malawi_maaslin){
+run_combine_maaslins <- function(bang_maaslin, malawi_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, analysis_type, maaslin_output_root_folder){
+  groups_for_dirname <- paste(groups_to_analyse, collapse = '_vs_')
+  bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
+  mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
   
   combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
   
@@ -824,10 +829,11 @@ run_combine_maaslins <- function(bang_maaslin, malawi_maaslin){
     combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
   } 
   
-  bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(feature %in% combined_maaslins_positive_coef$feature | feature %in% combined_maaslins_negative_coef$feature)
-  View(bang_maaslin_only)
-  print(nrow(bang_maaslin_only) + nrow(combined_maaslins_positive_coef) + nrow(combined_maaslins_negative_coef))
-  print(nrow(bang_maaslin %>% filter(qval < 0.05)))
+  bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
+  mwi_maaslin_only <- malawi_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
+  # View(bang_maaslin_only)
+  # print(nrow(bang_maaslin_only) + nrow(combined_maaslins_positive_coef) + nrow(combined_maaslins_negative_coef))
+  # print(nrow(bang_maaslin %>% filter(qval < 0.05)))
   
   # one of these two lines should be hashed out, depending on if all the covars were used for both sites or not
   vars_for_output_dirname <- mwi_vars_for_dirname
@@ -837,7 +843,10 @@ run_combine_maaslins <- function(bang_maaslin, malawi_maaslin){
   write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
   #combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
   write_csv(combined_maaslins_negative_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_negative_coef.csv', sep = '.')))
-  combined_results <- list(positive_coef = combined_maaslins_positive_coef, negative_coef = combined_maaslins_negative_coef)
+  write_csv(bang_maaslin_only, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'bangladesh_only.csv', sep = '.')))
+  write_csv(mwi_maaslin_only, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'malawi_only.csv', sep = '.')))
+
+  combined_results <- list(positive_coef = combined_maaslins_positive_coef, negative_coef = combined_maaslins_negative_coef, bang_maaslin_only = bang_maaslin_only, mwi_maaslin_only = mwi_maaslin_only)
   return(combined_results)
 }
 
