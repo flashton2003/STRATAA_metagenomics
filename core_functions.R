@@ -843,10 +843,7 @@ run_combine_maaslins <- function(bang_maaslin, malawi_maaslin, bang_variables_fo
   
   combined_maaslins_positive_coef <- combined_maaslins$positive_coef
   combined_maaslins_negative_coef <- combined_maaslins$negative_coef
-  # if (analysis_type == 'bigmap') {
-  #   combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
-  #   combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
-  # } 
+  
   
   bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
   mwi_maaslin_only <- malawi_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
