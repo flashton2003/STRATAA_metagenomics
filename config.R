@@ -8,3 +8,4 @@ output_folder_blantyre_dhaka <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Mic
 metaphlan_input_folder <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.11'
 maaslin_taxonomic_output_root_folder <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.11'
 maaslin_functional_output_root_folder <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.12'
+figures_root_folder <- 
