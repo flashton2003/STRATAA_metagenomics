@@ -405,10 +405,12 @@ mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_f
 
 ```{r maaslin_functional_groups}
 
-run_combine_maaslins(bang_func_maaslin, mal_func_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+combined_results <- run_combine_maaslins(bang_func_maaslin, mal_func_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
-combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
-combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+combined_results$positive_coef %>%  kbl() %>% kable_styling()
+combined_results$negative_coef %>%  kbl() %>% kable_styling()
+
+combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
 
 write_csv(combined_maaslins_positive_coef, file.path(maaslin_functional_output_root_folder, 'combined_maaslins_positive_coef.csv'))
 combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
