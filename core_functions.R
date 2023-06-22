@@ -727,11 +727,9 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
   return(prevalence)
 }
 
-
-run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups){
+run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups, input_type){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions %in% c('Yes', 'No'))
-  View(metadata_to_analyse)
   # View(metadata_to_analyse)
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
@@ -739,7 +737,7 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   # prevalence is a data frame where each row is the prevalence of a feature in a sample, and there is a row for each metadata group that a sample belongs to
   # e.g. feature 1, group 1, prevalence 0.5
   #      feature 1, group 2, prevalence 0.5
-  prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, variables_for_analysis)
+  
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
   Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
@@ -748,7 +746,11 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
            output         = output_dir, 
            fixed_effects  = variables_for_analysis,
            reference = reference_groups)
-  add_prevalence_to_maaslin_output(output_dir, prevalence)
+  if (input_type == 'metaphlan'){
+    prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, variables_for_analysis)
+    add_prevalence_to_maaslin_output(output_dir, prevalence)
+  }
+  
 }
 
 
@@ -765,6 +767,9 @@ read_in_maaslin <- function(country, groups_to_analyse, variables_for_analysis, 
   if (type_of_input == 'metaphlan'){
       maaslin_results$lowest_taxonomic_level <- sapply(str_split(maaslin_results$feature, "\\."), function(x) x[length(x)])
   maaslin_results <- maaslin_results %>% relocate(lowest_taxonomic_level, .after = feature)
+  } else if (type_of_input == 'bigmap'){
+    maaslin_results <- maaslin_results %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+
   }
   # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
 
@@ -798,14 +803,19 @@ basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_f
 }
 
 
-combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin){
+combine_maaslins <- function(bangladesh_maaslin, malawi_maaslin, type_of_input){
   # thanks chatgpt!
-  # we include the lowest taxonomic level in the join so that it doesn't get duplicated as bang/mal
-  combined_df <- bangladesh_maaslin %>%
-    inner_join(malawi_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'), suffix = c("_bang", "_mal"))
+  if (type_of_input == 'metaphlan'){
+    # we include the lowest taxonomic level in the join so that it doesn't get duplicated as bang/mal
+    combined_df <- bangladesh_maaslin %>%
+      inner_join(malawi_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'), suffix = c("_bang", "_mal"))
+  } else if (type_of_input == 'bigmap'){
+    combined_df <- bangladesh_maaslin %>%
+      inner_join(malawi_maaslin, by = c("MGC_class", "Species", "feature", 'metadata', 'value'), suffix = c("_bang", "_mal"))
+  }
+  
   # Filter the combined data frame based on the conditions for coef > 0
   # View(combined_df)
-
   filtered_df_positive_coef <- combined_df %>%
     filter(
       qval_bang < 0.05 & qval_mal < 0.05 & 
@@ -829,14 +839,14 @@ run_combine_maaslins <- function(bang_maaslin, malawi_maaslin, bang_variables_fo
   bang_vars_for_dirname <- paste(bang_variables_for_analysis, collapse = '.')
   mwi_vars_for_dirname <- paste(mwi_variables_for_analysis, collapse = '.')
   
-  combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin)
+  combined_maaslins <- combine_maaslins(bang_maaslin, malawi_maaslin, analysis_type)
   
   combined_maaslins_positive_coef <- combined_maaslins$positive_coef
   combined_maaslins_negative_coef <- combined_maaslins$negative_coef
-  if (analysis_type == 'bigmap') {
-    combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
-    combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
-  } 
+  # if (analysis_type == 'bigmap') {
+  #   combined_maaslins_positive_coef <- combined_maaslins_positive_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+  #   combined_maaslins_negative_coef <- combined_maaslins_negative_coef %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
+  # } 
   
   bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
   mwi_maaslin_only <- malawi_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
