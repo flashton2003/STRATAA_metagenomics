@@ -317,7 +317,12 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
   pcoa_df <- mutate(pcoa_df, SampleID = rownames(metaphlan_data_mat)) %>% left_join(metadata, by = 'SampleID')
   # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 100)
   # View(pn)
-  pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 1000)
+  if ('Carrier' %in% groups_of_interest){
+    pn <- adonis2(dist_mat~Sex*Group*Age, data = metadata_coi, permutations = 1000)
+  } else {
+    pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 1000)
+  }
+  
   # View(pn)
   # pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
   # pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
@@ -348,10 +353,20 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
   
   # if the length of countries of interest is greater than 1, then include Country in the model
+  # if carrier is in the groups of interest, don't include antibiotics in the model (because carriers and healthy are all assumed "No" for antibiotics)
   if (length(countries_of_interest) > 1) {
-    alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+    if ('Carrier' %in% groups_of_interest){
+      alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age, data = alpha_meta)
+    } else {
+      alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+    }
+    
   } else if (length(countries_of_interest) == 1) {
-     alpha_anova <- aov(Shannon ~ Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+    if ('Carrier' %in% groups_of_interest){
+      alpha_anova <- aov(Shannon ~ Sex *Group * Age, data = alpha_meta)
+    } else {
+      alpha_anova <- aov(Shannon ~ Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+    }
   }
   
   alpha_anova_summary <- summary(alpha_anova)
@@ -393,15 +408,16 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
                   antibiotic_sampling = rep(c("Pre", "Post"), 9),
                   age_bracket = rep(c("0-4", "5-14", "15-24"), each = 6),
                   value = rnorm(18))
+if ('Acute_Typhi' %in% groups_of_interest){
+  # Create a box plot for each combination of country, antibiotic_sampling, and age_bracket
+  alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions != 'Unknown')
+  p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill = Antibiotics_taken_before_sampling_yes_no_assumptions)) +
+    geom_boxplot() +
+    facet_grid(cols = vars(Country )) +
+    labs(title = "Box plot by country, antibiotic_sampling, and age_bracket")
+  show(p)
+}
 
-# Create a box plot for each combination of country, antibiotic_sampling, and age_bracket
-alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions != 'Unknown')
-p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill =  Antibiotics_taken_before_sampling_yes_no_assumptions)) +
-  geom_boxplot() +
-  facet_grid(cols = vars(Country )) +
-  labs(title = "Box plot by country, antibiotic_sampling, and age_bracket")
-show(p)
-# show(alpha_plot)
 results <- list(alpha_by_country = alpha_by_country, alpha_anova_summary_with_var_names = alpha_anova_summary_with_var_names, alpha_plot_group = alpha_plot_group, alpha_plot_antibiotics = alpha_plot_antibiotics)
 return(results)
 
@@ -730,10 +746,12 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups, input_type){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions %in% c('Yes', 'No'))
-  # View(metadata_to_analyse)
+  View(metadata_to_analyse)
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
-  # View(feature_data)
+  # View(dim(feature_data))
+  # View(dim(feature_data %>% na.omit()))
+  # View(ncol(feature_data))
   # prevalence is a data frame where each row is the prevalence of a feature in a sample, and there is a row for each metadata group that a sample belongs to
   # e.g. feature 1, group 1, prevalence 0.5
   #      feature 1, group 2, prevalence 0.5
@@ -843,7 +861,6 @@ run_combine_maaslins <- function(bang_maaslin, malawi_maaslin, bang_variables_fo
   
   combined_maaslins_positive_coef <- combined_maaslins$positive_coef
   combined_maaslins_negative_coef <- combined_maaslins$negative_coef
-  
   
   bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
   mwi_maaslin_only <- malawi_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
@@ -972,3 +989,56 @@ run_plot_species_of_interest <- function(prevalence_meta, species_of_interest){
 
 
 
+plot_per_country_abundance <- function(phyla_clean_metadata, country, group_order){
+    # thanks chatgpt!
+    phyla_clean_country <- phyla_clean_metadata %>% filter(Country == country) %>% filter(Group %in% group_order)
+
+    phyla_clean_country_fct <- phyla_clean_country %>%
+    mutate(Group = factor(Group, levels = group_order),  # Convert group to a factor with the desired order
+            group_order_numeric = as.numeric(Group),  # Create a new numeric variable based on the order of group
+            sample = fct_reorder(sample, group_order_numeric))  # Reorder sample based on group_order_numeric
+
+    p <- ggplot(data = phyla_clean_country_fct, aes(x = sample, y = relative_abundance, fill = clade_name)) + 
+        geom_bar(stat = "identity") + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1), axis.title.x = element_blank()) + 
+        scale_x_discrete(breaks=phyla_clean_country_fct$sample, labels=phyla_clean_country_fct$Group) + 
+        ggtitle(country) +
+        ylim(0, 100.01)
+    return(p)
+}
+
+
+prep_data_to_plot_phyla <- function(strataa_metaphlan_data, strataa_metaphlan_metadata){
+  # get the taxa that are phyla, not classes, or below (species etc), and tidy the data.
+  phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
+
+  # relative_abundance > 1 returns a list of TRUE/FALSE values, which is then summed to get the number of samples in which the phylum is present at > 1% relative abundance.
+  # then we filter to only keep phyla that are present at 1% in at least 10% of samples.
+  phyla_to_exclude <- phyla %>% group_by(clade_name) %>% 
+      summarise(count = sum(relative_abundance > 1)) %>% 
+      filter(count < (length(unique(phyla$sample)) / 10)) %>% 
+      pull(clade_name)
+  View(phyla_to_exclude)
+
+  # in order to make each sample add up to 100, we need to add the excluded taxa back in as a single "rare taxa" phylum.
+  # first we need to calculate the relative abundance of the excluded taxa in each sample.
+  excluded_phyla <- phyla %>%
+    filter(clade_name %in% phyla_to_exclude) %>% group_by(sample) %>% summarise(relative_abundance = sum(relative_abundance))
+  # then make a column with the name "rare_taxa" for each sample, annd bind it to the excluded taxa data.
+  rare_taxa_column <- data.frame(lowest_taxonomic_level = c(rep("rare_taxa", nrow(excluded_phyla))), clade_name = c(rep("rare_taxa", nrow(excluded_phyla))))
+  excluded_phyla <- cbind(rare_taxa_column, excluded_phyla)
+
+  # then remove the excluded taxa from the phyla data.
+  phyla_clean <- phyla %>%
+    filter(!(clade_name %in% phyla_to_exclude))
+  # and add the excluded taxa back in.
+  phyla_clean <- rbind(phyla_clean, excluded_phyla)
+  View(phyla_clean)
+  View(excluded_phyla)
+
+  # colnames(strataa_metaphlan_metadata)
+  metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
+  phyla_clean_metadata <- phyla_clean %>% left_join(metadata_select, by = c("sample" = "SampleID"))
+  phyla_clean_metadata <- phyla_clean_metadata %>% mutate(Group = ifelse(Group == "Acute_Typhi", "Typhi", Group)) %>% mutate(Group = ifelse(Group == "Control_HealthySerosurvey", "Healthy", Group))
+  return(phyla_clean_metadata)
+}
