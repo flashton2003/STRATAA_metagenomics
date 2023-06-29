@@ -285,7 +285,12 @@ Because sequencing run and participant type are totally confounded for Banglades
 associated at both sites
 ```{r combine_maaslins_taxonomic}
 
-combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
+combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+
+# View(combined_results$positive_coef)
+# View(combined_results$negative_coef)
+
 
 combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
@@ -356,12 +361,26 @@ mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_f
 
 ```{r maaslin_functional_groups}
 
-combined_results <- run_combine_maaslins(bang_func_maaslin, mal_func_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+# combined_results <- run_combine_maaslins(bang_func_maaslin, mal_func_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
-combined_results$positive_coef %>%  kbl() %>% kable_styling()
-combined_results$negative_coef %>%  kbl() %>% kable_styling()
+bang_mal <- list(bang_func_maaslin, mal_func_maaslin)
+combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+
+
+combined_results$positive_coef %>%
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
+
+combined_results$negative_coef %>%
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
 
 combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
 
 ```
 
@@ -452,14 +471,38 @@ nrow(nepal_maaslin_stats$maaslin_results_sig)
 
 ```{r combine_maaslins_taxonomic_carrier_healthy}
 
-combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+# combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
 
+# only one species significantly associated in Nepal.
+# there are no species consistently associated across all three sites
+# bang_mal_nep <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, nepal_taxonomic_maaslin_filtered)
+# combined_results <- run_combine_maaslins(bang_mal_nep, c('_bang', '_mwi', '_nep'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+# View(combined_results$positive_coef)
+# View(combined_results$negative_coef)
+
+# there are no species associated in both bang and nep
+# bang_nep <- list(bangladesh_taxonomic_maaslin_filtered, nepal_taxonomic_maaslin_filtered)
+# combined_results <- run_combine_maaslins(bang_nep, c('_bang', '_nep'), bang_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+# View(combined_results$positive_coef)
+# View(combined_results$negative_coef)
+
+# there are no species associated in both mal and nep
+# mal_nep <- list(malawi_taxonomic_maaslin_filtered, nepal_taxonomic_maaslin_filtered)
+# combined_results <- run_combine_maaslins(bang_nep, c('_mal', '_nep'), bang_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+# View(combined_results$positive_coef)
+# View(combined_results$negative_coef)
+
+bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
+combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+
+# positive is associated with health
 combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
+# negative is associated with carrier
 combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
@@ -485,10 +528,26 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 
 
 ```{r maaslin_functional_groups}
-combined_results <- run_combine_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+# combined_results <- run_combine_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
-combined_results$positive_coef %>%  kbl() %>% kable_styling()
-combined_results$negative_coef %>%  kbl() %>% kable_styling()
+bang_mal <- list(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin)
+combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+
+# positive is associated with health
+# combined_results$positive_coef %>%  kbl() %>% kable_styling()
+combined_results$positive_coef %>% 
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
+# negative is associated with carrier
+# combined_results$negative_coef %>%  kbl() %>% kable_styling()
+combined_results$negative_coef %>% 
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
+
 
 # print out a nicely formatted table of the count of the MGCs
 combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
