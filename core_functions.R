@@ -1008,9 +1008,8 @@ plot_per_country_abundance <- function(phyla_clean_metadata, country, group_orde
 }
 
 
-prep_data_to_plot_phyla <- function(strataa_metaphlan_data, strataa_metaphlan_metadata){
+prep_data_to_plot_phyla <- function(phyla, metadata_select){
   # get the taxa that are phyla, not classes, or below (species etc), and tidy the data.
-  phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
 
   # relative_abundance > 1 returns a list of TRUE/FALSE values, which is then summed to get the number of samples in which the phylum is present at > 1% relative abundance.
   # then we filter to only keep phyla that are present at 1% in at least 10% of samples.
@@ -1037,7 +1036,7 @@ prep_data_to_plot_phyla <- function(strataa_metaphlan_data, strataa_metaphlan_me
   View(excluded_phyla)
 
   # colnames(strataa_metaphlan_metadata)
-  metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
+  # metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
   phyla_clean_metadata <- phyla_clean %>% left_join(metadata_select, by = c("sample" = "SampleID"))
   phyla_clean_metadata <- phyla_clean_metadata %>% mutate(Group = ifelse(Group == "Acute_Typhi", "Typhi", Group)) %>% mutate(Group = ifelse(Group == "Control_HealthySerosurvey", "Healthy", Group))
   return(phyla_clean_metadata)

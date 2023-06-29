@@ -167,7 +167,10 @@ all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_gro
 ```{r phyla_barplots}
 
 
-phyla_clean_metadata <- prep_data_to_plot_phyla(strataa_metaphlan_data, strataa_metaphlan_metadata)
+phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
+metadata_for_phyla_plots <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
+
+phyla_clean_metadata <- prep_data_to_plot_phyla(phyla, strataa_metaphlan_metadata)
 
 order_of_groups <- c("Typhi", "Healthy")
 bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
@@ -188,7 +191,7 @@ bangladesh_phyla_plot / malawi_phyla_plot / nepal_phyla_plot
 # pivot wider to get the table.
 # dplyr::select(order(colnames(.))) rearranges the columns in alphabetical order
 # relocate moves the clade_name column to the first column.
-phyla %>% left_join(metadata_select, by = c("sample" = "SampleID")) %>% filter(Group != 'Carrier') %>% group_by(clade_name, Group, Country) %>% summarise(median_prevalence = median(relative_abundance)) %>% pivot_wider(names_from = c('Country', 'Group'), values_from =  'median_prevalence') %>% dplyr::select(order(colnames(.))) %>% relocate(clade_name, .before = 1) %>% kbl() %>% kable_styling()
+phyla %>% left_join(metadata_for_phyla_plots, by = c("sample" = "SampleID")) %>% filter(Group != 'Carrier') %>% group_by(clade_name, Group, Country) %>% summarise(median_prevalence = median(relative_abundance)) %>% pivot_wider(names_from = c('Country', 'Group'), values_from =  'median_prevalence') %>% dplyr::select(order(colnames(.))) %>% relocate(clade_name, .before = 1) %>% kbl() %>% kable_styling()
 
 
 ```
@@ -329,9 +332,9 @@ lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachn
 Print the results for all the P. copri clades
 
 ```{r, eval = FALSE}
-all_taxa_maaslin <- combined_maaslins$all_features
-p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
-write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
+# all_taxa_maaslin <- combined_maaslins$all_features
+# p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
+# write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
 ```
 
 
@@ -362,13 +365,6 @@ combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_'
 
 ```
 
-```{r, eval = FALSE}
-
-groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
-mwi_variables_for_analysis <- c("Group", "Sex", "Age")
-bang_variables_for_analysis <- c("Group", "Sex", "Age")
-run_combine_maaslins(groups_to_analyse, mwi_variables_for_analysis, bang_variables_for_analysis, maaslin_functional_output_root_folder, 'bigmap')
-```
 
 ## healthy vs carrier
 
