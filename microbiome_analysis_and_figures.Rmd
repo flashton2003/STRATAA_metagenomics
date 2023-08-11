@@ -64,6 +64,8 @@ number_per_country %>% kbl() %>% kable_styling()
 
 print(sum(number_per_country$count))
 
+metadata %>% group_by(Country, Group) %>% summarise(count = n()) %>% kbl() %>% kable_styling()
+
 metadata %>% group_by(Group) %>% summarise(count = n()) %>% kbl() %>% kable_styling()
 
 baseline_chars <- get_baseline_characteristics(metadata)
@@ -134,6 +136,7 @@ all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data, strata
 all_countries_all_groups_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_all_groups_alpha$alpha_plot_group
 all_countries_all_groups_alpha$alpha_plot_antibiotics
+all_countries_all_groups_alpha$alpha_by_country
 
 ```
 ### Beta diversity - metaphlan
@@ -202,7 +205,7 @@ Alpha diversity - all countries, healthy and acute
 ```{r alpha_diversity_healthy_acute}
 
 all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
-all_countries_healthy_acute_alpha$alpha_by_country
+# all_countries_healthy_acute_alpha$alpha_by_country
 all_countries_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_acute_alpha$alpha_plot_group
 all_countries_healthy_acute_alpha$alpha_plot_antibiotics
@@ -304,6 +307,8 @@ combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
+# todo - refactoring the run_combine_maaslins means that we dont get the species that are only associated at one site. need to fix that.
+
 # nrow(combined_results$mwi_maaslin_only)
 # nrow(combined_results$bang_maaslin_only)
 ```
@@ -386,17 +391,17 @@ combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_'
 
 
 ## healthy vs carrier
-
 ### phylum plots
 
 ```{r phylum_plots_carrier_healthy}
 order_of_groups <- c("Carrier", "Healthy")
-bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
+# bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
 # bangladesh_phyla_plot
 malawi_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Malawi", group_order = order_of_groups)
 nepal_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Nepal", group_order = order_of_groups)
 
-bangladesh_phyla_plot / malawi_phyla_plot / nepal_phyla_plot
+# bangladesh_phyla_plot / 
+malawi_phyla_plot / nepal_phyla_plot
 
 
 ```
@@ -406,7 +411,7 @@ Alpha diversity - all countries, healthy and carrier
 
 ```{r alpha_diversity_healthy_carrier}
 
-all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Carrier', 'Control_HealthySerosurvey')))
+all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Carrier', 'Control_HealthySerosurvey')))
 all_countries_healthy_carrier_alpha$alpha_by_country
 all_countries_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_carrier_alpha$alpha_plot_group
@@ -415,13 +420,13 @@ all_countries_healthy_carrier_alpha$alpha_plot_group
 ### beta diversity
 
 Carrier vs healthy.
-```{r beta_diversity_healthy_acute}
+```{r beta_diversity_healthy_carrier}
 
-all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
-bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+# bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
+# bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
 mal_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Carrier', 'Control_HealthySerosurvey'))
 mal_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
@@ -429,7 +434,7 @@ mal_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 nep_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
 nep_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-all_countries_beta_carrier_healthy$pc12 + bgd_beta_carrier_healthy$pc12 + mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12
+mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
 ```
 
 ### maaslin taxonomic groups
@@ -437,37 +442,41 @@ all_countries_beta_carrier_healthy$pc12 + bgd_beta_carrier_healthy$pc12 + mal_be
 ```{r basics_for_maaslin_taxonomic_carrier_healthy}
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
-bang_variables_for_analysis <- c("Group", "Sex", "Age")
+# bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 nep_variables_for_analysis <- c("Group", "Sex", "Age")
 
 ```
 
 ```{r read_in_maaslin_taxonomic_carrier_healthy}
-bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
+# bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
 malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
 nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
 ```
 
 ```{r filter_maaslin_taxonomic_carrier_healthy}
-bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
+# bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
 malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
 nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
 ```
 
 ```{r basic_stats_maaslin_taxonomic_carrier_healthy}
-bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
+# bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
 malawi_maaslin_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
 nepal_maaslin_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
 ```
 
 ```{r volcano_plots_maaslin_taxonomic_carrier_healthy}
-
-malawi_maaslin_stats$volcano_plot / bangladesh_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
+# / bangladesh_maaslin_stats$volcano_plot 
+malawi_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
 nrow(malawi_maaslin_stats$maaslin_results_sig)
-nrow(bangladesh_maaslin_stats$maaslin_results_sig)
+# nrow(bangladesh_maaslin_stats$maaslin_results_sig)
 nrow(nepal_maaslin_stats$maaslin_results_sig)
 ```
+
+We're not including the bangladesh samples in this analysis, because the bangladesh carriers were processed differently (extracted without being frozen).
+
+There are no species significantly associated with carrier status in all Mal and Nep, so not including the combine.
 
 ```{r combine_maaslins_taxonomic_carrier_healthy}
 
@@ -492,22 +501,22 @@ nrow(nepal_maaslin_stats$maaslin_results_sig)
 # View(combined_results$positive_coef)
 # View(combined_results$negative_coef)
 
-bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
-combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+# bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
+# combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
 
-# positive is associated with health
-combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
-  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-  rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-  kbl() %>% kable_styling()
+# # positive is associated with health
+# combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
+#   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+#   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+#   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+#   kbl() %>% kable_styling()
 
-# negative is associated with carrier
-combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
-  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-  rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-  kbl() %>% kable_styling()
+# # negative is associated with carrier
+# combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
+#   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+#   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+#   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+#   kbl() %>% kable_styling()
 
 # nrow(combined_results$mwi_maaslin_only)
 # nrow(combined_results$bang_maaslin_only)
@@ -516,41 +525,115 @@ combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %
 
 ### functional groups
 
-```{r read_in_maaslin_functional}
-bang_variables_for_analysis <- c("Group", "Sex", "Age")
+```{r read_in_maaslin_functional_healthy_carrier}
+# bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 # nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 
-bang_func_carr_health_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
+# bang_func_carr_health_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
 mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
 ```
 
 
-```{r maaslin_functional_groups}
+```{r maaslin_functional_groups_healthy_carrier}
 # combined_results <- run_combine_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
-bang_mal <- list(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin)
-combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+# bang_mal <- list(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin)
+# combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
-# positive is associated with health
-# combined_results$positive_coef %>%  kbl() %>% kable_styling()
-combined_results$positive_coef %>% 
-  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-  kbl() %>% kable_styling()
-# negative is associated with carrier
-# combined_results$negative_coef %>%  kbl() %>% kable_styling()
-combined_results$negative_coef %>% 
-  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-  kbl() %>% kable_styling()
+# # positive is associated with health
+# # combined_results$positive_coef %>%  kbl() %>% kable_styling()
+# combined_results$positive_coef %>% 
+#   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+#   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+#   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+#   kbl() %>% kable_styling()
+# # negative is associated with carrier
+# # combined_results$negative_coef %>%  kbl() %>% kable_styling()
+# combined_results$negative_coef %>% 
+#   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+#   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+#   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+#   kbl() %>% kable_styling()
 
 
-# print out a nicely formatted table of the count of the MGCs
-combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
-combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+# # print out a nicely formatted table of the count of the MGCs
+# combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+# combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
 ```
+
+## healthy vs acute vs carriers - taxonomic
+
+```{r read_in_heal_ac_car_taxonomic}
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+heal_ac_car_taxonomic <- read_in_maaslin('Malawi', groups_to_analyse, variables_for_analysis, 'metaphlan')
+heal_ac_car_taxonomic_cln <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) %>% filter(qval <= 0.05) 
+# spread heal_ac_car_taxonomic_cln wider so that the coef is on the same row for each feature
+heal_ac_car_taxonomic_cln_w <- heal_ac_car_taxonomic_cln %>% pivot_wider(names_from = value, values_from = c(coef, qval), id_cols = c(feature, lowest_taxonomic_level))
+
+```
+changes relative to healthy state
+```{r maaslin_heal_ac_car_taxonomic}
+# same_same cant do from here because filtered for qvalue
+# 1
+up_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & coef_Carrier > 0) %>% mutate(type = '1.up_up')
+print(nrow(up_up))
+# write_csv(up_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.1.up_up.csv'))
+# 2
+up_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & coef_Carrier < 0) %>% mutate(type = '2.up_down')
+print(nrow(up_down))
+# write_csv(up_down, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.2.up_down.csv'))
+# 3
+up_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & is.na(coef_Carrier)) %>% mutate(type = '3.up_same')
+print(nrow(up_same))
+# write_csv(up_same, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.3.up_same.csv'))
+# 4
+down_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & coef_Carrier > 0) %>% mutate(type = '4.down_up')
+print(nrow(down_up))
+# write_csv(down_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.4.down_up.csv'))
+# 5
+down_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & coef_Carrier < 0) %>% mutate(type = '5.down_down')
+print(nrow(down_down))
+# write_csv(down_down, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.5.down_down.csv'))
+# 6
+down_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & is.na(coef_Carrier)) %>% mutate(type = '6.down_same')
+print(nrow(down_same))
+# write_csv(down_same, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.6.down_same.csv'))
+# 7
+same_up <- heal_ac_car_taxonomic_cln_w %>% filter(is.na(coef_Acute_Typhi) & coef_Carrier > 0) %>% mutate(type = '7.same_up')
+print(nrow(same_up))
+# write_csv(same_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.7.same_up.csv'))
+# 8
+same_down <- heal_ac_car_taxonomic_cln_w %>% filter(is.na(coef_Acute_Typhi) & coef_Carrier < 0) %>% mutate(type = '8.same_down')
+print(nrow(same_down))
+
+all_patterns <- rbind(up_up, up_down, up_same, down_up, down_down, down_same, same_up, same_down)
+
+write_csv(all_patterns, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.all_patterns.csv')) 
+
+up_in_ac_car <- all_patterns %>% filter(type %in% c('1.up_up', '2.up_down', '3.up_same', '4.down_up', '7.same_up')) 
+down_in_ac_car <- all_patterns %>% filter(type %in% c('5.down_down', '6.down_same', '8.same_down'))
+up_in_health_only <- all_patterns %>% filter(type == '5.down_down')
+up_in_car_only <- all_patterns %>% filter(type == '7.same_up')
+
+prop_that_is_sgb <- function(input_data) {
+  x <- input_data %>% filter(str_detect(feature, 'SGB')) %>% summarise(prop = n()/nrow(input_data), n_sgb = n(), total_n = nrow(input_data))
+  print(x)
+  return(x)
+}
+prop_up_in_ac_car <- prop_that_is_sgb(up_in_ac_car)
+prop_down_in_ac_car <- prop_that_is_sgb(down_in_ac_car)
+prop_up_in_health_only <- prop_that_is_sgb(up_in_health_only)
+prop_up_in_car_only <- prop_that_is_sgb(up_in_car_only)
+
+
+prop.test(x = c(prop_up_in_ac_car$n_sgb, prop_down_in_ac_car$n_sgb), n = c(prop_up_in_ac_car$total_n, prop_down_in_ac_car$total_n), alternative = 'two.sided', correct = FALSE)
+prop.test(x = c(prop_up_in_health_only$n_sgb, prop_up_in_car_only$n_sgb), n = c(prop_up_in_health_only$total_n, prop_up_in_car_only$total_n), alternative = 'two.sided', correct = FALSE)
+```
+
+```{r maaslin_heal_ac_car_taxonomic_plot}
+```
+
 

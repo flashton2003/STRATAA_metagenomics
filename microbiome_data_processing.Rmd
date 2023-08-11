@@ -31,18 +31,21 @@ filename_regex = "\\d+_\\d+_\\d+" #for patch and strata
 
 ```{r read_in_metadata}
 metadata <- read_metadata(metadata_handle)
-View(metadata)
+# View(metadata)
 
 ```
 
 
 ## Run MAASLIN2 taxonomic
 
-```{r run_maaslin_metaphlan_healthy_typhoid include=FALSE}
+```{r read_in_metaphlan, include=FALSE}
 
 strataa_metaphlan_data = read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 strataa_metaphlan_metadata = read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 
+```
+
+```{r run_maaslin_metaphlan_healthy_typhoid include=FALSE}
 
 #variables_for_analysis <- c("Group")
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
@@ -57,8 +60,12 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
 # variables_for_analysis <- c("Group", "Sex")
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG',  NA, 'metaphlan')
+```
 
-# not including antibiotics becayse they're all "No"
+
+For healthy vs carrier, not including antibiotics becayse they're all "No"
+
+
 
 ```{r run_maaslin_metaphlan_healthy_carrier}
 
@@ -73,9 +80,24 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 
 variables_for_analysis <- c("Group", "Sex", "Age")
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'metaphlan')
+```
 
+health vs acute vs carrier
+
+```{r}
+
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey", "Lane,32712_2"), 'metaphlan')
+
+
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey"), 'metaphlan')
 
 ```
+
+
+
 ## run maaslin2 functional
 
 ```{r read_in_bigmap_results echo = T, results = 'hide'}
