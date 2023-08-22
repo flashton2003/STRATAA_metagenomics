@@ -633,7 +633,50 @@ prop.test(x = c(prop_up_in_ac_car$n_sgb, prop_down_in_ac_car$n_sgb), n = c(prop_
 prop.test(x = c(prop_up_in_health_only$n_sgb, prop_up_in_car_only$n_sgb), n = c(prop_up_in_health_only$total_n, prop_up_in_car_only$total_n), alternative = 'two.sided', correct = FALSE)
 ```
 
-```{r maaslin_heal_ac_car_taxonomic_plot}
+```{r maaslin_heal_ac_car_sgb_plot}
+# make a new strataa_metaphlan_data object where the rowname column is an actual column
+
+strataa_metaphlan_data_cln <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) 
+rownames(strataa_metaphlan_data_cln) <- NULL
+strataa_metaphlan_data_l <- strataa_metaphlan_data_cln %>% pivot_longer(!feature, names_to = 'sample', values_to = 'abundance') %>% left_join(strataa_metaphlan_metadata %>% mutate(sample = rownames(strataa_metaphlan_metadata)), by = 'sample')
+# head(strataa_metaphlan_data_l)
+strataa_metaphlan_data_mwi_sp <- strataa_metaphlan_data_l %>% filter(Country == 'Malawi', str_detect(feature, 's__'), str_detect(feature, 't__', negate = TRUE)) %>% mutate(SGB = str_detect(feature, '_SGB'))
+head(strataa_metaphlan_data_mwi_sp)
+
+mwi_sgb_abundance <- strataa_metaphlan_data_mwi_sp %>% group_by(sample, SGB) %>% summarise(total_abundance = sum(abundance)) %>% left_join(strataa_metaphlan_metadata %>% mutate(sample = rownames(strataa_metaphlan_metadata)), by = 'sample')  %>% mutate(SGB = ifelse(SGB, 'SGB', 'non-SGB')) %>% mutate(Group = factor(Group, levels = c('Control_HealthySerosurvey', 'Acute_Typhi', 'Carrier')))
+mwi_sgb_abundance %>% group_by(SGB, Group) %>% summarise(median_abundance = median(total_abundance), n = n()) %>% kbl() %>% kable_styling()
+# mwi_sgb_abundance <- mwi_sgb_abundance 
+# do a scatter plot of the abundance of sgb in each group
+my_comparisons <- list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Carrier', 'Control_HealthySerosurvey'))
+mwi_sgb_abundance_plot <- ggplot(mwi_sgb_abundance %>% filter(SGB == 'SGB'), aes(x = Group, y = total_abundance, color = Group)) +
+  geom_boxplot() +
+  stat_compare_means(comparisons = my_comparisons) + 
+  stat_compare_means(label.y = 70) + 
+  theme(legend.position = "none") + 
+  labs(y = 'SGB abundance in metagenome (%)', x = '') + 
+  theme(text = element_text(size=18)) + 
+  scale_x_discrete(labels= c('Control', 'Acute', 'Carrier'))
+
+mwi_sgb_abundance_plot$layers[[2]]$aes_params$textsize <- 4
+# which_layers(mwi_sgb_abundance_plot, "GeomSignif")
+
+ggsave(file.path(metaphlan_input_folder, 'mwi_sgb_abundance.png'), mwi_sgb_abundance_plot, width = 8, height = 4.8, units = 'in', dpi = 300)
+
 ```
 
+```{r get_same_same}
+heal_ac_car_taxonomic_all <- filter_taxonomic_maaslin(heal_ac_car_taxonomic)
+heal_ac_car_taxonomic_all_w <- heal_ac_car_taxonomic_all %>% pivot_wider(names_from = value, values_from = c(coef, qval), id_cols = c(feature, lowest_taxonomic_level))
+same_same <- heal_ac_car_taxonomic_all_w %>% filter(qval_Acute_Typhi >= 0.05 & qval_Carrier >= 0.05) %>% mutate(type = 'same_same')
 
+
+heal_ac_car_taxonomic_all_w %>% filter(is.na(qval_Carrier))
+```
+
+```{r make_health_acc_carr_table}
+
+to_get_list <- c('k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Oscillospiraceae.g__Faecalibacterium.s__Faecalibacterium_prausnitzii', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Barnesiellaceae.g__Barnesiella.s__Barnesiella_intestinihominis', 'k__Bacteria.p__Firmicutes.c__Bacilli.o__Lactobacillales.f__Lactobacillaceae.g__Limosilactobacillus.s__Limosilactobacillus_reuteri', 'k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Pasteurellales.f__Pasteurellaceae.g__Haemophilus.s__Haemophilus_parainfluenzae', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Holdemanella.s__Holdemanella_biformis', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Mediterraneibacter.s__Ruminococcus_gnavus', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Peptostreptococcaceae.g__Paeniclostridium.s__Eubacterium_tenue', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Turicibacteraceae.g__Turicibacter.s__Turicibacter_bilis', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Turicibacteraceae.g__Turicibacter.s__Turicibacter_sanguinis', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Odoribacteraceae.g__Odoribacter.s__Odoribacter_splanchnicus', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Blautia.s__Blautia_faecis', 'k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.f__Enterobacteriaceae.g__Escherichia.s__Escherichia_coli', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Lachnospiraceae_unclassified.s__Eubacterium_rectale', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Bacteroidaceae.g__Bacteroides.s__Bacteroides_fragilis', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Holdemanella.s__Holdemanella_porci', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Prevotellaceae.g__Prevotellamassilia.s__Prevotellamassilia_timonensis')
+heal_acc_carr_table <- all_patterns %>% filter(feature %in% to_get_list)
+
+
+```
