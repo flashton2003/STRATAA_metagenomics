@@ -349,9 +349,9 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
 metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_interest, groups_of_interest, comparisons) {
   metaphlan_data <- metaphlan_data %>% select(!lowest_taxonomic_level)
   alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
-  
+  # View(alpha)
   alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
-  
+  # View(alpha_meta)
   # if the length of countries of interest is greater than 1, then include Country in the model
   # if carrier is in the groups of interest, don't include antibiotics in the model (because carriers and healthy are all assumed "No" for antibiotics)
   if (length(countries_of_interest) > 1) {
@@ -393,7 +393,8 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
     rremove("x.text") + 
     rremove("xlab") + 
     rremove("x.ticks") # +rotate_x_text(angle = 45)
-
+  # View(alpha_plot_group)
+  
   antibiotic_comps <- list(c('Yes', 'No'))
   alpha_plot_antibiotics <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Antibiotics_taken_before_sampling_yes_no_assumptions", color = "Antibiotics_taken_before_sampling_yes_no_assumptions") + 
     stat_compare_means(comparisons = antibiotic_comps, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 

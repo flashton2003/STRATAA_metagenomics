@@ -89,6 +89,9 @@ health vs acute vs carrier
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey", "Lane,32712_2"), 'metaphlan')
+# checking the effect of excluding sequencing lane
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey"), 'metaphlan')
 
 
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")

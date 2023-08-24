@@ -565,7 +565,50 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 
 ## healthy vs acute vs carriers 
 
-### maaslin2 taxonomic
+### alpha
+
+```{r alpha_diversity_healthy_acute_carrier}
+
+all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi'), comparisons = list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Carrier', 'Control_HealthySerosurvey')))
+
+all_countries_healthy_acute_carrier_alpha$alpha_by_country
+all_countries_healthy_acute_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+all_countries_healthy_acute_carrier_alpha$alpha_plot_group
+```
+
+### beta
+
+```{r beta_diversity_healthy_acute_carrier}
+
+all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+
+# bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
+# bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+
+mal_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+mal_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+mal_beta_acute_carrier_healthy$pc12
+# mal_beta_acute_carrier_healthy$pc34
+
+nep_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+nep_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+nep_beta_acute_carrier_healthy$pc12
+# nep_beta_acute_carrier_healthy$pc34
+
+mal_beta_acute_carrier_healthy$pc12 / nep_beta_acute_carrier_healthy$pc12  + plot_layout(guides = 'collect')
+
+
+### maaslin2 taxonomic
+
+```{r read_in_heal_ac_car_taxonomic}
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+heal_ac_car_taxonomic_np <- read_in_maaslin('Nepal', groups_to_analyse, variables_for_analysis, 'metaphlan')
+heal_ac_car_taxonomic_np_sig <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) %>% filter(qval <= 0.05) 
+print(nrow(heal_ac_car_taxonomic_np_sig))
+```
+
 
 ```{r read_in_heal_ac_car_taxonomic}
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
@@ -575,6 +618,8 @@ heal_ac_car_taxonomic_cln <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) #%>
 # spread heal_ac_car_taxonomic_cln wider so that the coef is on the same row for each feature
 heal_ac_car_taxonomic_cln_w <- heal_ac_car_taxonomic_cln %>% pivot_wider(names_from = value, values_from = c(coef, qval), id_cols = c(feature, lowest_taxonomic_level))
 
+heal_ac_car_taxonomic_mwi_sig <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) %>% filter(qval <= 0.05) 
+print(nrow(heal_ac_car_taxonomic_mwi_sig))
 ```
 changes relative to healthy state
 ```{r maaslin_heal_ac_car_taxonomic}
