@@ -563,13 +563,15 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 # combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
 ```
 
-## healthy vs acute vs carriers - taxonomic
+## healthy vs acute vs carriers 
+
+### maaslin2 taxonomic
 
 ```{r read_in_heal_ac_car_taxonomic}
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
 heal_ac_car_taxonomic <- read_in_maaslin('Malawi', groups_to_analyse, variables_for_analysis, 'metaphlan')
-heal_ac_car_taxonomic_cln <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) %>% filter(qval <= 0.05) 
+heal_ac_car_taxonomic_cln <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) #%>% filter(qval <= 0.05) 
 # spread heal_ac_car_taxonomic_cln wider so that the coef is on the same row for each feature
 heal_ac_car_taxonomic_cln_w <- heal_ac_car_taxonomic_cln %>% pivot_wider(names_from = value, values_from = c(coef, qval), id_cols = c(feature, lowest_taxonomic_level))
 
@@ -578,38 +580,41 @@ changes relative to healthy state
 ```{r maaslin_heal_ac_car_taxonomic}
 # same_same cant do from here because filtered for qvalue
 # 1
-up_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & coef_Carrier > 0) %>% mutate(type = '1.up_up')
+up_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & coef_Carrier > 0 & qval_Acute_Typhi < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '1.up_up')
 print(nrow(up_up))
 # write_csv(up_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.1.up_up.csv'))
 # 2
-up_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & coef_Carrier < 0) %>% mutate(type = '2.up_down')
+up_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & coef_Carrier < 0 & qval_Acute_Typhi < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '2.up_down')
 print(nrow(up_down))
 # write_csv(up_down, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.2.up_down.csv'))
 # 3
-up_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & is.na(coef_Carrier)) %>% mutate(type = '3.up_same')
+up_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi > 0 & qval_Acute_Typhi < 0.05 & qval_Carrier >= 0.05) %>% mutate(type = '3.up_same')
 print(nrow(up_same))
 # write_csv(up_same, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.3.up_same.csv'))
 # 4
-down_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & coef_Carrier > 0) %>% mutate(type = '4.down_up')
+down_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & coef_Carrier > 0 & qval_Acute_Typhi < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '4.down_up')
 print(nrow(down_up))
 # write_csv(down_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.4.down_up.csv'))
 # 5
-down_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & coef_Carrier < 0) %>% mutate(type = '5.down_down')
+down_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & coef_Carrier < 0 & qval_Acute_Typhi < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '5.down_down')
 print(nrow(down_down))
 # write_csv(down_down, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.5.down_down.csv'))
 # 6
-down_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & is.na(coef_Carrier)) %>% mutate(type = '6.down_same')
+down_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute_Typhi < 0 & qval_Acute_Typhi < 0.05 & qval_Carrier > 0.05) %>% mutate(type = '6.down_same')
 print(nrow(down_same))
 # write_csv(down_same, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.6.down_same.csv'))
 # 7
-same_up <- heal_ac_car_taxonomic_cln_w %>% filter(is.na(coef_Acute_Typhi) & coef_Carrier > 0) %>% mutate(type = '7.same_up')
+same_up <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute_Typhi > 0.05 & qval_Carrier < 0.05 & coef_Carrier > 0) %>% mutate(type = '7.same_up')
 print(nrow(same_up))
 # write_csv(same_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.7.same_up.csv'))
 # 8
-same_down <- heal_ac_car_taxonomic_cln_w %>% filter(is.na(coef_Acute_Typhi) & coef_Carrier < 0) %>% mutate(type = '8.same_down')
+same_down <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute_Typhi > 0.05 & qval_Carrier < 0.05 & coef_Carrier < 0) %>% mutate(type = '8.same_down')
 print(nrow(same_down))
+# 9
+same_same <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute_Typhi >= 0.05 & qval_Carrier >= 0.05) %>% mutate(type = '9.same_same')
+print(nrow(same_same))
 
-all_patterns <- rbind(up_up, up_down, up_same, down_up, down_down, down_same, same_up, same_down)
+all_patterns <- rbind(up_up, up_down, up_same, down_up, down_down, down_same, same_up, same_down, same_same)
 
 write_csv(all_patterns, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.all_patterns.csv')) 
 
@@ -638,7 +643,7 @@ prop.test(x = c(prop_up_in_health_only$n_sgb, prop_up_in_car_only$n_sgb), n = c(
 
 strataa_metaphlan_data_cln <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) 
 rownames(strataa_metaphlan_data_cln) <- NULL
-strataa_metaphlan_data_l <- strataa_metaphlan_data_cln %>% pivot_longer(!feature, names_to = 'sample', values_to = 'abundance') %>% left_join(strataa_metaphlan_metadata %>% mutate(sample = rownames(strataa_metaphlan_metadata)), by = 'sample')
+strataa_metaphlan_data_l <- strataa_metaphlan_data_cln %>% pivot_longer(!c(feature, lowest_taxonomic_level), names_to = 'sample', values_to = 'abundance') %>% left_join(strataa_metaphlan_metadata %>% mutate(sample = rownames(strataa_metaphlan_metadata)), by = 'sample')
 # head(strataa_metaphlan_data_l)
 strataa_metaphlan_data_mwi_sp <- strataa_metaphlan_data_l %>% filter(Country == 'Malawi', str_detect(feature, 's__'), str_detect(feature, 't__', negate = TRUE)) %>% mutate(SGB = str_detect(feature, '_SGB'))
 head(strataa_metaphlan_data_mwi_sp)
@@ -665,18 +670,17 @@ ggsave(file.path(metaphlan_input_folder, 'mwi_sgb_abundance.png'), mwi_sgb_abund
 ```
 
 ```{r get_same_same}
-heal_ac_car_taxonomic_all <- filter_taxonomic_maaslin(heal_ac_car_taxonomic)
-heal_ac_car_taxonomic_all_w <- heal_ac_car_taxonomic_all %>% pivot_wider(names_from = value, values_from = c(coef, qval), id_cols = c(feature, lowest_taxonomic_level))
-same_same <- heal_ac_car_taxonomic_all_w %>% filter(qval_Acute_Typhi >= 0.05 & qval_Carrier >= 0.05) %>% mutate(type = 'same_same')
 
 
-heal_ac_car_taxonomic_all_w %>% filter(is.na(qval_Carrier))
+
+# heal_ac_car_taxonomic_all_w %>% filter(is.na(qval_Carrier))
 ```
 
 ```{r make_health_acc_carr_table}
 
 to_get_list <- c('k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Oscillospiraceae.g__Faecalibacterium.s__Faecalibacterium_prausnitzii', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Barnesiellaceae.g__Barnesiella.s__Barnesiella_intestinihominis', 'k__Bacteria.p__Firmicutes.c__Bacilli.o__Lactobacillales.f__Lactobacillaceae.g__Limosilactobacillus.s__Limosilactobacillus_reuteri', 'k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Pasteurellales.f__Pasteurellaceae.g__Haemophilus.s__Haemophilus_parainfluenzae', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Holdemanella.s__Holdemanella_biformis', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Mediterraneibacter.s__Ruminococcus_gnavus', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Peptostreptococcaceae.g__Paeniclostridium.s__Eubacterium_tenue', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Turicibacteraceae.g__Turicibacter.s__Turicibacter_bilis', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Turicibacteraceae.g__Turicibacter.s__Turicibacter_sanguinis', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Odoribacteraceae.g__Odoribacter.s__Odoribacter_splanchnicus', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Blautia.s__Blautia_faecis', 'k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.f__Enterobacteriaceae.g__Escherichia.s__Escherichia_coli', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Lachnospiraceae_unclassified.s__Eubacterium_rectale', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Bacteroidaceae.g__Bacteroides.s__Bacteroides_fragilis', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Holdemanella.s__Holdemanella_porci', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Prevotellaceae.g__Prevotellamassilia.s__Prevotellamassilia_timonensis')
+# this one doesn't include the Oscillospiraceae, so will just have to point towards the supplementary table for those.
 heal_acc_carr_table <- all_patterns %>% filter(feature %in% to_get_list)
-
+write_csv(heal_acc_carr_table, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.health_acc_carr_table.csv'))
 
 ```
