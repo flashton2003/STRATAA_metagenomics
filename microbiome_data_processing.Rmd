@@ -8,6 +8,11 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 library(kableExtra)
 library(dplyr)
 library(stringr)
+library(tibble)
+library(broom)
+library(rstatix)
+library(ggplot2)
+library(ggpubr)
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
@@ -18,6 +23,7 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 strataa_disease_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
 strataa_carrier_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.12/analyse_output_healthy_carrier/tsv-results/all_RPKMs.transpose.csv"
 
+amr_data_path <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/2023.08.30.strataa_microbiome.subsamp.rgi.txt"
 #strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
 ```
 
@@ -152,3 +158,161 @@ run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin
 
 ```
 
+## amr analysis
+
+```{r read_in_amr, include=FALSE}
+
+amr_data <- read_delim(amr_data_path, delim = "\t") %>% separate_wider_delim(`ARO Term`, names = c("sample", "ARO Term"), delim = ".gene_mapping_data.txt:")
+amr_data_cln <- amr_data %>% filter(`Average Percent Coverage` == 100) %>% mutate(reads_per_kb = `Completely Mapped Reads` / (`Reference Length` / 1000)) %>% select(sample, `ARO Term`, reads_per_kb)
+
+amr_data_cln_meta <- left_join(amr_data_cln, metadata, by = join_by(sample == Lane))
+
+amr_data_cln_w <- amr_data_cln %>% pivot_wider(names_from = sample, values_from = reads_per_kb) %>% replace(is.na(.), 0)
+amr_data_cln_w <- amr_data_cln_w %>% column_to_rownames(var = "ARO Term")
+
+metadata_r <- metadata
+row.names(metadata_r) <-  metadata_r$Lane
+
+# amr_data_cln
+
+# amr_data_cln_w_binary <- amr_data_cln_w %>% replace(.>0, 1)
+
+```
+
+```{r run_maaslin_amr, include=FALSE}
+Maaslin2(input_data = amr_data_cln_w, input_metadata = metadata_r, analysis_method = "LM", min_prevalence = 0,
+           output         = '~/Desktop/maaslin2_output_amr', 
+           fixed_effects  = c('Country'),
+           reference = 'Country,Malawi')
+```
+
+```{r kruskal}
+# widen, then lengthen so that the matrix is complete. otherwise have lots of genes with no entry for a sample, when it should be 0.
+# i.e. if you htink of the all by all matrix, the clean one has lots of NAs in.
+amr_data_cln_w_l <- amr_data_cln_w %>% pivot_longer(!`ARO Term`, names_to = "sample", values_to = "reads_per_kb")
+amr_data_cln_w_l_meta <- left_join(amr_data_cln_w_l, metadata, by = join_by(sample == Lane))
+
+amr_country_kruskal_results <- amr_data_cln_w_l_meta %>% group_by(`ARO Term`) %>% do(tidy(kruskal.test(reads_per_kb ~ Country, data = .))) %>% ungroup() %>% mutate(p.adjust = p.adjust(p.value, method = "bonferroni")) %>% arrange(p.adjust)
+amr_country_kruskal_results_sig <- amr_country_kruskal_results %>% filter(p.adjust < 0.05) %>% pull(`ARO Term`)
+
+amr_data_cln_w_l_meta_sig <- amr_data_cln_w_l_meta %>% filter(`ARO Term` %in% amr_country_kruskal_results_sig)
+
+r <- pairwise_wilcox_test(amr_data_cln_w_l_meta_sig, formula = reads_per_kb ~ Country, paired = FALSE, p.adjust.method = "bonferroni", comparisons = list(c('Bangladesh', 'Malawi'), c('Bangladesh', 'Nepal'), c('Malawi', 'Nepal')))
+
+pairwise_results <- list()
+# Loop through each significant gene
+for (gene_name in amr_country_kruskal_results_sig) {
+    gene_data <- filter(amr_data_cln_w_l_meta_sig, `ARO Term` == gene_name)
+    
+    # Check if all countries are present for the gene
+    if (length(unique(gene_data$Country)) == 3) {
+        combinations <- combn(unique(gene_data$Country), 2, simplify = TRUE)
+        
+        # Loop through country combinations
+        for (col in seq(ncol(combinations))) {
+            country1 <- combinations[1, col]
+            country2 <- combinations[2, col]
+            
+            test_result <- wilcox.test(reads_per_kb ~ Country, data = filter(gene_data, Country %in% c(country1, country2)))
+            
+            pairwise_results[[length(pairwise_results) + 1]] <- data.frame(
+                gene = gene_name,
+                comparison = paste(country1, "vs", country2),
+                statistic = test_result$statistic,
+                p.value = test_result$p.value
+            )
+        }
+    }
+}
+
+# Convert list to dataframe and adjust p-values
+pairwise_results_df <- do.call(rbind, pairwise_results)
+pairwise_results_df$adj.p.value <- p.adjust(pairwise_results_df$p.value, method = "bonferroni")
+
+# print(pairwise_results_df)
+write_csv(pairwise_results_df, file.path('~/Desktop', "pairwise_results.csv"))
+
+```
+
+```{r amr_plots}
+
+
+# Calculate pairwise comparisons for each gene and store results in a list
+# multiply the pvalue by 156 as this is the number of comparisons to get the 
+# bonferoni corrected p-value
+
+x <- amr_data_cln_w_l_meta_sig %>% filter(`ARO Term` == "tet(M)")
+xx <- wilcox.test(reads_per_kb ~ Country, data = filter(x, Country %in% c("Malawi", "Bangladesh")))
+
+pairwise_p_values <- lapply(amr_country_kruskal_results_sig, function(gene_name) {
+  gene_data <- amr_data_cln_w_l_meta_sig %>% 
+    filter(`ARO Term` == gene_name)
+  
+  list(
+    country1_vs_country2 = wilcox.test(reads_per_kb ~ Country, data = filter(gene_data, Country %in% c("Malawi", "Bangladesh")))$p.value * 156,
+    country2_vs_country3 = wilcox.test(reads_per_kb ~ Country, data = filter(gene_data, Country %in% c("Bangladesh", "Nepal")))$p.value * 156,
+    country1_vs_country3 = wilcox.test(reads_per_kb ~ Country, data = filter(gene_data, Country %in% c("Malawi", "Nepal")))$p.value * 156
+  )
+})
+
+modify_values <- function(x) {
+  if (is.na(x)) {
+    return(NaN)
+  } else if (x > 1) {
+    return(1)
+  } else {
+    return(x)
+  }
+}
+
+# Apply the modification function to the nested list
+pairwise_p_values <- lapply(pairwise_p_values, function(gene) {
+  lapply(gene, modify_values)
+})
+
+
+names(pairwise_p_values) <- amr_country_kruskal_results_sig
+
+
+# Loop through each gene, create the boxplot, add p-values, and save
+for (gene_name in amr_country_kruskal_results_sig) {
+  
+  gene_data <- amr_data_cln_w_l_meta_sig %>% dplyr::filter(`ARO Term` == gene_name)
+  
+  # Extract p-values for current gene
+  current_p_values <- pairwise_p_values[[gene_name]]
+  max_read <- max(gene_data$reads_per_kb)
+
+  # Create boxplot
+  p <- ggplot(gene_data, aes(x = Country, y = reads_per_kb, fill = Country)) +
+    geom_boxplot() +
+
+    geom_segment(aes(x = 1, xend = 2, y = max_read * 0.75, yend = max_read * 0.75)) +
+    geom_segment(aes(x = 2, xend = 3, y = max_read * 0.85, yend = max_read * 0.85)) +
+    geom_segment(aes(x = 1, xend = 3, y = max_read * 0.95, yend = max_read * 0.95)) +
+    
+
+    geom_text(aes(x = 1.5, y = max(reads_per_kb) * 0.8, label = paste0("p = ", round(current_p_values$country1_vs_country2, 3)))) +
+    geom_text(aes(x = 2.5, y = max(reads_per_kb) * 0.9, label = paste0("p = ", round(current_p_values$country2_vs_country3, 3)))) +
+    geom_text(aes(x = 2, y = max(reads_per_kb), label = paste0("p = ", round(current_p_values$country1_vs_country3, 3)))) +
+    scale_y_log10() +
+    theme_bw() +
+    labs(title = paste0("Boxplot of Reads by Country for ", gene_name),
+         y = "Number of Reads",
+         x = "Country")
+  
+  # Save the plot
+  ggsave(filename =  file.path('~/Desktop', paste(gene_name, "_log_boxplot.png")), plot = p, width = 10, height = 6)
+}
+
+```
+
+```{r amr_stats}
+
+```
+
+```{r basic_amr_stats}
+length(unique(amr_data_cln$`ARO Term`))
+amr_data_cln %>% group_by(`ARO Term`) %>% summarise(n = n()) %>% arrange(desc(n))
+
+```
