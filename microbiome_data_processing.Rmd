@@ -161,63 +161,150 @@ run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin
 
 ## amr analysis
 
+Need to setup a data frame with every sample/drug combination so that capture the zeroes. 
+
 ```{r read_in_amr, include=FALSE}
 
 ncbi_amr_info <- read_csv(ncbi_amr_info_path)
 
 amr_data <- read_delim(amr_data_path, delim = "\t") %>% separate_wider_delim(`ARO Term`, names = c("sample", "ARO Term"), delim = ".gene_mapping_data.txt:") %>% mutate(reads_per_kb = `Completely Mapped Reads` / (`Reference Length` / 1000)) 
+
+# write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
 amr_data_with_ncbi <- left_join(amr_data, ncbi_amr_info, by = join_by(`ARO Term` == combined_name))
 
-write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
-
+# 1. set the samples and classes to be analysed
 samples <- distinct(amr_data_with_ncbi, sample) %>% pull(sample)
 classes <- distinct(amr_data_with_ncbi, Class) %>% filter(!is.na(Class)) %>% pull(Class) 
 
-amr_summarised <- expand.grid(sample = samples, drug_class = classes)
-
+# 2. make an empty data frame, with just the samples and classes
+amr_summarised <- expand.grid(sample = samples, Class = classes)
+# 3. add the metadata
+amr_summarised_meta <- left_join(amr_summarised, metadata, by = join_by(sample == Lane))
 
 ```
 
 ```{r ncbi_amr_info}
-
+# 4. take the "found" genes
+# we filter for 100% cov here, and these are the "present" genes
 amr_data_with_ncbi_cln <- amr_data_with_ncbi %>% filter(`Average Percent Coverage` == 100) %>% filter(Class != 'NA')
-amr_data_with_ncbi_cln_meta <- left_join(amr_data_with_ncbi_cln, metadata, by = join_by(sample == Lane))
+
+# 5. summarise the data (by class)
+amr_data_with_ncbi_cln_summarised <- amr_data_with_ncbi_cln %>% group_by(sample, Class) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb))
+# after joining, everything that doesnt have a value in n is a zero (i.e. no genes of that class present in that sample)
+# 6. join the data to the template (amr_summarised_meta)
+amr_summarised_meta_with_data <- left_join(amr_summarised_meta, amr_data_with_ncbi_cln_summarised, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% mutate(Class = ifelse(is.na(Class), "None", Class))
+
+# amr_data_with_ncbi_cln_meta <- left_join(amr_data_with_ncbi_cln, metadata, by = join_by(sample == Lane))
+View(amr_summarised_meta_with_data %>% filter(Class == 'AMINOGLYCOSIDE') %>% select(sample, Class, n, Group, Country) %>% arrange(Country, Group))
+
 ```
+
+
+```{r overall_graphs}
+number_of_amr_genes_per_sample <- amr_summarised_meta_with_data %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
+number_of_amr_genes_per_sample %>% group_by(Country) %>% summarise(median_n = median(n), median_sum_rpk = median(sum_reads_per_kb))  %>% kbl() %>% kable_styling()
+p <- ggplot(number_of_amr_genes_per_sample, aes(x = Country, y = n)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.1, height = 0) +
+  stat_compare_means() + 
+  stat_compare_means(comparisons = list(c('Nepal', 'Malawi'), c('Nepal', 'Bangladesh'), c('Bangladesh', 'Malawi'))) + 
+  rremove("x.text") + 
+  rremove("xlab") + 
+  ylab('Number of AMR genes identified per sample') +
+  rotate_x_text(angle = 45)
+ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', "overall_number_boxplot.png"), plot = p, width = 5, height = 4)
+
+p
+
+p <- ggplot(number_of_amr_genes_per_sample, aes(x = Country, y = sum_reads_per_kb)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.1, height = 0) +
+  stat_compare_means() + 
+  stat_compare_means(comparisons = list(c('Nepal', 'Malawi'), c('Nepal', 'Bangladesh'), c('Bangladesh', 'Malawi'))) + 
+  rremove("x.text") + 
+  rremove("xlab") + 
+  rotate_x_text(angle = 45) +
+  scale_y_log10()
+ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', "overall_rpkm_boxplot.png"), plot = p, width = 5, height = 4)
+
+p
+```
+
 
 
 ```{r ncbi_amr_graphs}
 
-amr_data_with_ncbi_cln_meta_summarised <- amr_data_with_ncbi_cln_meta %>% group_by(sample, Class) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
-amr_data_with_ncbi_cln_meta_summarised$Group <- factor(amr_data_with_ncbi_cln_meta_summarised$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
+# amr_data_with_ncbi_cln_meta_summarised <- amr_data_with_ncbi_cln_meta %>% group_by(sample, Class) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
+amr_summarised_meta_with_data$Group <- factor(amr_summarised_meta_with_data$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
 
-classes <- unique(amr_data_with_ncbi_cln_meta_summarised$Class)
+# classes <- unique(amr_summarised_meta_with_data$Class)
 # cut down classes with some manual removal of low numbers
 classes <- c("AMINOGLYCOSIDE", "BETA-LACTAM", "LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN", "TETRACYCLINE", "TRIMETHOPRIM", "EFFLUX", "SULFONAMIDE")
 
+# ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "number_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+
+
+# by country by group, number of genes
 for (drug_class in classes) {
-    drug_class_data <- amr_data_with_ncbi_cln_meta_summarised %>% filter(Class == drug_class)
-    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "n", x = "Group", color = "Group") + 
-      stat_compare_means() + 
+  # print(drug_class)
+  drug_class_data <- filter(amr_summarised_meta_with_data, Class == drug_class)
+  # View(drug_class_data)
+  p <- ggviolin(drug_class_data, facet.by = "Country", y = "n", x = "Group", color = "Group", draw_quantiles = 0.5) + 
+    stat_compare_means(label.y = max(drug_class_data$n) * 0.9) + 
+    stat_compare_means(comparisons = list(c('Control_HealthySerosurvey', 'Acute_Typhi'), c('Control_HealthySerosurvey', 'Carrier'), c('Acute_Typhi', 'Carrier'))) + 
+    rremove("x.text") + 
+    rremove("xlab") + 
+    rotate_x_text(angle = 45) +
+    ggtitle(drug_class) +
+    geom_jitter(aes(color = Group), width = 0.2, height = 0, alpha = 0.2)
+  ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "number_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+# by country, number of genes
+for (drug_class in classes) {
+    drug_class_data <- amr_summarised_meta_with_data %>% filter(Class == drug_class)
+    p <- ggboxplot(drug_class_data, y = "n", x = "Country") + 
+      stat_compare_means(label.y = max(drug_class_data$n) * 0.9) + 
+      stat_compare_means(comparisons = list(c('Nepal', 'Malawi'), c('Nepal', 'Bangladesh'), c('Bangladesh', 'Malawi'))) +
       rremove("x.text") + 
       rremove("xlab") + 
       rotate_x_text(angle = 45) +
-      ggtitle(drug_class)
-    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "number_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+      ggtitle(drug_class) +
+      geom_jitter(aes(color = Group), width = 0.2, height = 0, alpha = 0.2)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "number_boxplot_country.png", sep = '_')), plot = p, width = 10, height = 6)
 }
-
-
+# by country, by group, rpkm
 for (drug_class in classes) {
-    drug_class_data <- amr_data_with_ncbi_cln_meta_summarised %>% filter(Class == drug_class)
+    drug_class_data <- amr_summarised_meta_with_data %>% filter(Class == drug_class)
+    drug_class_data <- mutate(drug_class_data, sum_reads_per_kb = ifelse(sum_reads_per_kb == 0, 1, sum_reads_per_kb))
+    # print(drug_class)
     # View(drug_class_data)
     
-    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "sum_reads_per_kb", x = "Group", color = "Group") + 
-      stat_compare_means() + 
+    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "sum_reads_per_kb", x = "Group", color = "Group", add = 'jitter') + 
+      stat_compare_means(label.y = max(drug_class_data$reads_per_kb) * 0.9) + 
+      stat_compare_means(comparisons = list(c('Control_HealthySerosurvey', 'Acute_Typhi'), c('Control_HealthySerosurvey', 'Carrier'), c('Acute_Typhi', 'Carrier'))) + 
       rremove("x.text") + 
       rremove("xlab") + 
       rotate_x_text(angle = 45) +
-      ggtitle(drug_class)
+      ggtitle(drug_class) + scale_y_log10()
     # print(drug_class)
     ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', paste(gsub("/", "_", drug_class), "rpkb_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+# by country, rpkm
+for (drug_class in classes) {
+    drug_class_data <- amr_summarised_meta_with_data %>% filter(Class == drug_class)
+    drug_class_data <- mutate(drug_class_data, sum_reads_per_kb = ifelse(sum_reads_per_kb == 0, 1, sum_reads_per_kb))
+    p <- ggboxplot(drug_class_data, y = "sum_reads_per_kb", x = "Country", outlier.shape = NA) + 
+      stat_compare_means(label.y = log10(max(drug_class_data$sum_reads_per_kb) * 0.9)) + 
+      stat_compare_means(comparisons = list(c('Nepal', 'Malawi'), c('Nepal', 'Bangladesh'), c('Bangladesh', 'Malawi'))) + 
+      rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class) +
+      geom_jitter(aes(color = Group), width = 0.2, height = 0) +
+      scale_y_log10()
+    # print(drug_class)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', paste(gsub("/", "_", drug_class), "rpkb_boxplot_country.png", sep = '_')), plot = p, width = 10, height = 6)
 }
 
 ```
@@ -225,34 +312,82 @@ for (drug_class in classes) {
 
 ```{r betalactam_graphs}
 
-amr_data_with_ncbi_cln_meta_betalactams_summarised <- amr_data_with_ncbi_cln_meta %>% filter(Class == 'BETA-LACTAM') %>% group_by(sample, Subclass) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
-amr_data_with_ncbi_cln_meta_betalactams_summarised$Group <- factor(amr_data_with_ncbi_cln_meta_betalactams_summarised$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
+# 1. set the samples and classes to be analysed (samples set above)
 subclasses <- c('BETA-LACTAM', 'CEPHALOSPORIN')
+# 2. make an empty data frame, with just the samples and classes
+amr_summarised_betalac <- expand.grid(sample = samples, Subclass = subclasses)
+# 3. add the metadata
+amr_summarised_betalac_meta <- left_join(amr_summarised_betalac, metadata, by = join_by(sample == Lane))
+# 4. take the found genes (can just use amr_data_with_ncbi_cln from above)
+# 5. summarise the data (by Subclass)
+amr_data_with_ncbi_cln_betalac_summarised <- amr_data_with_ncbi_cln %>% group_by(sample, Subclass) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb))
 
+# 6. join the data to the template (amr_summarised_betalac_meta)
+
+amr_summarised_meta_with_data_betalac <- left_join(amr_summarised_betalac_meta, amr_data_with_ncbi_cln_betalac_summarised, by = join_by(sample == sample, Subclass == Subclass)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb))
+
+# after joining, everything that doesnt have a value in n is a zero (i.e. no genes of that class present in that sample)
+
+amr_summarised_meta_with_data_betalac$Group <- factor(amr_summarised_meta_with_data_betalac$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
+
+# amr_summarised_meta_with_data_betalac$Group <- factor(amr_summarised_meta_with_data_betalac$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
+
+# by country by group, boxplot of number of genes
 for (drug_class in subclasses) {
-    drug_class_data <- amr_data_with_ncbi_cln_meta_betalactams_summarised %>% filter(Subclass == drug_class)
+    drug_class_data <- amr_summarised_meta_with_data_betalac %>% filter(Subclass == drug_class)
     p <- ggboxplot(drug_class_data, facet.by = "Country", y = "n", x = "Group", color = "Group") + 
-      stat_compare_means() + 
+      stat_compare_means(label.y = max(drug_class_data$n) * 0.9) + 
+      stat_compare_means(comparisons = list(c('Control_HealthySerosurvey', 'Acute_Typhi'), c('Control_HealthySerosurvey', 'Carrier'), c('Acute_Typhi', 'Carrier'))) + 
       rremove("x.text") + 
       rremove("xlab") + 
       rotate_x_text(angle = 45) +
-      ggtitle(drug_class)
+      ggtitle(drug_class) +
+      geom_jitter(aes(color = Group), width = 0.2, height = 0, alpha = 0.2)
     ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "bl_subclass_number_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
 }
 
-
+# by country, boxplot of number of genes
 for (drug_class in subclasses) {
-    drug_class_data <- amr_data_with_ncbi_cln_meta_betalactams_summarised %>% filter(Subclass == drug_class)
-    # View(drug_class_data)
-    
-    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "sum_reads_per_kb", x = "Group", color = "Group") + 
-      stat_compare_means() + 
+    drug_class_data <- amr_summarised_meta_with_data_betalac %>% filter(Subclass == drug_class)
+    p <- ggboxplot(drug_class_data, y = "n", x = "Country") + 
+      stat_compare_means(label.y = max(drug_class_data$n) * 0.9) + 
+      stat_compare_means(comparisons = list(c('Nepal', 'Malawi'), c('Nepal', 'Bangladesh'), c('Bangladesh', 'Malawi'))) +       rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class) +
+      geom_jitter(aes(color = Group), width = 0.2, height = 0, alpha = 0.2)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "bl_subclass_number_boxplot_country.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+# by country by group, boxplot of rpkm
+for (drug_class in subclasses) {
+    drug_class_data <- amr_summarised_meta_with_data_betalac %>% filter(Subclass == drug_class)
+    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "sum_reads_per_kb", x = "Group", color = "Group", add = 'jitter') + 
+      stat_compare_means(label.y = max(drug_class_data$sum_reads_per_kb) * 0.9) + 
+      stat_compare_means(comparisons = list(c('Control_HealthySerosurvey', 'Acute_Typhi'), c('Control_HealthySerosurvey', 'Carrier'), c('Acute_Typhi', 'Carrier'))) + 
       rremove("x.text") + 
       rremove("xlab") + 
       rotate_x_text(angle = 45) +
       ggtitle(drug_class)
     # print(drug_class)
     ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', paste(gsub("/", "_", drug_class), "bl_subclass_rpkb_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+# by country, boxplot of rpkm
+for (drug_class in subclasses) {
+    drug_class_data <- amr_summarised_meta_with_data_betalac %>% filter(Subclass == drug_class)
+    # View(drug_class_data)
+    
+    p <- ggboxplot(drug_class_data, y = "sum_reads_per_kb", x = "Country", outlier.shape = NA) + 
+      stat_compare_means(label.y = max(drug_class_data$sum_reads_per_kb) * 0.9) + 
+      stat_compare_means(comparisons = list(c('Nepal', 'Malawi'), c('Nepal', 'Bangladesh'), c('Bangladesh', 'Malawi'))) + 
+      rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class) +
+      geom_jitter(aes(color = Group), width = 0.2, height = 0)
+    # print(drug_class)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', paste(gsub("/", "_", drug_class), "bl_subclass_rpkb_boxplot_country.png", sep = '_')), plot = p, width = 10, height = 6)
 }
 
 ```
