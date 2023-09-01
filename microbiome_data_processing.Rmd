@@ -25,6 +25,7 @@ strataa_carrier_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microb
 
 amr_data_path <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/2023.08.30.strataa_microbiome.subsamp.rgi.txt"
 #strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
+ncbi_amr_info_path <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/ncbi_amr/2023.08.31/refgenes.modified.csv"
 ```
 
 ## Setting general params
@@ -162,14 +163,107 @@ run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin
 
 ```{r read_in_amr, include=FALSE}
 
-amr_data <- read_delim(amr_data_path, delim = "\t") %>% separate_wider_delim(`ARO Term`, names = c("sample", "ARO Term"), delim = ".gene_mapping_data.txt:")
-amr_data_cln <- amr_data %>% filter(`Average Percent Coverage` == 100) %>% mutate(reads_per_kb = `Completely Mapped Reads` / (`Reference Length` / 1000)) %>% select(sample, `ARO Term`, reads_per_kb)
+ncbi_amr_info <- read_csv(ncbi_amr_info_path)
 
+amr_data <- read_delim(amr_data_path, delim = "\t") %>% separate_wider_delim(`ARO Term`, names = c("sample", "ARO Term"), delim = ".gene_mapping_data.txt:") %>% mutate(reads_per_kb = `Completely Mapped Reads` / (`Reference Length` / 1000)) 
+amr_data_with_ncbi <- left_join(amr_data, ncbi_amr_info, by = join_by(`ARO Term` == combined_name))
+
+write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
+
+samples <- distinct(amr_data_with_ncbi, sample) %>% pull(sample)
+classes <- distinct(amr_data_with_ncbi, Class) %>% filter(!is.na(Class)) %>% pull(Class) 
+
+amr_summarised <- expand.grid(sample = samples, drug_class = classes)
+
+
+```
+
+```{r ncbi_amr_info}
+
+amr_data_with_ncbi_cln <- amr_data_with_ncbi %>% filter(`Average Percent Coverage` == 100) %>% filter(Class != 'NA')
+amr_data_with_ncbi_cln_meta <- left_join(amr_data_with_ncbi_cln, metadata, by = join_by(sample == Lane))
+```
+
+
+```{r ncbi_amr_graphs}
+
+amr_data_with_ncbi_cln_meta_summarised <- amr_data_with_ncbi_cln_meta %>% group_by(sample, Class) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
+amr_data_with_ncbi_cln_meta_summarised$Group <- factor(amr_data_with_ncbi_cln_meta_summarised$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
+
+classes <- unique(amr_data_with_ncbi_cln_meta_summarised$Class)
+# cut down classes with some manual removal of low numbers
+classes <- c("AMINOGLYCOSIDE", "BETA-LACTAM", "LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN", "TETRACYCLINE", "TRIMETHOPRIM", "EFFLUX", "SULFONAMIDE")
+
+for (drug_class in classes) {
+    drug_class_data <- amr_data_with_ncbi_cln_meta_summarised %>% filter(Class == drug_class)
+    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "n", x = "Group", color = "Group") + 
+      stat_compare_means() + 
+      rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "number_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+
+for (drug_class in classes) {
+    drug_class_data <- amr_data_with_ncbi_cln_meta_summarised %>% filter(Class == drug_class)
+    # View(drug_class_data)
+    
+    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "sum_reads_per_kb", x = "Group", color = "Group") + 
+      stat_compare_means() + 
+      rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class)
+    # print(drug_class)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', paste(gsub("/", "_", drug_class), "rpkb_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+```
+
+
+```{r betalactam_graphs}
+
+amr_data_with_ncbi_cln_meta_betalactams_summarised <- amr_data_with_ncbi_cln_meta %>% filter(Class == 'BETA-LACTAM') %>% group_by(sample, Subclass) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
+amr_data_with_ncbi_cln_meta_betalactams_summarised$Group <- factor(amr_data_with_ncbi_cln_meta_betalactams_summarised$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
+subclasses <- c('BETA-LACTAM', 'CEPHALOSPORIN')
+
+for (drug_class in subclasses) {
+    drug_class_data <- amr_data_with_ncbi_cln_meta_betalactams_summarised %>% filter(Subclass == drug_class)
+    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "n", x = "Group", color = "Group") + 
+      stat_compare_means() + 
+      rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs',  paste(gsub("/", "_", drug_class), "bl_subclass_number_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+
+for (drug_class in subclasses) {
+    drug_class_data <- amr_data_with_ncbi_cln_meta_betalactams_summarised %>% filter(Subclass == drug_class)
+    # View(drug_class_data)
+    
+    p <- ggboxplot(drug_class_data, facet.by = "Country", y = "sum_reads_per_kb", x = "Group", color = "Group") + 
+      stat_compare_means() + 
+      rremove("x.text") + 
+      rremove("xlab") + 
+      rotate_x_text(angle = 45) +
+      ggtitle(drug_class)
+    # print(drug_class)
+    ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs', paste(gsub("/", "_", drug_class), "bl_subclass_rpkb_boxplot.png", sep = '_')), plot = p, width = 10, height = 6)
+}
+
+```
+
+```{r amr_data_cleaning}
+
+amr_data_cln <- amr_data %>% filter(`Average Percent Coverage` == 100)
 amr_data_cln_meta <- left_join(amr_data_cln, metadata, by = join_by(sample == Lane))
 
-amr_data_cln_w <- amr_data_cln %>% pivot_wider(names_from = sample, values_from = reads_per_kb) %>% replace(is.na(.), 0)
+amr_data_cln_w <- amr_data_cln %>% select(sample, `ARO Term`, reads_per_kb) %>% pivot_wider(names_from = sample, values_from = reads_per_kb) %>% replace(is.na(.), 0)
 amr_data_cln_w <- amr_data_cln_w %>% column_to_rownames(var = "ARO Term")
-
 metadata_r <- metadata
 row.names(metadata_r) <-  metadata_r$Lane
 
@@ -179,12 +273,21 @@ row.names(metadata_r) <-  metadata_r$Lane
 
 ```
 
+```{r basic_amr_plots}
+
+
+amr_data_cln_meta_extended <- amr_data_cln_meta %>% select(`Drug Class`, Country, Group) %>% separate_longer_delim(`Drug Class`, '; ')
+amr_data_cln_meta_extended_summarised <- amr_data_cln_meta_extended %>% group_by(`Drug Class`, Country, Group) %>% summarise(n = n())
+```
+
 ```{r run_maaslin_amr, include=FALSE}
 Maaslin2(input_data = amr_data_cln_w, input_metadata = metadata_r, analysis_method = "LM", min_prevalence = 0,
            output         = '~/Desktop/maaslin2_output_amr', 
-           fixed_effects  = c('Country'),
-           reference = 'Country,Malawi')
+           fixed_effects  = c('Country', 'Sex', 'Group', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions'),
+           reference = c('Country,Malawi', 'Group,Control_HealthySerosurvey','Antibiotics_taken_before_sampling_yes_no_assumptions,Yes'))
 ```
+
+Run kruskall on everything, and then do all the pairwise wilcoxon tests for every gene where the kruskal test is significant.
 
 ```{r kruskal}
 # widen, then lengthen so that the matrix is complete. otherwise have lots of genes with no entry for a sample, when it should be 0.
@@ -197,7 +300,6 @@ amr_country_kruskal_results_sig <- amr_country_kruskal_results %>% filter(p.adju
 
 amr_data_cln_w_l_meta_sig <- amr_data_cln_w_l_meta %>% filter(`ARO Term` %in% amr_country_kruskal_results_sig)
 
-r <- pairwise_wilcox_test(amr_data_cln_w_l_meta_sig, formula = reads_per_kb ~ Country, paired = FALSE, p.adjust.method = "bonferroni", comparisons = list(c('Bangladesh', 'Malawi'), c('Bangladesh', 'Nepal'), c('Malawi', 'Nepal')))
 
 pairwise_results <- list()
 # Loop through each significant gene
