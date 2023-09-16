@@ -330,7 +330,7 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
   # View(pn_res)
 
   # View(pcoa_df)
-  title <- paste("PCoA of metaphlan data for", paste(countries_of_interest, collapse = "_"), sep = " ")
+  title <- paste(countries_of_interest, collapse = "_")
   pc12 <- ggplot(pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
