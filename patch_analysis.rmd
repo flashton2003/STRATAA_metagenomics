@@ -1,0 +1,183 @@
+---
+title: "PATCH Microbiome"
+author: "Philip Ashton"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+      toc: true
+      toc_float: true
+      theme: united
+      number_sections: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+
+```
+
+# PATCH microbiome analysis
+
+## Imports
+```{r}
+library(rbiom)
+library(kableExtra)
+library(ggplot2)
+library(ggpubr)
+library(ggforce)
+library(patchwork)
+library(vegan)
+library(dplyr)
+library(forcats)
+
+```
+
+
+## Sources
+
+The file handles are set in config.R as they're used by both this script and data_cleaning.
+
+```{r source}
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
+```
+
+
+## Metadata basics
+
+First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
+
+
+```{r metadata_read_in}
+
+patch_metadata = read.csv(file = patch_metadata_handle, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+metadata_subset <- patch_metadata %>% select(Run, Patient, Gender, Group, Species, Visit, Day, Diagnosis, Dose)
+```
+
+## read in metaphlan data
+```{r read_in_metaphlan}
+metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+```
+
+## Alpha diversity
+
+```{r alpha_diversity}
+alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
+alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
+alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age, data = alpha_meta)
+```
+
+
+```{r}
+library(Maaslin2)
+library(readr)
+
+
+Sys.setenv("VROOM_CONNECTION_SIZE" = 500000)
+
+patch_input_data = read.csv(file             = "~/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2023.05.05/2023.05.05.patch.metaphlan.subset.csv",
+                            header           = TRUE,
+                            sep              = ",", 
+                            row.names        = 1,
+                            stringsAsFactors = FALSE,
+                            check.names=FALSE)
+
+patch_metadata = read.csv(file             = "~/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2023.05.05/samples_n383_allMetadata_SubsettedNewVariables_040318_KH.csv", 
+                             header           = TRUE, 
+                             sep              = ",", 
+                             row.names        = 1,
+                             stringsAsFactors = FALSE)
+
+patch_metadata_preabs_everything_except_bicarbonate <- patch_metadata %>% filter(pre_post_antibiotics == "pre", Species != 'Bicarbonate')
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_preabs_everything_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin1", 
+                    fixed_effects  = c("Diagnosis"))
+
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_preabs_everything_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin2", 
+                    fixed_effects  = c("Diagnosis", "Run", "Gender", "challenge_status"),
+                    reference = c("challenge_status,naive", "Run,run_1"),
+                    random_effects = c('Patient'))
+
+patch_metadata_everything_except_bicarbonate <- patch_metadata %>% filter(Species != 'Bicarbonate')
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_everything_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin3", 
+                    fixed_effects  = c("Diagnosis"))
+
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_everything_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin4", 
+                    fixed_effects  = c("Diagnosis", "Run", "Gender", "challenge_status"),
+                    reference = c("challenge_status,naive", "Run,run_1"),
+                    random_effects = c('Patient'))
+
+patch_metadata_everything_baseline_except_bicarbonate <- patch_metadata %>% filter(Species != 'Bicarbonate', Visit == 'D0')
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_everything_baseline_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin5", 
+                    fixed_effects  = c("Diagnosis"))
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_everything_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin6", 
+                    fixed_effects  = c("Diagnosis", "Run", "Gender", "challenge_status"),
+                    reference = c("challenge_status,naive", "Run,run_1"))
+
+patch_metadata_typhi_naive_baseline <- patch_metadata %>% filter(Species == 'Typhi', Visit == 'D0', challenge_status == 'naive')
+
+fit_data = Maaslin2(input_data     = patch_input_data, 
+                    input_metadata = patch_metadata_everything_baseline_except_bicarbonate, 
+                    analysis_method = "LM",
+                    min_prevalence = 0,
+                    normalization  = "NONE",
+                    transform = "LOG",
+                    output         = "patch_maaslin7", 
+                    fixed_effects  = c("Diagnosis"))
+
+
+#fit_data = Maaslin2(input_data     = patch_first_and_homologous_input_data, 
+#                    input_metadata = patch_first_and_homologous_meta_data, 
+#                    min_prevalence = 0,
+#                    normalization  = "NONE",
+###                    analysis_method = "LM",
+#                    transform = "LOG",
+#                    output         = "patch_first_and_homologous_maaslin", 
+#                    fixed_effects  = c("diagnosis_status", "run", "Gender", "Dose"),
+#                    reference      = c("Run,run_1"))
+
+
+# fixed_effects  = c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling"))
+
+```

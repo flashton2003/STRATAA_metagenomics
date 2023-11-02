@@ -929,10 +929,10 @@ run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_c
 plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest){
   # View(prevalence_meta)
   # we specify the annotation positions manually using these list of lists
-  country_species_y_value <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=8, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809' = 14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7, 's__Lachnospiraceae_bacterium'=2), 'Malawi'=list('s__Prevotella_copri_clade_A'=47, 's__Clostridium_SGB6179'=0.6, 's__GGB4266_SGB5809'=5.5, 's__Haemophilus_parainfluenzae'=3, 's__Romboutsia_timonensis'=2, 's__Lachnospiraceae_bacterium'=2))
+  country_species_y_value <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=6, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809' = 14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7, 's__Lachnospiraceae_bacterium'=2), 'Malawi'=list('s__Prevotella_copri_clade_A'=47, 's__Clostridium_SGB6179'=0.6, 's__GGB4266_SGB5809'=5.5, 's__Haemophilus_parainfluenzae'=3, 's__Romboutsia_timonensis'=2, 's__Lachnospiraceae_bacterium'=2))
   # for the number of samples in each group, we need to use this function, and i can't figure out how to dynamically return 
   # the y value dependiing on the input from within the stat_summary call so we have to do this shit show.
-  country_species_fun_data <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 6, label = length(x)))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 4.5, label = length(x)))}, 's__GGB4266_SGB5809' = function(x){return(c(y = 10, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 1.25, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 6, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.75, label = length(x)))}), 'Malawi'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 45, label = length(x)))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 0.5, label = length(x)))}, 's__GGB4266_SGB5809'=function(x){return(c(y = 5, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 2.5, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 1.5, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.5, label = length(x)))}))
+  country_species_fun_data <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 6, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 4.5, label = length(x)))}, 's__GGB4266_SGB5809' = function(x){return(c(y = 10, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 1.25, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 6, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.75, label = length(x)))}), 'Malawi'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 45, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 0.5, label = length(x)))}, 's__GGB4266_SGB5809'=function(x){return(c(y = 5, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 2.5, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 1.5, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.5, label = length(x)))}))
   # country_species_fun_data <- list()
   # give.n <- country_species_fun_data[[country_of_interest]][[species_of_interest]]
   prevalence_meta_filtered <- prevalence_meta %>% filter(lowest_taxonomic_level == species_of_interest) %>% filter(Country == country_of_interest) %>% filter(Group %in% groups_of_interest)
@@ -964,10 +964,20 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
   if (species_of_interest == 's__Lachnospiraceae_bacterium' & country_of_interest == 'Malawi'){
     p <- p + ggforce::facet_zoom(ylim = c(0, 3))
     return(p)
-  } else if (species_of_interest == 's__Prevotella_copri_clade_A' & country_of_interest == 'Bangladesh') {
-    p <- p + ggforce::facet_zoom(ylim = c(0, 10))
+  } 
+    else if (species_of_interest == 's__Prevotella_copri_clade_A' & country_of_interest == 'Bangladesh') {
+    # p <- p + ggforce::facet_zoom(ylim = c(0, 6.5))
+    p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence, fill = factor(Group))) + 
+      geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+      geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
+      ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
+      ggtitle(country_of_interest) +
+      theme(legend.position="none") + 
+      stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75)) +
+      ylim(c(0, 6.5))
     return(p)
-  } else if (species_of_interest == 's__GGB4266_SGB5809' & country_of_interest == 'Bangladesh') {
+  } 
+    else if (species_of_interest == 's__GGB4266_SGB5809' & country_of_interest == 'Bangladesh') {
     p <- p + ggforce::facet_zoom(ylim = c(0, 17))
     return(p)
   } else {
