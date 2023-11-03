@@ -155,7 +155,7 @@ strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(age_bracket=
 Alpha diversity - all countries, all groups
 
 ```{r alpha_diversity_all_countries_all_groups}
-all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Control_HealthySerosurvey', 'Carrier')))
+all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Control_HealthySerosurvey', 'Carrier')))
 all_countries_all_groups_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_all_groups_alpha$alpha_plot_group
 all_countries_all_groups_alpha$alpha_plot_antibiotics
@@ -166,20 +166,20 @@ all_countries_all_groups_alpha$alpha_by_country
 
 All groups.
 ```{r beta_diversity_all_groups}
-all_countries_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+bgd_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 bgd_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 # bgd_beta_all_groups$pc12
 # bgd_beta_all_groups$pc34
 
-mal_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+mal_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 # mal_beta_all_groups$pc12
 # mal_beta_all_groups$pc34
 
-nep_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+nep_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 nep_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
 all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_groups$pc12
@@ -227,7 +227,7 @@ Alpha diversity - all countries, healthy and acute
 
 ```{r alpha_diversity_healthy_acute}
 
-all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
+all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
 # all_countries_healthy_acute_alpha$alpha_by_country
 all_countries_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_acute_alpha$alpha_plot_group
@@ -238,7 +238,7 @@ all_countries_healthy_acute_alpha$alpha_plot_antibiotics
 alpha diversity, malawi only
 
 ```{r alpha_diversity_malawi}
-malawi_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Malawi'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
+malawi_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Malawi'), groups_of_interest = c('Acute_Typhi', 'Control_HealthySerosurvey'), comparisons = list(c('Acute_Typhi', 'Control_HealthySerosurvey')))
 malawi_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 malawi_healthy_acute_alpha$alpha_plot_group
 malawi_healthy_acute_alpha$alpha_plot_antibiotics
@@ -249,16 +249,16 @@ malawi_healthy_acute_alpha$alpha_plot_antibiotics
 Acute vs healthy.
 ```{r beta_diversity_healthy_acute}
 
-all_countries_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+all_countries_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 all_countries_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+bgd_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 bgd_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+mal_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 mal_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+nep_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 nep_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
 all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_acute_healthy$pc12 + nep_beta_acute_healthy$pc12 + plot_layout(guides = 'collect')
@@ -435,7 +435,7 @@ Alpha diversity - all countries, healthy and carrier
 
 ```{r alpha_diversity_healthy_carrier}
 
-all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Carrier', 'Control_HealthySerosurvey')))
+all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey'), comparisons = list(c('Carrier', 'Control_HealthySerosurvey')))
 all_countries_healthy_carrier_alpha$alpha_by_country
 all_countries_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_carrier_alpha$alpha_plot_group
@@ -446,16 +446,16 @@ all_countries_healthy_carrier_alpha$alpha_plot_group
 Carrier vs healthy.
 ```{r beta_diversity_healthy_carrier}
 
-all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-# bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
+# bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Carrier', 'Control_HealthySerosurvey'))
+mal_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Carrier', 'Control_HealthySerosurvey'))
 mal_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
+nep_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
 nep_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
 mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
@@ -593,7 +593,7 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 
 ```{r alpha_diversity_healthy_acute_carrier}
 
-all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi'), comparisons = list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Carrier', 'Control_HealthySerosurvey')))
+all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi'), comparisons = list(c('Acute_Typhi', 'Carrier'), c('Acute_Typhi', 'Control_HealthySerosurvey'), c('Carrier', 'Control_HealthySerosurvey')))
 
 all_countries_healthy_acute_carrier_alpha$alpha_by_country
 all_countries_healthy_acute_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
@@ -604,18 +604,18 @@ all_countries_healthy_acute_carrier_alpha$alpha_plot_group
 
 ```{r beta_diversity_healthy_acute_carrier}
 
-all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
 # bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+mal_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 mal_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 mal_beta_acute_carrier_healthy$pc12
 # mal_beta_acute_carrier_healthy$pc34
 
-nep_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+nep_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 nep_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 nep_beta_acute_carrier_healthy$pc12
 # nep_beta_acute_carrier_healthy$pc34

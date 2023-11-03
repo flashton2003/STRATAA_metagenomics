@@ -50,21 +50,29 @@ First do the plots with kruskall wallis comparison between groups to see if ther
 
 ```{r metadata_read_in}
 
-patch_metadata = read.csv(file = patch_metadata_handle, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
-metadata_subset <- patch_metadata %>% select(Run, Patient, Gender, Group, Species, Visit, Day, Diagnosis, Dose)
+patch_metadata <- read.csv(file = patch_metadata_handle, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+patch_metadata$SampleID <- row.names(patch_metadata)
+metadata_subset <- patch_metadata %>% select(Run, Patient, Gender, Group, Species, Visit, Day, Diagnosis, Dose, SampleID)
 ```
 
 ## read in metaphlan data
 ```{r read_in_metaphlan}
 metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(metaphlan_data), "\\|"), function(x) x[length(x)])
+metaphlan_data_species <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
 ```
 
 ## Alpha diversity
 
 ```{r alpha_diversity}
-alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
-alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
-alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age, data = alpha_meta)
+metaphlan_data_species_for_alpha <- metaphlan_data_species %>% select(!lowest_taxonomic_level)
+alpha <- rbiom::alpha.div(as.matrix(metaphlan_data_species_for_alpha))
+alpha_meta <- left_join(alpha, patch_metadata, by = c('Sample' = 'SampleID')) %>% filter(day_group == 'baseline')
+alpha_anova <- aov(Shannon ~ Gender * Group * Diagnosis, data = alpha_meta)
+alpha_anova_summary <- summary(alpha_anova)  
+alpha_anova_summary_with_var_names <- cbind(rownames(alpha_anova_summary[[1]]), data.frame(alpha_anova_summary[[1]], row.names = NULL))
+alpha_anova_summary_with_var_names <- alpha_anova_summary_with_var_names %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), `Pr..F.`)
+alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 ```
 
 
