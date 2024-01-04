@@ -166,20 +166,20 @@ all_countries_all_groups_alpha$alpha_by_country
 
 All groups.
 ```{r beta_diversity_all_groups}
-all_countries_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+bgd_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 bgd_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 # bgd_beta_all_groups$pc12
 # bgd_beta_all_groups$pc34
 
-mal_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+mal_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 # mal_beta_all_groups$pc12
 # mal_beta_all_groups$pc34
 
-nep_beta_all_groups <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+nep_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 nep_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
 all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_groups$pc12
@@ -249,16 +249,16 @@ malawi_healthy_acute_alpha$alpha_plot_antibiotics
 Acute vs healthy.
 ```{r beta_diversity_healthy_acute}
 
-all_countries_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+all_countries_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 all_countries_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+bgd_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 bgd_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+mal_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 mal_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_acute_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
+nep_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Control_HealthySerosurvey'))
 nep_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
 all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_acute_healthy$pc12 + nep_beta_acute_healthy$pc12 + plot_layout(guides = 'collect')
@@ -446,16 +446,16 @@ all_countries_healthy_carrier_alpha$alpha_plot_group
 Carrier vs healthy.
 ```{r beta_diversity_healthy_carrier}
 
-all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-# bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
+# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Carrier', 'Control_HealthySerosurvey'))
+mal_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Carrier', 'Control_HealthySerosurvey'))
 mal_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
+nep_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Carrier', 'Control_HealthySerosurvey'))
 nep_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
 mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
@@ -604,18 +604,18 @@ all_countries_healthy_acute_carrier_alpha$alpha_plot_group
 
 ```{r beta_diversity_healthy_acute_carrier}
 
-all_countries_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-# bgd_beta_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
+# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control_HealthySerosurvey'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+mal_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 mal_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 mal_beta_acute_carrier_healthy$pc12
 # mal_beta_acute_carrier_healthy$pc34
 
-nep_beta_acute_carrier_healthy <- metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
+nep_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute_Typhi', 'Carrier', 'Control_HealthySerosurvey'))
 nep_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 nep_beta_acute_carrier_healthy$pc12
 # nep_beta_acute_carrier_healthy$pc34
@@ -772,8 +772,9 @@ ncbi_amr_info <- read_csv(ncbi_amr_info_path)
 
 amr_data <- read_delim(amr_data_path, delim = "\t") %>% separate_wider_delim(`ARO Term`, names = c("sample", "ARO Term"), delim = ".gene_mapping_data.txt:") %>% mutate(reads_per_kb = `Completely Mapped Reads` / (`Reference Length` / 1000)) 
 
-# write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
 amr_data_with_ncbi <- left_join(amr_data, ncbi_amr_info, by = join_by(`ARO Term` == combined_name))
+
+write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
 
 # 1. set the samples and classes to be analysed
 samples <- distinct(amr_data_with_ncbi, sample) %>% pull(sample)
@@ -789,7 +790,7 @@ amr_summarised_meta <- left_join(amr_summarised, metadata, by = join_by(sample =
 ```{r ncbi_amr_info}
 # 4. take the "found" genes
 # we filter for 100% cov here, and these are the "present" genes
-amr_data_with_ncbi_cln <- amr_data_with_ncbi %>% filter(`Average Percent Coverage` == 100) %>% filter(Class != 'NA')
+amr_data_with_ncbi_cln <- amr_data_with_ncbi %>% filter(`Average Percent Coverage` == 100) %>% filter(Class != 'NA') %>% filter(Scope == 'core')
 
 # 5. summarise the data (by class)
 amr_data_with_ncbi_cln_summarised <- amr_data_with_ncbi_cln %>% group_by(sample, Class) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb))
@@ -1113,4 +1114,41 @@ for (drug_class in subclasses) {
     ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs/beta_lactam_subclasses/rpk', paste(gsub("/", "_", drug_class), "bl_subclass_rpkb_boxplot_country.png", sep = '_')), plot = p, width = 10, height = 6)
 }
 
+```
+
+Do an analysis of only genes found in Typhi. allele_names and gene_family_names come from the pathogen watch paper supp table 2.
+
+```{r typhi_only}
+allele_names <- c('blaCMY-2', 'blaOXA-1', 'blaOXA-11', 'blaOXA-15', 'blaOXA-7', 'blaTEM-1', 'blaTEM-10', 'blaTEM-124', 'cmlA1')
+gene_family_names <- c('blaAIM', 'blaBIC', 'blaCTX-M', 'blaGES', 'blaIMI', 'blaIMP', 'blaKPC', 'blaLMB', 'blaNDM', 'blaSHV', 'blaSIM', 'blaSPM', 'blaVIM', 'dfrA1', 'dfrA15', 'dfrA17', 'dfrA18', 'dfrA5', 'dfrA7', 'drfA14', 'erm(A)', 'erm(B)', 'erm(C)', 'mcr-1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mph(A)', 'mph(B)', 'qnrA', 'qnrB', 'qnrD', 'qnrS', 'sul1', 'sul2', 'tet(A)', 'tet(B)', 'tet(C)', 'tet(D)')
+
+amr_data_typhi <- amr_data_with_ncbi_cln %>% filter(`#Allele` %in% allele_names | `Gene family` %in% gene_family_names)
+amr_data_typhi_meta <- left_join(amr_data_typhi, metadata, by = join_by(sample == Lane))
+
+# amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% arrange(`Gene family`, Country, Group) %>% kbl() %>% kable_styling()
+# get all the unique class names
+typhi_classes <- unique(amr_data_typhi_meta$Class)
+# make an empty data frame, with just the classes, countries, and groups.
+typhi_amr_classes <- expand.grid(Class = typhi_classes, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
+# group by class, country, group, and summarise
+tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) # %>% kbl() %>% kable_styling()
+# join the data to the template (typhi_amr_classes), set any NAs as 0.
+typhi_amr_classes <- left_join(typhi_amr_classes, tmp, by = join_by(Class == Class, Country == Country, Group == Group)) %>% 
+  mutate(n = ifelse(is.na(n), 0, n)) %>% 
+  mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% 
+  arrange(Class, Country, Group)
+# print the table
+typhi_amr_classes %>% kbl() %>% kable_styling()
+
+# same as above, but for gene families
+typhi_gene_family_names <- unique(amr_data_typhi_meta$`Gene family`)
+typhi_amr_gene_families <- expand.grid(`Gene family` = typhi_gene_family_names, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
+
+tmp <- amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) # %>% kbl() %>% kable_styling()
+typhi_amr_families <- left_join(typhi_amr_gene_families, tmp, by = join_by(`Gene family` == `Gene family`, Country == Country, Group == Group)) %>% 
+  mutate(n = ifelse(is.na(n), 0, n)) %>% 
+  mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% 
+  arrange(`Gene family`, Country, Group)
+
+typhi_amr_families %>% kbl() %>% kable_styling()
 ```

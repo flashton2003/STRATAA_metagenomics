@@ -295,13 +295,8 @@ plot_beta <- function(pcoa.data, pcoa.var, to_plot){
   return(output_plots)
 }
 
-
-metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest){
-  metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
-  metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
-  metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
-  
-  metaphlan_data_mat <- metaphlan_data_coi |> 
+run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
+  metaphlan_data_mat <- metaphlan_data |> 
     as.matrix() |>
     t()
 
@@ -315,12 +310,15 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
                   PC4 = cmd_res$points[,4])
 
   pcoa_df <- mutate(pcoa_df, SampleID = rownames(metaphlan_data_mat)) %>% left_join(metadata, by = 'SampleID')
-  # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 100)
+  # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata, permutations = 100)
   # View(pn)
   if ('Carrier' %in% groups_of_interest){
-    pn <- adonis2(dist_mat~Sex*Group*Age, data = metadata_coi, permutations = 1000)
-  } else {
-    pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata_coi, permutations = 1000)
+    pn <- adonis2(dist_mat~Sex*Group*Age, data = metadata, permutations = 1000)
+  } else if ('patch_baseline' %in% groups_of_interest){
+    pn <- adonis2(dist_mat~Gender*Diagnosis*rechallenge, data = metadata, permutations = 1000)
+  }
+  else {
+    pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata, permutations = 1000)
   }
   
   # View(pn)
@@ -328,20 +326,31 @@ metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, grou
   # pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
   pn_res <- pn %>% mutate(is_it_significant = ifelse(`Pr(>F)` < 0.01, 'significant', 'not_significant')) %>% arrange(`Pr(>F)`, desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumOfSqs, F))
   # View(pn_res)
+  p <- list(pcoa_df = pcoa_df, pn_res = pn_res)
+  return(p)
+
+}
+
+strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest){
+  metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
+  metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
+  metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
+  
+  rbd_output <- run_beta_diversity(metaphlan_data_coi, metadata_coi, groups_of_interest)
 
   # View(pcoa_df)
   title <- paste(countries_of_interest, collapse = "_")
-  pc12 <- ggplot(pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
+  pc12 <- ggplot(rbd_output$pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
     coord_fixed() + 
     stat_ellipse()
-  pc34 <- ggplot(pcoa_df, aes(x = PC3, y = PC4, colour = Group)) + 
+  pc34 <- ggplot(rbd_output$pcoa_df, aes(x = PC3, y = PC4, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
     coord_fixed() + 
     stat_ellipse()
-  p <- list(pc12 = pc12, pc34 = pc34, pn_res = pn_res)
+  p <- list(pc12 = pc12, pc34 = pc34, pn_res = rbd_output$pn_res)
   return(p)
 }
 
