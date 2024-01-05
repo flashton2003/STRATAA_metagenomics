@@ -777,7 +777,7 @@ amr_data_with_ncbi <- left_join(amr_data, ncbi_amr_info, by = join_by(`ARO Term`
 write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
 
 # 1. set the samples and classes to be analysed
-samples <- distinct(amr_data_with_ncbi, sample) %>% pull(sample)
+samples <- metadata %>% pull(Lane)
 classes <- distinct(amr_data_with_ncbi, Class) %>% filter(!is.na(Class)) %>% pull(Class) 
 
 # 2. make an empty data frame, with just the samples and classes
@@ -1123,6 +1123,59 @@ allele_names <- c('blaCMY-2', 'blaOXA-1', 'blaOXA-11', 'blaOXA-15', 'blaOXA-7', 
 gene_family_names <- c('blaAIM', 'blaBIC', 'blaCTX-M', 'blaGES', 'blaIMI', 'blaIMP', 'blaKPC', 'blaLMB', 'blaNDM', 'blaSHV', 'blaSIM', 'blaSPM', 'blaVIM', 'dfrA1', 'dfrA15', 'dfrA17', 'dfrA18', 'dfrA5', 'dfrA7', 'drfA14', 'erm(A)', 'erm(B)', 'erm(C)', 'mcr-1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mph(A)', 'mph(B)', 'qnrA', 'qnrB', 'qnrD', 'qnrS', 'sul1', 'sul2', 'tet(A)', 'tet(B)', 'tet(C)', 'tet(D)')
 
 amr_data_typhi <- amr_data_with_ncbi_cln %>% filter(`#Allele` %in% allele_names | `Gene family` %in% gene_family_names)
+typhi_classes <- unique(amr_data_typhi_meta$Class)
+samples <- metadata %>% pull(Lane)
+
+# 1. make a template with all the samples and classes
+amr_summarised_typhi <- expand.grid(sample = samples, `Class` = typhi_classes)
+
+# 2. count the number of genes per sample, per class.
+tmp <- amr_data_typhi_meta %>% group_by(sample, Class) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) #%>% kbl() %>% kable_styling()
+
+# 3. join the data to the template (amr_summarised_typhi)
+amr_summarised_typhi_d <- left_join(amr_summarised_typhi, tmp, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% mutate(at_least_one = ifelse(n > 0, 1, 0)) 
+
+# 4. join to metadata
+amr_summarised_typhi_d_meta <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group)), by = join_by(sample == Lane))
+
+tmp <- amr_summarised_typhi_d_meta %>% filter(Class == 'MACROLIDE')
+
+# 5. Group by class, country, and summarise
+typhi_amr_class_country <- amr_summarised_typhi_d_meta %>% 
+  group_by(Class, Country) %>% 
+  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n), median_reads_per_kb = median(sum_reads_per_kb)) #%>% 
+  # kbl() %>% kable_styling()
+
+run_chisq_on_amr <- function(typhi_amr_class_country_df, antibiotic_class){
+  test <- typhi_amr_class_country_df %>% 
+    ungroup() %>% 
+    filter(Class == antibiotic_class) %>% 
+    select(Country, n_samples_with_gene, n_samples) %>% 
+    mutate(n_samples_without_gene = n_samples - n_samples_with_gene) %>% 
+    select(-n_samples)
+  test <- as.data.frame(test)
+  row.names(test) <- test$Country
+  test <- test[, -which(names(test) == "Country")]
+  chisq.test(test)
+}
+
+run_chisq_on_amr(typhi_amr_class_country, 'SULFONAMIDE')
+run_chisq_on_amr(typhi_amr_class_country, 'TETRACYCLINE')
+run_chisq_on_amr(typhi_amr_class_country, 'MACROLIDE')
+run_chisq_on_amr(typhi_amr_class_country, 'QUINOLONE')
+run_chisq_on_amr(typhi_amr_class_country, 'TRIMETHOPRIM')
+run_chisq_on_amr(typhi_amr_class_country, 'BETA-LACTAM')
+
+
+# 5. Group by class, country, group, and summarise
+amr_summarised_typhi_d_meta %>% 
+  group_by(Class, Country, Group) %>% 
+  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb)) #%>% 
+  # kbl() %>% kable_styling()
+
+
+
+
 amr_data_typhi_meta <- left_join(amr_data_typhi, metadata, by = join_by(sample == Lane))
 
 # amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% arrange(`Gene family`, Country, Group) %>% kbl() %>% kable_styling()
@@ -1131,7 +1184,7 @@ typhi_classes <- unique(amr_data_typhi_meta$Class)
 # make an empty data frame, with just the classes, countries, and groups.
 typhi_amr_classes <- expand.grid(Class = typhi_classes, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
 # group by class, country, group, and summarise
-tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) # %>% kbl() %>% kable_styling()
+tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% kbl() %>% kable_styling()
 # join the data to the template (typhi_amr_classes), set any NAs as 0.
 typhi_amr_classes <- left_join(typhi_amr_classes, tmp, by = join_by(Class == Class, Country == Country, Group == Group)) %>% 
   mutate(n = ifelse(is.na(n), 0, n)) %>% 
