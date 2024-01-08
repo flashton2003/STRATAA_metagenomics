@@ -57,7 +57,6 @@ run_rf <- function(braken_folder, level, out_folder, place) {
   data_table.normalised.clr <- t(clr_transform(data_table, "kraken_assigned_reads", "clr_normalised_data.txt", out_folder))
   colnames(data_table.normalised.clr) = gsub(pattern = "X", replacement = "", x = colnames(data_table.normalised.clr)) 
   
-  
   ## RF
   #https://github.com/LangilleLab/microbiome_helper/wiki/Random-Forest-Tutorial
   

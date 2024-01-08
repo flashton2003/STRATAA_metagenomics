@@ -19,8 +19,6 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 ```{r paths}
 strataa_disease_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
 strataa_carrier_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.12/analyse_output_healthy_carrier/tsv-results/all_RPKMs.transpose.csv"
-
-
 #strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
 
 ```
@@ -68,8 +66,6 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 
 
 For healthy vs carrier, not including antibiotics becayse they're all "No"
-
-
 
 ```{r run_maaslin_metaphlan_healthy_carrier}
 

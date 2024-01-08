@@ -1267,3 +1267,155 @@ typhi_amr_families <- left_join(typhi_amr_gene_families, tmp, by = join_by(`Gene
 
 typhi_amr_families %>% kbl() %>% kable_styling()
 ```
+
+## random forest analysis
+
+Pre-processing.
+
+```{r}
+strataa_metaphlan_data_t <- as.data.frame(t(strataa_metaphlan_data))
+names(strataa_metaphlan_data_t) <- gsub("\\|", "_", names(strataa_metaphlan_data_t))
+strataa_metaphlan_data_t <- strataa_metaphlan_data_t %>% select(contains('_s__')) %>% select(!contains('_t__'))
+strataa_metaphlan_data_t$sample_name <- rownames(strataa_metaphlan_data_t)
+strataa_metaphlan_metadata_copy <- strataa_metaphlan_metadata %>% select(Group, Country) %>% mutate(sample_name = rownames(.))
+
+# join the Group column from metadata to the metaphlan data
+strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_t %>% left_join(strataa_metaphlan_metadata_copy, by = "sample_name") %>% filter(Group != "Acute_Typhi", Country != 'Bangladesh') %>% mutate(Group = as.factor(Group))
+row.names(strataa_metaphlan_data_heal_carr_rf) <- strataa_metaphlan_data_heal_carr_rf$sample_name
+strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_heal_carr_rf %>% select(-sample_name) %>% filter(!is.na(Group))
+# remove rows where the group is acute typhi and remove any column that sums to 0
+# strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_rf %>% filter(G #%>% select(where(~ !is.numeric(.) || sum(.) != 0))
+
+```
+
+RF - simple version.
+
+```{r}
+library(randomForest)
+
+
+set.seed(12343)  # For reproducibility
+train_index <- sample(1:nrow(strataa_metaphlan_data_heal_carr_rf), 0.8*nrow(strataa_metaphlan_data_heal_carr_rf))
+train_data <- strataa_metaphlan_data_heal_carr_rf[train_index, ]
+test_data <- strataa_metaphlan_data_heal_carr_rf[-train_index, ]
+
+rf_model <- randomForest(Group ~ ., data=train_data, ntree=1500)
+
+predictions <- predict(rf_model, test_data)
+confusionMatrix <- table(test_data$Group, predictions)
+print(confusionMatrix)
+accuracy <- sum(diag(confusionMatrix)) / sum(confusionMatrix)
+print(accuracy)
+
+importance <- varImpPlot(rf_model)
+View(importance)
+
+```
+
+CLR transform, makes no difference.
+
+```{r rf_clr}
+
+# Adding a small constant to avoid log(0)
+strataa_metaphlan_data_adj <- strataa_metaphlan_data_t %>% select(-sample_name)
+strataa_metaphlan_data_adj <- strataa_metaphlan_data_adj + 1e-6
+
+# Calculating the geometric mean for each row
+geom_mean <- apply(strataa_metaphlan_data_adj, 1, function(x) exp(mean(log(x))))
+
+# Applying the CLR transformation
+clr_transformed <- sweep(strataa_metaphlan_data_adj, 1, geom_mean, FUN = "/")
+clr_transformed <- log(clr_transformed)
+
+clr_transformed$sample_name <- rownames(clr_transformed)
+
+
+clr_transformed_heal_carr_rf <- clr_transformed %>% left_join(strataa_metaphlan_metadata_copy, by = "sample_name") %>% filter(Group != "Acute_Typhi", Country != 'Bangladesh') %>% mutate(Group = as.factor(Group))
+row.names(clr_transformed_heal_carr_rf) <- clr_transformed_heal_carr_rf$sample_name
+clr_transformed_heal_carr_rf <- clr_transformed_heal_carr_rf %>% select(-sample_name) %>% filter(!is.na(Group))
+
+```
+
+
+```{r clr_rf}
+set.seed(12345)  # For reproducibility
+train_index <- sample(1:nrow(clr_transformed_heal_carr_rf), 0.8*nrow(clr_transformed_heal_carr_rf))
+train_data <- clr_transformed_heal_carr_rf[train_index, ]
+test_data <- clr_transformed_heal_carr_rf[-train_index, ]
+
+rf_model <- randomForest(Group ~ ., data=train_data, ntree=500)
+
+predictions <- predict(rf_model, test_data)
+confusionMatrix <- table(test_data$Group, predictions)
+print(confusionMatrix)
+accuracy <- sum(diag(confusionMatrix)) / sum(confusionMatrix)
+print(accuracy)
+
+importance <- varImpPlot(rf_model)
+View(importance)
+```
+
+RF - more complex one
+
+Using a strategy from one of Kevin Bonham's papers https://www.biorxiv.org/content/10.1101/2020.02.13.944181v5.full
+
+```{r rf_complex}
+
+data <- strataa_metaphlan_data_heal_carr_rf
+
+# Create 100 repetitions of 3 folds
+set.seed(123)  # For reproducibility
+folds <- createFolds(data$Group, k = 3, list = TRUE, returnTrain = TRUE)
+
+num_rng_states <- 10
+
+# Initialize lists to store results
+feature_importance_list <- vector("list", length = 100)
+accuracy_list <- vector("list", length = 100)
+
+# Loop over repetitions
+for (i in 1:10) {
+  # Shuffle data to get new folds for each repetition
+  data <- data[sample(nrow(data)),]
+  
+  # Re-create folds on the shuffled data
+  # this creates three folds, each of which has 2/3rds of the data in it.
+  # this is because for a 3 fold CV, we use 2/3 as training, and 1/3 as test.
+
+  folds <- createFolds(data$Group, k = 3, list = TRUE, returnTrain = TRUE)
+  
+  # Initialize matrices to store results for this repetition
+  importance_matrices <- vector("list", length = 3)
+  accuracy_vector <- numeric(3)
+  
+  # Loop over each fold
+  for (j in 1:3) {
+    # Split data into training and test sets
+    train_indices <- folds[[j]]
+    train_set <- data[train_indices, ]
+    test_set <- data[-train_indices, ]
+    
+    # Fit the random forest model
+    rf_model <- randomForest(Group ~ ., data = train_set, ntree = 500)
+    
+    # Store feature importance
+    importance_matrices[[j]] <- importance(rf_model)
+    
+    # Predict on test set
+    predictions <- predict(rf_model, test_set)
+    
+    # Calculate and store accuracy
+    accuracy_vector[j] <- sum(predictions == test_set$Group) / length(test_set$Group)
+  }
+  
+  # Store results for this repetition
+  feature_importance_list[[i]] <- importance_matrices
+  accuracy_list[[i]] <- accuracy_vector
+}
+
+
+
+```
+
+
+
