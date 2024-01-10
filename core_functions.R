@@ -320,7 +320,6 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
   else {
     pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata, permutations = 1000)
   }
-  
   # View(pn)
   # pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
   # pn_res <- pn_with_var_names %>% rename(variable = `rownames(pn$aov.tab)`) %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), desc(R2)) %>% select(!c(Df, SumsOfSqs, MeanSqs, F.Model))
