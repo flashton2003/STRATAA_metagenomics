@@ -330,7 +330,7 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
 
 }
 
-strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest){
+strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest, participant_group_colours){
   metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
   metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
   metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
@@ -342,19 +342,21 @@ strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_intere
   pc12 <- ggplot(rbd_output$pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
-    coord_fixed() + 
+    # coord_fixed() + 
+    scale_color_manual(values = participant_group_colours) +
     stat_ellipse()
   pc34 <- ggplot(rbd_output$pcoa_df, aes(x = PC3, y = PC4, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
-    coord_fixed() + 
+    # coord_fixed() + 
+    scale_color_manual(values = participant_group_colours) +
     stat_ellipse()
   p <- list(pc12 = pc12, pc34 = pc34, pn_res = rbd_output$pn_res)
   return(p)
 }
 
 
-metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_interest, groups_of_interest, comparisons) {
+metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_interest, groups_of_interest, comparisons, participant_group_colours) {
   metaphlan_data <- metaphlan_data %>% select(!lowest_taxonomic_level)
   alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
   # View(alpha)
@@ -395,13 +397,15 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   } else {
     alpha_by_country <- NULL
   }
-  
+  # View(participant_group_colours)
   alpha_plot_group <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Group", color = "Group") + 
     stat_compare_means(comparisons = comparisons, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
     rremove("x.text") + 
     rremove("xlab") + 
-    rremove("x.ticks") # +rotate_x_text(angle = 45)
-  # View(alpha_plot_group)
+    rremove("x.ticks") +
+    scale_color_manual(values = participant_group_colours)
+  # +rotate_x_text(angle = 45)
+  show(alpha_plot_group)
   
   antibiotic_comps <- list(c('Yes', 'No'))
   alpha_plot_antibiotics <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Antibiotics_taken_before_sampling_yes_no_assumptions", color = "Antibiotics_taken_before_sampling_yes_no_assumptions") + 
@@ -417,7 +421,7 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
                   antibiotic_sampling = rep(c("Pre", "Post"), 9),
                   age_bracket = rep(c("0-4", "5-14", "15-24"), each = 6),
                   value = rnorm(18))
-if ('Acute_Typhi' %in% groups_of_interest){
+if ('Acute typhoid' %in% groups_of_interest){
   # Create a box plot for each combination of country, antibiotic_sampling, and age_bracket
   alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions != 'Unknown')
   p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill = Antibiotics_taken_before_sampling_yes_no_assumptions)) +
@@ -934,7 +938,7 @@ run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_c
 
 
 
-plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest){
+plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest, participant_group_colours){
   # View(prevalence_meta)
   # we specify the annotation positions manually using these list of lists
   country_species_y_value <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=6, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809' = 14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7, 's__Lachnospiraceae_bacterium'=2), 'Malawi'=list('s__Prevotella_copri_clade_A'=47, 's__Clostridium_SGB6179'=0.6, 's__GGB4266_SGB5809'=5.5, 's__Haemophilus_parainfluenzae'=3, 's__Romboutsia_timonensis'=2, 's__Lachnospiraceae_bacterium'=2))
@@ -952,6 +956,8 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
     ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
     ggtitle(country_of_interest) +
     theme(legend.position="none") + 
+    scale_color_manual(values = participant_group_colours) +
+    scale_fill_manual(values = participant_group_colours) +
     stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75))
     # stat_summary(fun.data = give.n, geom = "text", fun = median, position = position_dodge(width = 0.75))
 
@@ -973,16 +979,18 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
     p <- p + ggforce::facet_zoom(ylim = c(0, 3))
     return(p)
   } 
-    else if (species_of_interest == 's__Prevotella_copri_clade_A' & country_of_interest == 'Bangladesh') {
-    # p <- p + ggforce::facet_zoom(ylim = c(0, 6.5))
-    p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence, fill = factor(Group))) + 
-      geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
-      geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
-      ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
-      ggtitle(country_of_interest) +
-      theme(legend.position="none") + 
-      stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75)) +
-      ylim(c(0, 6.5))
+  else if (species_of_interest == 's__Prevotella_copri_clade_A' & country_of_interest == 'Bangladesh') {
+    p <- p + ggforce::facet_zoom(ylim = c(0, 6.5))
+    # p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence, fill = factor(Group))) + 
+    #   geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+    #   geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
+    #   ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
+    #   ggtitle(country_of_interest) +
+    #   theme(legend.position="none") + 
+    #   scale_color_manual(values = participant_group_colours) +
+    #   scale_fill_manual(values = participant_group_colours) +
+    #   stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75)) +
+    #   ylim(c(0, 10))
     return(p)
   } 
     else if (species_of_interest == 's__GGB4266_SGB5809' & country_of_interest == 'Bangladesh') {
@@ -995,12 +1003,12 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
 
 
 
-run_plot_species_of_interest <- function(prevalence_meta, species_of_interest){
+run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, participant_group_colours){
   # we do this so that we can combine plots for the same species from bang and mal together
-  m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute_Typhi', 'Control_HealthySerosurvey'))
-  b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', c('Acute_Typhi', 'Control_HealthySerosurvey'))
+  m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute typhoid', 'Control'), participant_group_colours)
+  b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', c('Acute typhoid', 'Control'), participant_group_colours)
   p <- m / b
-  outhandle_name <- paste(species_of_interest, 'Acute_Typhi',  'Control_HealthySerosurvey', 'Bangladesh', 'Malawi', 'png', sep = '.')
+  outhandle_name <- paste(species_of_interest, 'Acute typhoid',  'Control', 'Bangladesh', 'Malawi', 'png', sep = '.')
   ggsave(file.path(maaslin_taxonomic_output_root_folder, outhandle_name), p, width = 10, height = 7)
   show(p)
   return(p)
@@ -1058,6 +1066,6 @@ prep_data_to_plot_phyla <- function(phyla, metadata_select){
   # colnames(strataa_metaphlan_metadata)
   # metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
   phyla_clean_metadata <- phyla_clean %>% left_join(metadata_select, by = c("sample" = "SampleID"))
-  phyla_clean_metadata <- phyla_clean_metadata %>% mutate(Group = ifelse(Group == "Acute_Typhi", "Typhi", Group)) %>% mutate(Group = ifelse(Group == "Control_HealthySerosurvey", "Healthy", Group))
+  # phyla_clean_metadata <- phyla_clean_metadata %>% mutate(Group = ifelse(Group == "Acute typhoid", "Typhi", Group)) %>% mutate(Group = ifelse(Group == "Control", "Healthy", Group))
   return(phyla_clean_metadata)
 }

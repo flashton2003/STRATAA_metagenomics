@@ -29,6 +29,7 @@ library(patchwork)
 library(vegan)
 library(dplyr)
 library(forcats)
+library(RColorBrewer)
 
 ```
 
@@ -58,6 +59,11 @@ metadata <- metadata %>% mutate(Group = if_else(Group == 'Acute typhoid', 'Acute
 
 ```{r metadata_basics}
 
+three_qual_colours <- brewer.pal(3, "Dark2")
+
+participant_group_colours <- c("Acute typhoid" = three_qual_colours[[2]], "Control" = three_qual_colours[[1]], "Carrier" = three_qual_colours[[3]])
+
+
 number_per_country <- metadata %>% group_by(Country) %>% summarise(count = n())
 
 number_per_country %>% kbl() %>% kable_styling()
@@ -75,7 +81,9 @@ ggboxplot(metadata, y = "Age", x = "Group", color = "Group") +
   stat_compare_means(comparisons = comparisons_groups) + 
   rremove("x.text") + 
   rremove("xlab") + 
-  rremove("x.ticks") # +rotate_x_text(angle = 45)
+  rremove("x.ticks") +
+  scale_color_manual(values = participant_group_colours)
+   # +rotate_x_text(angle = 45)
 
 
 # baseline_chars$pct_anti
@@ -99,7 +107,7 @@ comparisons_countries <- list(c('Bangladesh', 'Malawi'), c('Bangladesh', 'Nepal'
 # default stat method when doing pairwise tests in wilcoxon.
 metadata_for_plotting <- metadata
 metadata_for_plotting$Group <- factor(metadata_for_plotting$Group, levels = c("Control", "Acute typhoid", "Carrier"))
-ggboxplot(metadata_for_plotting, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons_groups) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") # +rotate_x_text(angle = 45)
+ggboxplot(metadata_for_plotting, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons_groups) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") + scale_color_manual(values = participant_group_colours) # +rotate_x_text(angle = 45)
 ggboxplot(metadata_for_plotting, facet.by = "Group", y = "Age", x = "Country", color = "Country") + stat_compare_means(comparisons = comparisons_countries) + rotate_x_text(angle = 45)
 
 ```
@@ -193,7 +201,6 @@ all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_gro
 
 ```{r phyla_barplots}
 
-
 phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
 metadata_for_phyla_plots <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
 
@@ -228,7 +235,7 @@ Alpha diversity - all countries, healthy and acute
 
 ```{r alpha_diversity_healthy_acute}
 
-all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Control'), comparisons = list(c('Acute typhoid', 'Control')))
+all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Control'), comparisons = list(c('Acute typhoid', 'Control')), participant_group_colours = participant_group_colours)
 # all_countries_healthy_acute_alpha$alpha_by_country
 all_countries_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_acute_alpha$alpha_plot_group
@@ -250,16 +257,16 @@ malawi_healthy_acute_alpha$alpha_plot_antibiotics
 Acute vs healthy.
 ```{r beta_diversity_healthy_acute}
 
-all_countries_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute typhoid', 'Control'))
+all_countries_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute typhoid', 'Control'), participant_group_colours)
 all_countries_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute typhoid', 'Control'))
+bgd_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Bangladesh'), c('Acute typhoid', 'Control'), participant_group_colours)
 bgd_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute typhoid', 'Control'))
+mal_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute typhoid', 'Control'), participant_group_colours)
 mal_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute typhoid', 'Control'))
+nep_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute typhoid', 'Control'), participant_group_colours)
 nep_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
 all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_acute_healthy$pc12 + nep_beta_acute_healthy$pc12 + plot_layout(guides = 'collect')
@@ -350,12 +357,12 @@ strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = row
 strataa_metaphlan_data_longer_meta <- strataa_metaphlan_data_longer %>% left_join(strataa_metaphlan_metadata, by = c("SampleID" = "SampleID"))
 
 
-pc <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A')
-cs <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179')
-SGB5809 <-run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809')
-hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae')
-rt <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis')
-lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium')
+pc <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', participant_group_colours)
+cs <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', participant_group_colours)
+SGB5809 <-run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', participant_group_colours)
+hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', participant_group_colours)
+rt <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', participant_group_colours)
+lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', participant_group_colours)
 
 pc
   # pc + cs + SGB5809 + hp + rt + lb
@@ -595,7 +602,7 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 
 ```{r alpha_diversity_healthy_acute_carrier}
 
-all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control', 'Acute typhoid'), comparisons = list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Carrier', 'Control')))
+all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control', 'Acute typhoid'), comparisons = list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Carrier', 'Control')), participant_group_colours)
 
 all_countries_healthy_acute_carrier_alpha$alpha_by_country
 all_countries_healthy_acute_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
@@ -606,18 +613,18 @@ all_countries_healthy_acute_carrier_alpha$alpha_plot_group
 
 ```{r beta_diversity_healthy_acute_carrier}
 
-all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute typhoid', 'Carrier', 'Control'))
+all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi', 'Nepal'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
 # bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data, strataa_metaphlan_metadata, c('Bangladesh'), c('Carrier', 'Control'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute typhoid', 'Carrier', 'Control'))
+mal_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
 mal_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 mal_beta_acute_carrier_healthy$pc12
 # mal_beta_acute_carrier_healthy$pc34
 
-nep_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute typhoid', 'Carrier', 'Control'))
+nep_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
 nep_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 nep_beta_acute_carrier_healthy$pc12
 # nep_beta_acute_carrier_healthy$pc34
