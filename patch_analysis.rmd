@@ -60,6 +60,26 @@ metadata_subset <- patch_metadata %>%
   mutate(Dose = as.numeric(Dose))
 
 baseline_metadata <- metadata_subset %>% filter(day_group == 'baseline')
+
+baseline_metadata_typhi <- baseline_metadata %>% filter(Group == 'Typhi')
+baseline_metadata_paratyphi <- baseline_metadata %>% filter(Group == 'Paratyphi')
+baseline_metadata_typhi_paratyphi <- baseline_metadata %>% filter(Group == 'Typhi' | Group == 'Paratyphi') 
+
+```
+
+```{r}
+# i want a table of gender and age of the typhi and paratyphi groups based on whether they were diagnosed or not
+summary_table <- baseline_metadata_typhi_paratyphi %>%
+  group_by(Group, Diagnosis) %>%
+  summarise(
+    Average_Age = mean(age_at_challenge, na.rm = TRUE),
+    SD_Age = sd(age_at_challenge, na.rm = TRUE),
+    Count_M = sum(Gender == 'M', na.rm = TRUE),
+    Count_F = sum(Gender == 'F', na.rm = TRUE),
+    .groups = 'drop'
+  )
+summary_table %>% kbl() %>% kable_styling()
+
 ```
 
 ## read in metaphlan data
@@ -135,11 +155,6 @@ baseline_metadata %>% group_by(Run, Diagnosis) %>% summarise(n = n()) %>% kbl() 
 ## maaslin2 metaphlan
 
 ```{r }
-baseline_metadata_typhi <- baseline_metadata %>% filter(Group == 'Typhi')
-baseline_metadata_no_bicarb <- baseline_metadata %>% filter(Group != 'Bicarbonate')
-baseline_metadata_no_bicarb_first_challenge <- baseline_metadata %>% filter(Group != 'Bicarbonate') %>% filter(Challenge == '1st')
-baseline_metadata_paratyphi <- baseline_metadata %>% filter(Group == 'Paratyphi')
-baseline_metadata_typhi_paratyphi <- baseline_metadata %>% filter(Group == 'Typhi' | Group == 'Paratyphi') 
 
 
 metaphlan_data_species_only <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__')) %>% select(!lowest_taxonomic_level)
@@ -166,14 +181,12 @@ Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_met
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
 
-
 Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_metadata_typhi_paratyphi, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
            transform = 'LOG',
            output         = file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_metadata_typhi_paratyphi'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
-
 
 ```
 
@@ -191,7 +204,7 @@ variables_for_analysis <- c("Gender", "Diagnosis", "Run", 'age_at_challenge')
 Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
            transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_just_typhi'), 
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_typhi'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
 
@@ -208,5 +221,5 @@ Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi_par
            output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_typhi_paratyphi'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
-           
+
 ```
