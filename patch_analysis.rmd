@@ -55,9 +55,11 @@ First do the plots with kruskall wallis comparison between groups to see if ther
 patch_metadata <- read.csv(file = patch_metadata_handle, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 patch_metadata$SampleID <- row.names(patch_metadata)
 metadata_subset <- patch_metadata %>% 
-  select(Run, Patient, Gender, Group, Species, Visit, Day, day_group, Diagnosis, Dose, SampleID, pre_post_antibiotics) %>% 
+  select(Run, Patient, Gender, age_at_challenge, Group, Species, Challenge, Visit, Day, day_group, Diagnosis, Dose, SampleID, pre_post_antibiotics) %>% 
   mutate(rechallenge = ifelse(grepl('-', Group), 'rechallenge', 'first_challenge')) %>% 
   mutate(Dose = as.numeric(Dose))
+
+baseline_metadata <- metadata_subset %>% filter(day_group == 'baseline')
 ```
 
 ## read in metaphlan data
@@ -65,6 +67,8 @@ metadata_subset <- patch_metadata %>%
 metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(metaphlan_data), "\\|"), function(x) x[length(x)])
 metaphlan_data_species <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
+
+
 ```
 
 ## Alpha diversity
@@ -85,7 +89,6 @@ alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.char
 ### all samples, by group
 ```{r beta_diversity}
 
-baseline_metadata <- metadata_subset %>% filter(day_group == 'baseline')
 
 # metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
 
@@ -126,34 +129,57 @@ pc12_rechallenge
 
 ```{r check_blocking}
 # how are the diagnoses spread across different runs?
-
 baseline_metadata %>% group_by(Run, Diagnosis) %>% summarise(n = n()) %>% kbl() %>% kable_styling()
+```
+
+## maaslin2 metaphlan
+
+```{r }
+baseline_metadata_typhi <- baseline_metadata %>% filter(Group == 'Typhi')
+baseline_metadata_no_bicarb <- baseline_metadata %>% filter(Group != 'Bicarbonate')
+baseline_metadata_no_bicarb_first_challenge <- baseline_metadata %>% filter(Group != 'Bicarbonate') %>% filter(Challenge == '1st')
+baseline_metadata_paratyphi <- baseline_metadata %>% filter(Group == 'Paratyphi')
+baseline_metadata_typhi_paratyphi <- baseline_metadata %>% filter(Group == 'Typhi' | Group == 'Paratyphi') 
+
+
+metaphlan_data_species_only <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__')) %>% select(!lowest_taxonomic_level)
+colnames(metaphlan_data_species_only) <- colnames(metaphlan_data_species_only) %>% str_replace_all('#', '_')
 
 ```
 
-## maaslin2
-
 ```{r maaslin2_baseline}
-
-baseline_metadata_typhi <- baseline_metadata %>% filter(Group == 'Typhi')
-
 #bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
 # variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
-variables_for_analysis <- c("Diagnosis")
-# run_maaslin(metaphlan_data_baseline, baseline_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'metaphlan')
+variables_for_analysis <- c("Gender", "Diagnosis", "Run", 'age_at_challenge')
 
-Maaslin2(input_data = metaphlan_data_baseline, input_metadata = baseline_metadata_typhi, analysis_method = "LM", min_prevalence = 0,
+Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_metadata_typhi, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
            transform = 'LOG',
-           output         = file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline2'), 
-           fixed_effects  = variables_for_analysis)
+           output         = file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_typhi_species'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
 
-#reference = c("sequencing_lane,32580_7", "Group,Typhi", "Run,run_1")
+Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_metadata_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_metadata_paratyphi'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+
+Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_metadata_typhi_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_metadata_typhi_paratyphi'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+
 ```
 
 Including multiple samples per participant.
 
-```{r maaslin2_baseline}
+```{r maaslin2_baseline_multiple_samples}
 
 metadata_pre_antibiotics <- metadata_subset %>% filter(Group != 'Bicarbonate', pre_post_antibiotics == 'pre') %>% mutate(Patient = as.character(Patient)) 
 
@@ -176,23 +202,60 @@ Maaslin2(input_data = metaphlan_data_no_ltl, input_metadata = metadata_pre_antib
 # reference = 'Patient,8005'
 ```
 
-
-
 ## functional analysis
 
 ```{r}
 
 patch_bigmap_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11/all_RPKMs.transpose.csv"
 patch_bigmap <- read.csv(file = patch_bigmap_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
-rownames(patch_bigmap) <- rownames(patch_bigmap) %>% str_replace_all('-', '_')
+rownames(patch_bigmap) <- rownames(patch_bigmap) %>% str_replace_all('-', '_') %>% str_replace_all('#', '_')
 
-variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
+# variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
+variables_for_analysis <- c("Gender", "Diagnosis", "Run", 'age_at_challenge')
+
 Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
            transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline2'), 
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_just_typhi'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
+
+Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_paratyphi'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_typhi_paratyphi'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+           
+
+variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
+
+           
+
+Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_no_bicarb, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_no_bicarb'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+
+Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_no_bicarb_first_challenge, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_no_bicarb_first_challenge'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+
+
 
 Maaslin2(input_data = patch_bigmap, input_metadata = metadata_pre_antibiotics, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
