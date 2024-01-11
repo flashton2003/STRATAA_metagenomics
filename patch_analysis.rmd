@@ -177,31 +177,6 @@ Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_met
 
 ```
 
-Including multiple samples per participant.
-
-```{r maaslin2_baseline_multiple_samples}
-
-metadata_pre_antibiotics <- metadata_subset %>% filter(Group != 'Bicarbonate', pre_post_antibiotics == 'pre') %>% mutate(Patient = as.character(Patient)) 
-
-#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
-# variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
-variables_for_analysis <- c("Diagnosis")
-# run_maaslin(metaphlan_data_baseline, baseline_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'metaphlan')
-
-metaphlan_data_no_ltl <- metaphlan_data %>% select(!lowest_taxonomic_level)
-
-# metaphlan_data_phylum <- metaphlan_data %>% mutate(clade_name = row.names(metaphlan_data)) %>% filter(grepl('p__', clade_name)) %>% filter(!grepl('c__', clade_name))
-
-Maaslin2(input_data = metaphlan_data_no_ltl, input_metadata = metadata_pre_antibiotics, analysis_method = "LM", min_prevalence = 0,
-           normalization  = 'NONE',
-           transform = 'LOG',
-           output         = file.path(patch_maaslin_taxonomic_output_root_folder, 'all_pre_abr_samples'), 
-           fixed_effects  = variables_for_analysis,
-           random_effects = 'Patient')
-
-# reference = 'Patient,8005'
-```
-
 ## functional analysis
 
 ```{r}
@@ -234,34 +209,4 @@ Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi_par
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
            
-
-variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
-
-           
-
-Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_no_bicarb, analysis_method = "LM", min_prevalence = 0,
-           normalization  = 'NONE',
-           transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_no_bicarb'), 
-           fixed_effects  = variables_for_analysis,
-           reference = c('Run,run_1'))
-
-
-Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_no_bicarb_first_challenge, analysis_method = "LM", min_prevalence = 0,
-           normalization  = 'NONE',
-           transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_no_bicarb_first_challenge'), 
-           fixed_effects  = variables_for_analysis,
-           reference = c('Run,run_1'))
-
-
-
-
-Maaslin2(input_data = patch_bigmap, input_metadata = metadata_pre_antibiotics, analysis_method = "LM", min_prevalence = 0,
-           normalization  = 'NONE',
-           transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'all_pre_abr_samples'), 
-           fixed_effects  = variables_for_analysis,
-           random_effects =  'Patient')
-
 ```
