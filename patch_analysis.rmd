@@ -96,8 +96,9 @@ metaphlan_data_species <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_
 ```{r alpha_diversity}
 metaphlan_data_species_for_alpha <- metaphlan_data_species %>% select(!lowest_taxonomic_level)
 alpha <- rbiom::alpha.div(as.matrix(metaphlan_data_species_for_alpha))
-alpha_meta <- left_join(alpha, metadata_subset, by = c('Sample' = 'SampleID')) %>% filter(day_group == 'baseline')
-alpha_anova <- aov(Shannon ~ Gender * rechallenge * Diagnosis, data = alpha_meta)
+alpha <- alpha %>% mutate(Sample = str_replace_all(Sample, '#', '_'))
+alpha_meta <- left_join(alpha, metadata_subset, by = c('Sample' = 'SampleID')) %>% filter(day_group == 'baseline') %>% filter(Group == 'Typhi' | Group == 'Paratyphi')
+alpha_anova <- aov(Shannon ~ Gender * age_at_challenge * Diagnosis, data = alpha_meta)
 alpha_anova_summary <- summary(alpha_anova)  
 alpha_anova_summary_with_var_names <- cbind(rownames(alpha_anova_summary[[1]]), data.frame(alpha_anova_summary[[1]], row.names = NULL))
 alpha_anova_summary_with_var_names <- alpha_anova_summary_with_var_names %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), `Pr..F.`)
@@ -112,11 +113,15 @@ alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.char
 
 # metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
 
-baseline_ids <- baseline_metadata %>% pull(SampleID)
-metaphlan_data_baseline <- metaphlan_data %>% select(all_of(baseline_ids))
+baseline_typhi_paratyphi_ids <- baseline_metadata_typhi_paratyphi %>% pull(SampleID)
+metaphlan_data_t <- metaphlan_data
+colnames(metaphlan_data_t) <- colnames(metaphlan_data_t) %>% str_replace_all('-', '_') %>% str_replace_all('#', '_')
+
+metaphlan_baseline_typhi_paratyphi_ids <- metaphlan_data_t %>% select(all_of(baseline_typhi_paratyphi_ids))
+
 groups_of_interest <- c('patch_baseline')
-rbd_output <- run_beta_diversity(metaphlan_data_baseline, baseline_metadata, groups_of_interest)
-rbd_output$pn_res
+rbd_output <- run_beta_diversity(metaphlan_baseline_typhi_paratyphi_ids, baseline_metadata_typhi_paratyphi, groups_of_interest)
+rbd_output$pn_res %>% kbl() %>% kable_styling()
 # View(pcoa_df)
 # title <- paste(countries_of_interest, collapse = "_")
 pc12_group <- ggplot(rbd_output$pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
@@ -124,7 +129,7 @@ pc12_group <- ggplot(rbd_output$pcoa_df, aes(x = PC1, y = PC2, colour = Group)) 
   ggtitle('Group') +
   coord_fixed() + 
   stat_ellipse()
-
+# View(pc12_group)
 
 pc12_diagnosis <- ggplot(rbd_output$pcoa_df, aes(x = PC1, y = PC2, colour = Diagnosis)) + 
   geom_point() +
