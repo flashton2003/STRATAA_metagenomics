@@ -226,5 +226,4 @@ Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi_par
            output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_typhi_paratyphi'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
-
 ```
