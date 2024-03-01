@@ -508,6 +508,7 @@ typhi_amr_class_country_group <- amr_summarised_typhi_d_meta %>%
   summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
   # kbl() %>% kable_styling()
 
+
 # function to run chi sq test on a given antibiotic class, assuming country, class and group.
 run_chisq_on_amr_w_group <- function(df, antibiotic_class, country){
   test <- df %>% 
@@ -584,6 +585,18 @@ typhi_amr_families <- left_join(typhi_amr_gene_families, tmp, by = join_by(`Gene
 typhi_amr_families %>% kbl() %>% kable_styling()
 ```
 
+## checking for relationship with prior antibiotic given
+
+
+```{r}
+
+amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_sampling)), by = join_by(sample == Lane)) %>% filter(!(Antibiotics_taken_before_sampling == 'no')) %>% filter(!(is.na(Antibiotics_taken_before_sampling))) %>% filter(!(Antibiotics_taken_before_sampling == '#N/A')) %>% filter(!(Antibiotics_taken_before_sampling == '')) %>% filter(!(Antibiotics_taken_before_sampling == 'Unknown')) %>% mutate(Antibiotics_taken_before_sampling = ifelse(Antibiotics_taken_before_sampling == 'yes', 'Yes', Antibiotics_taken_before_sampling))
+amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% filter(Country == 'Bangladesh')
+amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin)
+
+View(amr_summarised_typhi_d_meta_abu)
+
+```
 
 ## correlation 
 
@@ -610,40 +623,7 @@ combined_data$percent_isolate <- combined_data$percent_isolate / 100
 
 ```
 
-```{r}
-
-calculate_correlation <- function(data, drug_name) {
-  cor_test <- cor.test(data$percent_isolate, data$percent_microbiome, use = "complete.obs")
-#   mean_x <- mean(data$percent_isolate, na.rm = TRUE)
-#   mean_y <- mean(data$percent_microbiome, na.rm = TRUE)
-  return(data.frame(drug = drug_name, correlation = cor_test$estimate, p_value = cor_test$p.value,
-                    label_pos_x = NA, label_pos_y = NA))
-}
-
-# Calculate Pearson's correlation coefficient, p-value, and label positions for each drug
-correlation_data <- combined_data %>%
-  group_by(drug) %>%
-  do(calculate_correlation(., unique(.$drug)))
-correlation_data$label_pos_x <- c(0.3, 0.3, 0.3)
-correlation_data$label_pos_y <- c(0.9, 0.8, 0.7)
-# Add label text
-correlation_data$label <- with(correlation_data, paste(drug, ": r =", round(correlation, 2), "p =", signif(p_value, 2)))
-
-# Plotting
-plot <- ggplot(combined_data, aes(x = percent_isolate, y = percent_microbiome, color = drug)) +
-  geom_point(aes(shape = country)) +
-  geom_smooth(method = "lm", se = TRUE, aes(group = drug), linetype = "dotted", alpha = 0.8) +
-  geom_text(data = correlation_data, aes(x = label_pos_x, y = label_pos_y, label = label), hjust = 1, vjust = 1, inherit.aes = FALSE) +
-  labs(x = "Percent Isolate", y = "Percent Microbiome", color = "Drug", shape = "Country") +
-  theme_minimal() +
-  ylim(0, 1) +
-  ggtitle("Correlation between Microbiome and Isolate Percentages with Linear Fit and Correlation Coefficients")
-
-
-show(plot)
-
-```
-
+calculate correlation
 
 ```{r}
 calculate_correlation_and_lm <- function(data, drug_name) {
