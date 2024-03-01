@@ -157,7 +157,7 @@ pc12_rechallenge
 baseline_metadata %>% group_by(Run, Diagnosis) %>% summarise(n = n()) %>% kbl() %>% kable_styling()
 ```
 
-## maaslin2 metaphlan
+## maaslin2 metaphlan - all species
 
 ```{r }
 
@@ -195,35 +195,109 @@ Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_met
 
 ```
 
+## maaslin metaphlan - only species from endemic settings
+
+```{r maaslin2_endemic}
+
+patch_metaphlan_filtered_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29/2023.05.05.patch.metaphlan.filtered.csv'
+patch_metaphlan_filtered <- read.csv(file = patch_metaphlan_filtered_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+
+colnames(patch_metaphlan_filtered) <- colnames(patch_metaphlan_filtered) %>% str_replace_all('#', '_')
+
+variables_for_analysis <- c("Gender", "Diagnosis", "Run", 'age_at_challenge')
+
+Maaslin2(input_data = patch_metaphlan_filtered, input_metadata = baseline_metadata_typhi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29', 'baseline_typhi_species_filtered'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+Maaslin2(input_data = patch_metaphlan_filtered, input_metadata = baseline_metadata_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29', 'baseline_paratyphi_species_filtered'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+Maaslin2(input_data = patch_metaphlan_filtered, input_metadata = baseline_metadata_typhi_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29', 'baseline_typhi_paratyphi_species_filtered'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+```
+
 ## functional analysis
 
 ```{r}
 
-patch_bigmap_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11/all_RPKMs.transpose.csv"
+patch_bigmap_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29/all_RPKMs.transpose.filtered.csv"
 patch_bigmap <- read.csv(file = patch_bigmap_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 rownames(patch_bigmap) <- rownames(patch_bigmap) %>% str_replace_all('-', '_') %>% str_replace_all('#', '_')
 
 # variables_for_analysis <- c("Gender", "Group", "Diagnosis", "Run")
 variables_for_analysis <- c("Gender", "Diagnosis", "Run", 'age_at_challenge')
 
-Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi, analysis_method = "LM", min_prevalence = 0,
+Maaslin2(input_data = patch_bigmap, 
+           input_metadata = baseline_metadata_typhi, 
+           analysis_method = "LM",
            normalization  = 'NONE',
            transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_typhi'), 
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29', 'baseline_metadata_typhi_validation'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
 
 Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_paratyphi, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
            transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_paratyphi'), 
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29', 'baseline_metadata_paratyphi_validation'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
 
 Maaslin2(input_data = patch_bigmap, input_metadata = baseline_metadata_typhi_paratyphi, analysis_method = "LM", min_prevalence = 0,
            normalization  = 'NONE',
            transform = 'LOG',
-           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2023.05.11', 'baseline_metadata_typhi_paratyphi'), 
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29', 'baseline_metadata_typhi_paratyphi_validation'), 
            fixed_effects  = variables_for_analysis,
            reference = c('Run,run_1'))
+```
+
+plot the hits
+
+```{r}
+patch_bigmap_tmp <- patch_bigmap
+baseline_metadata_typhi_tmp <- baseline_metadata_typhi
+# Convert row names to a column in patch_bigmap
+patch_bigmap_tmp$sample_id <- rownames(patch_bigmap_tmp)
+baseline_metadata_typhi_tmp$sample_id <- rownames(baseline_metadata_typhi_tmp)
+
+
+# Merge the dataframes on the sample_id
+merged_data <- merge(patch_bigmap_tmp, baseline_metadata_typhi_tmp, by = "sample_id")
+
+# Specify the column you want to plot as a string
+s2p_column_name <- "gb|CP041667.1.region007|GC_DNA--Entryname=Rnf_complex:Glycine_cleavage:succinate2propionate--OS=Lachnospiraceae_bacterium_KGMB03038--SMASHregion=region007--NR=1"
+
+s2p_data_to_plot <- merged_data %>% select(sample_id, s2p_column_name, Diagnosis) %>% rename("succinate2propionate" = s2p_column_name) %>% mutate(Diagnosis = as.factor(Diagnosis))
+
+# Plotting
+ggplot(s2p_data_to_plot, aes(x = Diagnosis, y = succinate2propionate, colour = Diagnosis)) +
+  geom_jitter(width = 0.25) +
+  geom_boxplot(alpha = 0.5) +
+  stat_compare_means()
+  # labs(x = "Sample ID", y = column_name, title = paste("Scatter plot of", column_name, "colored by diagnosis"))
+
+
+rnf_column_name <- "gb|QVFA01000011.1.region001|GC_DNA--Entryname=Rnf_complex--OS=Faecalibacterium_prausnitzii_strain_AM39-7BH--SMASHregion=region001--NR=6"
+
+rnf_data_to_plot <- merged_data %>% select(sample_id, rnf_column_name, Diagnosis) %>% rename("rnf" = rnf_column_name) %>% mutate(Diagnosis = as.factor(Diagnosis))
+
+# Plotting
+ggplot(rnf_data_to_plot, aes(x = Diagnosis, y = rnf, colour = Diagnosis)) +
+  geom_jitter(width = 0.25) +
+  geom_boxplot(alpha = 0.5) +
+  stat_compare_means()
+
 ```

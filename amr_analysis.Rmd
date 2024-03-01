@@ -414,9 +414,13 @@ Do an analysis of only genes found in Typhi. allele_names and gene_family_names 
 allele_names <- c('blaCMY-2', 'blaOXA-1', 'blaOXA-11', 'blaOXA-15', 'blaOXA-7', 'blaTEM-1', 'blaTEM-10', 'blaTEM-124', 'cmlA1')
 gene_family_names <- c('blaAIM', 'blaBIC', 'blaCTX-M', 'blaGES', 'blaIMI', 'blaIMP', 'blaKPC', 'blaLMB', 'blaNDM', 'blaSHV', 'blaSIM', 'blaSPM', 'blaVIM', 'dfrA1', 'dfrA15', 'dfrA17', 'dfrA18', 'dfrA5', 'dfrA7', 'drfA14', 'erm(A)', 'erm(B)', 'erm(C)', 'mcr-1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mph(A)', 'mph(B)', 'qnrA', 'qnrB', 'qnrD', 'qnrS', 'sul1', 'sul2', 'tet(A)', 'tet(B)', 'tet(C)', 'tet(D)')
 
-amr_data_typhi <- amr_data_with_ncbi_cln %>% filter(`#Allele` %in% allele_names | `Gene family` %in% gene_family_names)
+amr_data_typhi <- amr_data_with_ncbi_cln %>% filter(`#Allele` %in% allele_names | `Gene family` %in% gene_family_names) %>% mutate(Class = ifelse(str_detect(`Product name`, 'extended-spectrum'), 'ESBL', Class))
+
 typhi_classes <- unique(amr_data_typhi$Class)
-samples <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(Lane)
+# samples <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(Lane)
+
+# for this section, remove all carriers
+samples <- metadata %>% filter(!(Group == 'Carrier')) %>% pull(Lane)
 
 # 1. make a template with all the samples and classes
 amr_summarised_typhi <- expand.grid(sample = samples, `Class` = typhi_classes)
@@ -430,12 +434,12 @@ amr_summarised_typhi_d <- left_join(amr_summarised_typhi, tmp, by = join_by(samp
 # 4. join to metadata
 amr_summarised_typhi_d_meta <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group)), by = join_by(sample == Lane))
 
-
 # 5. Group by class, country, and summarise
 typhi_amr_class_country <- amr_summarised_typhi_d_meta %>% 
   group_by(Class, Country) %>% 
   summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
-typhi_amr_class_country %>% filter(Country == 'Bangladesh') %>% kbl() %>% kable_styling()
+# typhi_amr_class_country %>% filter(Country == 'Bangladesh') %>% kbl() %>% kable_styling()
+typhi_amr_class_country %>% kbl() %>% kable_styling()
 
 # function to run chi sq test on a given antibiotic class, assuming country and class.
 run_chisq_on_amr <- function(df, antibiotic_class){
@@ -454,15 +458,34 @@ run_chisq_on_amr <- function(df, antibiotic_class){
 # 6. run chi-sq tests on each antibiotic class
 run_chisq_on_amr(typhi_amr_class_country, 'SULFONAMIDE')
 run_chisq_on_amr(typhi_amr_class_country, 'TETRACYCLINE')
+run_chisq_on_amr(typhi_amr_class_country, 'BETA-LACTAM')
+run_chisq_on_amr(typhi_amr_class_country, 'ESBL')
 run_chisq_on_amr(typhi_amr_class_country, 'MACROLIDE')
 run_chisq_on_amr(typhi_amr_class_country, 'QUINOLONE')
 run_chisq_on_amr(typhi_amr_class_country, 'TRIMETHOPRIM')
-run_chisq_on_amr(typhi_amr_class_country, 'BETA-LACTAM')
 run_chisq_on_amr(typhi_amr_class_country, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN')
+
 
 # 7. Group by class and group and summarise
 
-typhi_amr_class_group <- amr_summarised_typhi_d_meta %>% 
+## now doing it with the carriers as well
+
+samples_with_carrier <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(Lane)
+
+amr_summarised_typhi_carrier <- expand.grid(sample = samples_with_carrier, `Class` = typhi_classes)
+
+# 2. count the number of genes per sample, per class.
+tmp <- amr_data_typhi %>% group_by(sample, Class) %>% summarise(n = n()) #%>% kbl() %>% kable_styling()
+
+# 3. join the data to the template (amr_summarised_typhi)
+amr_summarised_typhi_carrier_d <- left_join(amr_summarised_typhi_carrier, tmp, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(at_least_one = ifelse(n > 0, 1, 0)) 
+
+# 4. join to metadata
+amr_summarised_typhi_carrier_d_meta <- left_join(amr_summarised_typhi_carrier_d, select(metadata, c(Lane, Country, Group)), by = join_by(sample == Lane))
+
+
+
+typhi_amr_class_group <- amr_summarised_typhi_carrier_d_meta %>% 
   group_by(Class, Group) %>% 
   summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
 
@@ -476,6 +499,7 @@ run_chisq_on_amr(typhi_amr_class_group, 'MACROLIDE')
 run_chisq_on_amr(typhi_amr_class_group, 'QUINOLONE')
 run_chisq_on_amr(typhi_amr_class_group, 'TRIMETHOPRIM')
 run_chisq_on_amr(typhi_amr_class_group, 'BETA-LACTAM')
+run_chisq_on_amr(typhi_amr_class_group, 'ESBL')
 run_chisq_on_amr(typhi_amr_class_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN')
 
 # 7. Group by class, country, group, and summarise
@@ -564,7 +588,7 @@ typhi_amr_families %>% kbl() %>% kable_styling()
 ## correlation 
 
 ```{r}
-data <- read_tsv('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2024.01.15/2024.01.15.country_drug_percent.tsv')
+data <- read_tsv('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2024.02.29/2024.02.29.country_drug_percent.tsv')
 
 # Data inspection and cleaning (if needed)
 # data <- na.omit(data)  # Example of removing rows with NA
@@ -634,16 +658,15 @@ calculate_correlation_and_lm <- function(data, drug_name) {
                     equation = equation, label_pos_x = NA, label_pos_y = NA))
 }
 
-# Calculate Pearson's correlation coefficient, p-value, equation, and label positions for each drug
 correlation_data <- combined_data %>%
   group_by(drug) %>%
   do(calculate_correlation_and_lm(., unique(.$drug)))
 
-correlation_data$label_pos_x <- c(0.3, 0.3, 0.3)
-correlation_data$label_pos_y <- c(0.95, 0.8, 0.65)
+# correlation_data$label_pos_x <- c(0.3, 0.3, 0.3, 0.3, 0.3, 0.3)
+# correlation_data$label_pos_y <- c(0.95, 0.8, 0.65, 0.5, 0.35, 0.2)
 
 # Add label text
-correlation_data$label <- with(correlation_data, paste(drug, ": r =", round(correlation, 2), "p =", signif(p_value, 2), "\n", equation))
+# correlation_data$label <- with(correlation_data, paste(drug, ": r =", round(correlation, 2), "p =", signif(p_value, 2), "\n", equation))
 
 correlation_data %>% kbl() %>% kable_styling()
 
@@ -660,6 +683,6 @@ plot <- ggplot(combined_data, aes(x = percent_isolate, y = percent_microbiome, c
 
 # Save and display the plot
 # ggsave("microbiome_isolate_linear_fit_plot.png", plot)
-print(plot)
+show(plot)
 
 ```
