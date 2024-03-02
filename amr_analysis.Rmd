@@ -590,11 +590,25 @@ typhi_amr_families %>% kbl() %>% kable_styling()
 
 ```{r}
 
-amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_sampling)), by = join_by(sample == Lane)) %>% filter(!(Antibiotics_taken_before_sampling == 'no')) %>% filter(!(is.na(Antibiotics_taken_before_sampling))) %>% filter(!(Antibiotics_taken_before_sampling == '#N/A')) %>% filter(!(Antibiotics_taken_before_sampling == '')) %>% filter(!(Antibiotics_taken_before_sampling == 'Unknown')) %>% mutate(Antibiotics_taken_before_sampling = ifelse(Antibiotics_taken_before_sampling == 'yes', 'Yes', Antibiotics_taken_before_sampling))
-amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% filter(Country == 'Bangladesh')
-amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin)
 
-View(amr_summarised_typhi_d_meta_abu)
+amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_sampling)), by = join_by(sample == Lane))  %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Acute_Typhi')
+
+amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_sampling, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_sampling, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_sampling, 'Cefixime'), 1, 0))
+
+amr_summarised_typhi_d_meta_abu_quinolone <- filter(amr_summarised_typhi_d_meta_abu, Class == 'QUINOLONE')
+
+amr_summarised_typhi_d_meta_abu_azithromycin <- filter(amr_summarised_typhi_d_meta_abu, Class == 'MACROLIDE')
+
+amr_summarised_typhi_d_meta_abu_bl_esbl <- filter(amr_summarised_typhi_d_meta_abu, Class == 'ESBL' | Class == 'BETA-LACTAM')
+
+
+table(amr_summarised_typhi_d_meta_abu_quinolone$Ciprofloxacin, amr_summarised_typhi_d_meta_abu_quinolone$at_least_one)
+
+table(amr_summarised_typhi_d_meta_abu_azithromycin$Azithromyin, amr_summarised_typhi_d_meta_abu_azithromycin$at_least_one)
+
+table(amr_summarised_typhi_d_meta_abu_bl_esbl$Cefixime, amr_summarised_typhi_d_meta_abu_bl_esbl$at_least_one)
+
+
 
 ```
 

@@ -166,7 +166,7 @@ strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(age_bracket=
 Alpha diversity - all countries, all groups
 
 ```{r alpha_diversity_all_countries_all_groups}
-all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Carrier', 'Control'), comparisons = list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Control', 'Carrier')))
+all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, strataa_metaphlan_metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Carrier', 'Control'), comparisons = list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Control', 'Carrier')), participant_group_colours)
 all_countries_all_groups_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_all_groups_alpha$alpha_plot_group
 all_countries_all_groups_alpha$alpha_plot_antibiotics
@@ -736,24 +736,18 @@ my_comparisons <- list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Contro
 mwi_sgb_abundance_plot <- ggplot(mwi_sgb_abundance %>% filter(SGB == 'SGB'), aes(x = Group, y = total_abundance, color = Group)) +
   geom_boxplot() +
   stat_compare_means(comparisons = my_comparisons) + 
-  stat_compare_means(label.y = 70) + 
+  stat_compare_means(label.y = 70, size = 5) + 
   theme(legend.position = "none") + 
   labs(y = 'SGB abundance in metagenome (%)', x = '') + 
   theme(text = element_text(size=18)) + 
-  scale_x_discrete(labels= c('Control', 'Acute', 'Carrier'))
+  scale_x_discrete(labels= c('Control', 'Acute typhoid', 'Presumptive carrier'))
 
-mwi_sgb_abundance_plot$layers[[2]]$aes_params$textsize <- 4
+mwi_sgb_abundance_plot$layers[[2]]$aes_params$textsize <- 5
+# mwi_sgb_abundance_plot$layers[[3]]$aes_params$textsize <- 8
 # which_layers(mwi_sgb_abundance_plot, "GeomSignif")
-
+mwi_sgb_abundance_plot
 ggsave(file.path(metaphlan_input_folder, 'mwi_sgb_abundance.png'), mwi_sgb_abundance_plot, width = 8, height = 4.8, units = 'in', dpi = 300)
 
-```
-
-```{r get_same_same}
-
-
-
-# heal_ac_car_taxonomic_all_w %>% filter(is.na(qval_Carrier))
 ```
 
 ```{r make_health_acc_carr_table}
