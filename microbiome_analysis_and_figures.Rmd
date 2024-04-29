@@ -187,7 +187,7 @@ bgd_beta_all_groups$pn_res %>% kbl %>% kable_styling()
 
 mal_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Malawi'), c('Acute typhoid', 'Carrier', 'Control'))
 mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
-# mal_beta_all_groups$pc12
+mal_beta_all_groups$pc12
 # mal_beta_all_groups$pc34
 
 nep_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, strataa_metaphlan_metadata, c('Nepal'), c('Acute typhoid', 'Carrier', 'Control'))
@@ -785,83 +785,7 @@ RF - Using a strategy from one of Kevin Bonham's papers https://www.biorxiv.org/
 
 
 # this creates three folds, each of which has 2/3rds of the data in it.
-  # this is because for a 3 fold CV, we use 2/3 as training, and 1/3 as test.
-
-```{r rf_complex}
-
-library(randomForest)
-library(caret)
-
-# Assuming strataa_metaphlan_data_heal_carr_rf is your dataset
-data <- strataa_metaphlan_data_heal_carr_rf
-n_repeats <- 10  # Number of CV repetitions
-n_folds <- 3      # Number of folds in each CV
-n_rng_states <- 10  # Number of RNG states per fold
-
-# Initialize list to store results
-all_feature_importances <- vector("list", length = n_repeats)
-all_accuracies <- vector("list", length = n_repeats)
-
-# Set a seed for reproducibility
-set.seed(123)
-
-# Perform 100 repetitions of 3-fold CV
-for (rep in 1:n_repeats) {
-  
-  # Create indices for the 3-fold CV
-  fold_indices <- createFolds(data$Group, k = n_folds, list = TRUE, returnTrain = TRUE)
-  
-  # Initialize list to store fold results for this repetition
-  rep_feature_importances <- vector("list", length = n_folds)
-  rep_accuracies <- matrix(NA, nrow = n_folds, ncol = n_rng_states)
-  
-  # Loop over each fold
-  for (fold in 1:n_folds) {
-    
-    # Get training and testing sets
-    train_indices <- fold_indices[[fold]]
-    test_indices <- setdiff(1:nrow(data), train_indices)
-    train_data <- data[train_indices, ]
-    test_data <- data[test_indices, ]
-    
-    # Initialize matrix to store feature importances for this fold
-    fold_feature_importances <- matrix(NA, nrow = n_rng_states, ncol = ncol(data) - 1)  # Assuming the first column is the response
-    
-    # Loop over each RNG state
-    for (rng_state in 1:n_rng_states) {
-      
-      # Set RNG state
-      set.seed((rep * 1000) + (fold * 100) + rng_state)  # Unique seed for each model
-      
-      # Fit the random forest model
-      rf <- randomForest(Group ~ ., data = train_data, ntree = 500)
-      
-      # Store the feature importance
-      fold_feature_importances[rng_state, ] <- importance(rf)
-      
-      # Predict on the test set and calculate accuracy
-      pred <- predict(rf, test_data)
-      rep_accuracies[fold, rng_state] <- sum(pred == test_data$Group) / length(test_data$Group)
-    }
-    
-    # Store the feature importances for this fold
-    rep_feature_importances[[fold]] <- fold_feature_importances
-  }
-  
-  # Store results of this repetition
-  all_feature_importances[[rep]] <- rep_feature_importances
-  all_accuracies[[rep]] <- rep_accuracies
-}
-
-# Now, `all_feature_importances` is a list of lists of matrices, where each matrix contains the feature importances for a fold and RNG state
-# `all_accuracies` is a list of matrices, where each matrix contains the accuracies for each fold and RNG state
-
-# Example of how to access feature importance for repetition 1, fold 1, RNG state 1
-# print(all_feature_importances[[1]][[1]][1, ])
-
-```
-
-
+# this is because for a 3 fold CV, we use 2/3 as training, and 1/3 as test.
 
 ```{r}
 
