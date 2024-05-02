@@ -1,0 +1,31 @@
+```{r}
+
+library(tidyverse)
+```
+
+```{r}
+
+blantyre_acute_typhoid <- c('BZD2BA', 'BZD2E5', 'BZD2VN', 'BZD2VP', 'BZD38G', 'BZD3M6', 'BZD3Q2', 'BZD3TV', 'BZD3ZA', 'BZD3ZG', 'BZD41C', 'BZD42B', 'BZD42U', 'BZD435', 'BZD43M', 'BZD44B', 'BZD44T', 'BZD45S', 'BZD45T', 'BZD47S', 'BZD47T', 'BZD4EZ', 'BZD4J5')
+
+```
+
+```{r read_in_data}
+# Read the CSV file
+data <- read_csv("/Users/flashton/Dropbox/GordonGroup/STRATAA_pefloxacin_resistant_typhi/data_munging/2021.11.12/STRATAA.ps_enrolment.csv")
+
+# remove every row that was not recruited (pid)
+data <- data %>% filter(pid != 'NotRecruited') %>% filter(ps07_lims %in% blantyre_acute_typhoid)
+
+# find the ones from the blantyre_acute_typhoid list that aren't in the enrolment information.
+#blantyre_acute_typhoid[!blantyre_acute_typhoid %in% data$ps07_lims]
+
+# select the columns we want - ps_42, everything starting ps_44
+
+data <- data %>% select(pid, ps07_lims, ps42_stool, starts_with("ps44"))
+
+# add a new column, any_antibiotics, that is TRUE if any of the antibiotics columns are TRUE
+
+data <- data %>% mutate(any_antibiotcs = ps44_chloramph + ps44_amox + ps44_coamox + ps44_cotrimox + ps44_cipro + ps44_oxflox + ps44_gatiflox + ps44_azithrom + ps44_cefix + ps44_ceftriax + ps44_unkwabx + ps44_oabx)
+```
+
+
