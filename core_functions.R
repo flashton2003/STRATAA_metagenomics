@@ -24,18 +24,20 @@ read_metadata <- function(path_to_metadata){
   names(meta)[names(meta) == "ID"] <- "isolate"
   meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("0-1", "1-5", "6-15", ">15")))
   meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
-  meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_yes_no_assumptions, sep = '_')
+  meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_assumptions, sep = '_')
   
+  meta <- meta %>% arrange(desc(number_of_reads)) %>% distinct(StudyID, .keep_all = TRUE)
+
   return(meta)
 }
 
 
 get_baseline_characteristics <- function(meta){
-  meta_subset <- meta %>% select(Group, Sex, Country, Age, Antibiotics_taken_before_sampling_yes_no_assumptions)
+  meta_subset <- meta %>% select(Group, Sex, Country, Age, Antibiotics_taken_before_sampling_assumptions)
   
   pct_female <- meta_subset %>% group_by(Group, Country, Sex) %>% summarise(n = n()) %>% pivot_wider(names_from = c(Sex), values_from = n) %>% mutate(pct_fem = (Female / sum(c(Female, Male))) * 100) %>% select(c(Group, Country, pct_fem))
   
-  pct_antibiotics <- meta_subset %>% group_by(Group, Country, Antibiotics_taken_before_sampling_yes_no_assumptions) %>% summarise(n = n()) %>% pivot_wider(names_from = c(Antibiotics_taken_before_sampling_yes_no_assumptions), values_from = n)
+  pct_antibiotics <- meta_subset %>% group_by(Group, Country, Antibiotics_taken_before_sampling_assumptions) %>% summarise(n = n()) %>% pivot_wider(names_from = c(Antibiotics_taken_before_sampling_assumptions), values_from = n)
   pct_antibiotics[is.na(pct_antibiotics)] <- 0
   pct_antibiotics <- pct_antibiotics %>% mutate(pct_anti = (Yes / sum(c(No, Yes, Unknown))) * 100) %>% select(c(Group, Country, pct_anti))
   
@@ -310,7 +312,7 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
                   PC4 = cmd_res$points[,4])
 
   pcoa_df <- mutate(pcoa_df, SampleID = rownames(metaphlan_data_mat)) %>% left_join(metadata, by = 'SampleID')
-  # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata, permutations = 100)
+  # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_assumptions, data = metadata, permutations = 100)
   # View(pn)
   if ('Carrier' %in% groups_of_interest){
     pn <- adonis2(dist_mat~Sex*Group*Age, data = metadata, permutations = 1000)
@@ -318,7 +320,7 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
     pn <- adonis2(dist_mat~Gender*Diagnosis*age_at_challenge, data = metadata, permutations = 1000)
   }
   else {
-    pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_yes_no_assumptions, data = metadata, permutations = 1000)
+    pn <- adonis2(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_assumptions, data = metadata, permutations = 1000)
   }
   # View(pn)
   # pn_with_var_names <- cbind(rownames(pn$aov.tab), data.frame(pn$aov.tab, row.names = NULL))
@@ -368,14 +370,14 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
     if ('Carrier' %in% groups_of_interest){
       alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age, data = alpha_meta)
     } else {
-      alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+      alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_assumptions, data = alpha_meta)
     }
     
   } else if (length(countries_of_interest) == 1) {
     if ('Carrier' %in% groups_of_interest){
       alpha_anova <- aov(Shannon ~ Sex *Group * Age, data = alpha_meta)
     } else {
-      alpha_anova <- aov(Shannon ~ Sex *Group * Age * Antibiotics_taken_before_sampling_yes_no_assumptions, data = alpha_meta)
+      alpha_anova <- aov(Shannon ~ Sex *Group * Age * Antibiotics_taken_before_sampling_assumptions, data = alpha_meta)
     }
   }
   
@@ -408,7 +410,7 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   show(alpha_plot_group)
   
   antibiotic_comps <- list(c('Yes', 'No'))
-  alpha_plot_antibiotics <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Antibiotics_taken_before_sampling_yes_no_assumptions", color = "Antibiotics_taken_before_sampling_yes_no_assumptions") + 
+  alpha_plot_antibiotics <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Antibiotics_taken_before_sampling_assumptions", color = "Antibiotics_taken_before_sampling_assumptions") + 
     stat_compare_means(comparisons = antibiotic_comps, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
     rremove("x.text") + 
     rremove("xlab") + 
@@ -418,16 +420,16 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
 
 
   df <- data.frame(country = c(rep("Bangladesh", 6), rep("Malawi", 6), rep("Nepal", 6)),
-                  antibiotic_sampling = rep(c("Pre", "Post"), 9),
+                  antibiotic_presentation = rep(c("Pre", "Post"), 9),
                   age_bracket = rep(c("0-4", "5-14", "15-24"), each = 6),
                   value = rnorm(18))
 if ('Acute typhoid' %in% groups_of_interest){
-  # Create a box plot for each combination of country, antibiotic_sampling, and age_bracket
-  alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions != 'Unknown')
-  p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill = Antibiotics_taken_before_sampling_yes_no_assumptions)) +
+  # Create a box plot for each combination of country, antibiotic_presentation, and age_bracket
+  alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_assumptions != 'Unknown')
+  p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill = Antibiotics_taken_before_sampling_assumptions)) +
     geom_boxplot() +
     facet_grid(cols = vars(Country )) +
-    labs(title = "Box plot by country, antibiotic_sampling, and age_bracket")
+    labs(title = "Box plot by country, antibiotic_presentation, and age_bracket")
   show(p)
 }
 
@@ -471,9 +473,9 @@ calculate_alpha <- function(data, meta, group, output_folder, prefix, inc_countr
   alpha <- vegan::diversity(data, index="shannon")
   
   if (isTRUE(inc_country)) {
-    s <- summary(aov(alpha ~ Country * Sex *Group * age_bracket * Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta))
+    s <- summary(aov(alpha ~ Country * Sex *Group * age_bracket * Antibiotics_taken_before_sampling_assumptions, data = meta))
   } else {
-    s <- summary(aov(alpha ~ Sex *Group * age_bracket * Antibiotics_taken_before_sampling_yes_no_assumptions, data = meta))
+    s <- summary(aov(alpha ~ Sex *Group * age_bracket * Antibiotics_taken_before_sampling_assumptions, data = meta))
   }
   
   
@@ -687,7 +689,7 @@ run_make_clean <- function(maaslin_prevalence) {
   # and then combines the output into a single data frame
   group_clean <- make_clean(maaslin_prevalence, variable = "Group")
   sex_clean <- make_clean(maaslin_prevalence, variable = "Sex")
-  antibiotics_clean <- make_clean(maaslin_prevalence, variable = "Antibiotics_taken_before_sampling_yes_no_assumptions")
+  antibiotics_clean <- make_clean(maaslin_prevalence, variable = "Antibiotics_taken_before_sampling_assumptions")
   clean_output <- rbind(group_clean, sex_clean, antibiotics_clean)
   View(clean_output)
   return(clean_output)
@@ -758,8 +760,7 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
 
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups, input_type){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
-  metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions %in% c('Yes', 'No'))
-  View(metadata_to_analyse)
+  metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_assumptions %in% c('Yes', 'No'))
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
   # View(dim(feature_data))
@@ -794,16 +795,12 @@ read_in_maaslin <- function(country, groups_to_analyse, variables_for_analysis, 
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
   maaslin_output_dir <- file.path(root_folder, paste(country, paste(groups_to_analyse, collapse = '_vs_'), vars_for_dirname, sep = '_'))
   maaslin_results <- read_delim(file.path(maaslin_output_dir, "all_results.tsv"), delim = "\t", escape_double = FALSE, trim_ws = TRUE)
-  
   if (type_of_input == 'metaphlan'){
       maaslin_results$lowest_taxonomic_level <- sapply(str_split(maaslin_results$feature, "\\."), function(x) x[length(x)])
   maaslin_results <- maaslin_results %>% relocate(lowest_taxonomic_level, .after = feature)
   } else if (type_of_input == 'bigmap'){
-    maaslin_results <- maaslin_results %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
-
+    maaslin_results <- maaslin_results %>% separate_wider_delim(feature, delim = 'Entryname.', names_sep = '', cols_remove = FALSE) %>% separate_wider_delim(feature2, delim = '..OS.', names_sep = '') %>% separate_wider_delim(feature22, delim = '..SMASH', names_sep = '') %>% dplyr::select(!c(feature1, feature222)) %>% rename(MGC_class = feature21, Species = feature221, feature = featurefeature)
   }
-  # this splits the feature column on a period and takes the last element (i.e. the lowest taxonomic level)
-
   return(maaslin_results)
 }
 

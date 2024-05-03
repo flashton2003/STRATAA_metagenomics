@@ -167,10 +167,10 @@ p
 number_of_amr_genes_per_sample_abu <- amr_summarised_meta_with_data %>% filter(Group == 'Acute typhoid') %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb))
 number_of_amr_genes_per_sample_abu_meta <- left_join(number_of_amr_genes_per_sample_abu, metadata, by = join_by(sample == Lane))
 
-number_of_amr_genes_per_sample_abu_meta  %>% group_by(Antibiotics_taken_before_sampling_yes_no_assumptions) %>% summarise(median_n = median(n), median_sum_rpk = median(sum_reads_per_kb))  %>% kbl() %>% kable_styling()
-number_of_amr_genes_per_sample_abu_meta$Antibiotics_taken_before_sampling_yes_no_assumptions <- factor(number_of_amr_genes_per_sample_abu_meta$Antibiotics_taken_before_sampling_yes_no_assumptions, levels = c("Yes", "No", "Unknown"))
+number_of_amr_genes_per_sample_abu_meta  %>% group_by(Antibiotics_taken_before_sampling_assumptions) %>% summarise(median_n = median(n), median_sum_rpk = median(sum_reads_per_kb))  %>% kbl() %>% kable_styling()
+number_of_amr_genes_per_sample_abu_meta$Antibiotics_taken_before_sampling_assumptions <- factor(number_of_amr_genes_per_sample_abu_meta$Antibiotics_taken_before_sampling_assumptions, levels = c("Yes", "No", "Unknown"))
 
-p <- ggplot(number_of_amr_genes_per_sample_abu_meta, aes(x = Antibiotics_taken_before_sampling_yes_no_assumptions, y = n)) +
+p <- ggplot(number_of_amr_genes_per_sample_abu_meta, aes(x = Antibiotics_taken_before_sampling_assumptions, y = n)) +
   geom_boxplot(outlier.shape = NA) +
   geom_jitter(alpha = 0.1, height = 0) +
   stat_compare_means() + 
@@ -181,7 +181,7 @@ ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microb
 
 p
 
-p <- ggplot(number_of_amr_genes_per_sample_abu_meta, aes(x = Antibiotics_taken_before_sampling_yes_no_assumptions, y = sum_reads_per_kb)) +
+p <- ggplot(number_of_amr_genes_per_sample_abu_meta, aes(x = Antibiotics_taken_before_sampling_assumptions, y = sum_reads_per_kb)) +
   geom_boxplot(outlier.shape = NA) +
   geom_jitter(alpha = 0.1, height = 0) +
   stat_compare_means() + 
@@ -591,9 +591,9 @@ typhi_amr_families %>% kbl() %>% kable_styling()
 ```{r}
 
 
-amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_sampling)), by = join_by(sample == Lane))  %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Acute_Typhi')
+amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_presentation)), by = join_by(sample == Lane))  %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Acute_Typhi')
 
-amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_sampling, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_sampling, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_sampling, 'Cefixime'), 1, 0))
+amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Cefixime'), 1, 0))
 
 amr_summarised_typhi_d_meta_abu_quinolone <- filter(amr_summarised_typhi_d_meta_abu, Class == 'QUINOLONE')
 

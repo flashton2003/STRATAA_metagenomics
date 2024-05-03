@@ -25,9 +25,9 @@ relative_abundance <- tibble::rownames_to_column(relative_abundance, "ID") %>% a
 
 
 
-relative_abundance <- relative_abundance %>% left_join(dplyr::select(meta, c('ID', 'Group', 'Country', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')), by = 'ID')
+relative_abundance <- relative_abundance %>% left_join(dplyr::select(meta, c('ID', 'Group', 'Country', 'Age', 'Antibiotics_taken_before_sampling_assumptions')), by = 'ID')
 
-abundance <- relative_abundance %>% select('ID', 'Group', 'Country', 'Age', "Antibiotics_taken_before_sampling_yes_no_assumptions", "Prevotella copri", 'Romboutsia timonensis')
+abundance <- relative_abundance %>% select('ID', 'Group', 'Country', 'Age', "Antibiotics_taken_before_sampling_assumptions", "Prevotella copri", 'Romboutsia timonensis')
 abundance$`Prevotella copri` <- as.numeric(as.character(abundance$`Prevotella copri`))
 abundance$`Romboutsia timonensis` <- as.numeric(as.character(abundance$`Romboutsia timonensis`))
 
@@ -186,20 +186,20 @@ m_rt_sp
 # plot a box plot of relative abundance of p copri in malawi separated by antibiotic use
 
 abundance_malawi_cases <- abundance_malawi %>% filter(Group == 'Acute_Typhi')
-m_pc_ab <- ggplot(abundance_malawi_cases, aes(x = Antibiotics_taken_before_sampling_yes_no_assumptions, y = `Prevotella copri`)) + geom_boxplot() + stat_compare_means(label = "p.format") + ggtitle('Malawi') + theme(legend.position="none")
+m_pc_ab <- ggplot(abundance_malawi_cases, aes(x = Antibiotics_taken_before_sampling_assumptions, y = `Prevotella copri`)) + geom_boxplot() + stat_compare_means(label = "p.format") + ggtitle('Malawi') + theme(legend.position="none")
 m_pc_ab
 
-abundance_malawi_cases_abs <- abundance_malawi_cases %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions == 'Yes')
-abundance_malawi_cases_no_abs <- abundance_malawi_cases %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions == 'No')
+abundance_malawi_cases_abs <- abundance_malawi_cases %>% filter(Antibiotics_taken_before_sampling_assumptions == 'Yes')
+abundance_malawi_cases_no_abs <- abundance_malawi_cases %>% filter(Antibiotics_taken_before_sampling_assumptions == 'No')
 wilcox.test(abundance_malawi_cases_abs$`Prevotella copri`, abundance_malawi_cases_no_abs$`Prevotella copri`)
 
 
 abundance_bangladesh_cases <- abundance_bangladesh %>% filter(Group == 'Acute_Typhi')
-b_pc_ab <- ggplot(abundance_bangladesh_cases, aes(x = Antibiotics_taken_before_sampling_yes_no_assumptions, y = `Prevotella copri`)) + geom_boxplot() + stat_compare_means(label = "p.format") + ggtitle('Bangladesh') + theme(legend.position="none") + ylab('Percentage P. copri')
+b_pc_ab <- ggplot(abundance_bangladesh_cases, aes(x = Antibiotics_taken_before_sampling_assumptions, y = `Prevotella copri`)) + geom_boxplot() + stat_compare_means(label = "p.format") + ggtitle('Bangladesh') + theme(legend.position="none") + ylab('Percentage P. copri')
 b_pc_ab
 
-abundance_bangladesh_cases_abs <- abundance_bangladesh_cases %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions == 'Yes')
-abundance_malawi_cases_no_abs <- abundance_bangladesh_cases %>% filter(Antibiotics_taken_before_sampling_yes_no_assumptions == 'No')
+abundance_bangladesh_cases_abs <- abundance_bangladesh_cases %>% filter(Antibiotics_taken_before_sampling_assumptions == 'Yes')
+abundance_malawi_cases_no_abs <- abundance_bangladesh_cases %>% filter(Antibiotics_taken_before_sampling_assumptions == 'No')
 wilcox.test(abundance_malawi_cases_abs$`Prevotella copri`, abundance_malawi_cases_no_abs$`Prevotella copri`)
 
 

@@ -48,7 +48,6 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 
 First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
 
-
 ```{r metadata_read_in}
 metadata <- read_metadata(metadata_handle)
 
@@ -58,14 +57,9 @@ metadata <- metadata %>% mutate(Group = if_else(Group == 'Acute typhoid', 'Acute
 three_qual_colours <- brewer.pal(3, "Dark2")
 
 participant_group_colours <- c("Acute typhoid" = three_qual_colours[[2]], "Control" = three_qual_colours[[1]], "Carrier" = three_qual_colours[[3]])
-
-
 ```
 
 ```{r metadata_basics}
-
-
-
 number_per_country <- metadata %>% group_by(Country) %>% summarise(count = n())
 
 number_per_country %>% kbl() %>% kable_styling()
@@ -140,6 +134,7 @@ m_sex / b_sex / n_sex
 
 ```{r sequencing_read_stats}
 
+# todo - replace with the read stats from the metadata file.
 read_stats_path <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/data_munging/2023.08.28/2023.08.28 strataa microbiome number of reads.csv'
 read_stats <- read_csv(read_stats_path) %>% filter(Country != '#N/A')
 
@@ -280,9 +275,9 @@ Maaslin basics
 ```{r basics_for_maaslin_taxonomic}
 
 groups_to_analyse <- c('Acute typhoid', 'Control')
-bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
-nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
+nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 
 ```
 
@@ -389,37 +384,34 @@ Functional groups associated with health
 
 ```{r read_in_maaslin_functional}
 
-bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
-# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
-groups_to_analyse <- c('Acute typhoid', 'Control')
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
+# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+groups_to_analyse <- c('Acute_typhi', 'Control_HealthySerosurvey')
 
 bang_func_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
 mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
 ```
 
 ```{r maaslin_functional_groups}
-
 # combined_results <- run_combine_maaslins(bang_func_maaslin, mal_func_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
-
 bang_mal <- list(bang_func_maaslin, mal_func_maaslin)
 combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
-
 combined_results$positive_coef %>%
-  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  dplyr::select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
 combined_results$negative_coef %>%
-  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  dplyr::select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
-combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
-combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% dplyr::select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% dplyr::select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
 
 ```
 
@@ -563,7 +555,7 @@ There are no species significantly associated with carrier status in all Mal and
 ```{r read_in_maaslin_functional_healthy_carrier}
 # bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
-# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 groups_to_analyse <- c('Carrier', 'Control')
 
 # bang_func_carr_health_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
@@ -638,7 +630,7 @@ mal_beta_acute_carrier_healthy$pc12 / nep_beta_acute_carrier_healthy$pc12  + plo
 
 ```{r read_in_heal_ac_car_taxonomic}
 groups_to_analyse <- c('Carrier', 'Control', 'Acute typhoid')
-variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions")
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 heal_ac_car_taxonomic_np <- read_in_maaslin('Nepal', groups_to_analyse, variables_for_analysis, 'metaphlan')
 heal_ac_car_taxonomic_np_sig <- filter_taxonomic_maaslin(heal_ac_car_taxonomic_np) %>% filter(qval <= 0.05) 
 print(nrow(heal_ac_car_taxonomic_np_sig))
@@ -647,7 +639,7 @@ print(nrow(heal_ac_car_taxonomic_np_sig))
 
 ```{r heal_ac_car_taxonomic}
 groups_to_analyse <- c('Carrier', 'Control', 'Acute typhoid')
-variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_yes_no_assumptions", "sequencing_lane")
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
 heal_ac_car_taxonomic <- read_in_maaslin('Malawi', groups_to_analyse, variables_for_analysis, 'metaphlan')
 heal_ac_car_taxonomic_cln <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) #%>% filter(qval <= 0.05) 
 # spread heal_ac_car_taxonomic_cln wider so that the coef is on the same row for each feature

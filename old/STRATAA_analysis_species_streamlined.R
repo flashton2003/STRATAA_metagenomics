@@ -55,7 +55,7 @@ meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=
 table(meta$Group, meta$Country)
 table(meta$Sex, meta$Country)
 table(meta$age_bracket, meta$Country)
-table(meta$Antibiotics_taken_before_sampling_yes_no_assumptions, meta$Country)
+table(meta$Antibiotics_taken_before_sampling_assumptions, meta$Country)
 
 round(prop.table(table(meta$Group, meta$Country)), 2)
 
@@ -90,7 +90,7 @@ run_calc_beta_both_countries <- function(input_braken_folder, out_folder, level)
   samples_regexp = "\\d+_\\d+_\\d+" #for patch and strata
   meta <- meta %>% filter(Country == 'Malawi' | Country == 'Bangladesh' | Country == 'Nepal')
   meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
-  meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_yes_no_assumptions, sep = '_')
+  meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_assumptions, sep = '_')
   
   data_table <- filter_data(input_braken_folder, level, samples_regexp, out_folder)
   
@@ -190,7 +190,7 @@ run_dge <- function(our_metadata, root_dir){
   View(subset_meta)
   subset_otu <- t(abundances(pseq_control_vs_acute))
   # this is Leo's function for running edgeR GLM.
-  result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_yes_no_assumptions')])
+  result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu, covariates = subset_meta[ , c('Country', 'Sex', 'Age', 'Antibiotics_taken_before_sampling_assumptions')])
   #result <- glm.edgeR(x=subset_meta$Group, Y=subset_otu)
   topTags(result, n=10)
   out_folder <- paste(root_dir,'/5_glm/', sep = '')

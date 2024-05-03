@@ -12,8 +12,8 @@ malawi_dpt <- read_delim(malawi_dpt_handle, delim = "\t", escape_double = FALSE,
 nepal_dpt <- read_delim(nepal_dpt_handle, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
 
 
-malawi_maaslin_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.11/Malawi_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_yes_no_assumptions.sequencing_lane/all_results.tsv"
-bangladesh_maaslin_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.11/Bangladesh_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_yes_no_assumptions/all_results.tsv"
+malawi_maaslin_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.11/Malawi_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions.sequencing_lane/all_results.tsv"
+bangladesh_maaslin_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/metaphlan/results/2023.05.11/Bangladesh_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions/all_results.tsv"
 
 malawi_maaslin <- read_delim(malawi_maaslin_handle, 
                           delim = "\t", escape_double = FALSE, 
