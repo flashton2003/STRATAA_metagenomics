@@ -344,31 +344,33 @@ The ones associated at only one site are written out to a file, you can look at 
 Setting up the forest plots.
 
 ```{r forest_plots_setup}
-# i want to join bangladesh_taxonomic_maaslin, malawi_taxonomic_maaslin, nepal_taxonomic_maaslin, and the patch data.
-# should be based on 
+# combine the maaslines for bgd and mal, and then add in the nepal ones.
 combined_maaslins <- combine_maaslins(bangladesh_taxonomic_maaslin, malawi_taxonomic_maaslin, '_bang', '_mal', 'metaphlan')
 combined_maaslins <- combine_maaslins(combined_maaslins, nepal_taxonomic_maaslin, 'not', 'used', 'metaphlan')
-# give these columns a "_nep" suffix coef	stderr	N	N.not.0	pval	qval
+# for the nepal columns, give them a "_nep" suffix
 combined_maaslins <- combined_maaslins %>%
   rename_with(~ paste0(.x, '_nep'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
 
 # get the patch data
-
-patch_taxonomic_maaslin <- read_tsv('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.01.10/baseline_typhi_species/all_results.tsv')
+patch_taxonomic_maaslin <- read_tsv(file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_typhi_species', 'all_results.tsv'))
 patch_taxonomic_maaslin$lowest_taxonomic_level <- sapply(str_split(patch_taxonomic_maaslin$feature, "\\."), function(x) x[length(x)])
 patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>% relocate(lowest_taxonomic_level, .after = feature)
 patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>%
   rename_with(~ paste0(.x, '_patch'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
+
+# in patch_taxonomic_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+# this is to match the other maaslin outputs
 patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>% filter(metadata == 'Diagnosis')
 # in patch_taxonomic_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
 patch_taxonomic_maaslin$metadata <- ifelse(patch_taxonomic_maaslin$metadata == 'Diagnosis', 'Group', patch_taxonomic_maaslin$metadata)
 patch_taxonomic_maaslin$value <- ifelse(patch_taxonomic_maaslin$value == 'no_disease', 'Control_HealthySerosurvey', patch_taxonomic_maaslin$value)
 
+# join the patch data to the combined maaslin data
 combined_maaslins <- combined_maaslins %>%
   left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
  
 
-combined_maaslins 
+
 pcopri <- combined_maaslins %>% filter(grepl('_Prevotella_copri_clade_A', lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
 
 pcopri <- pcopri %>%
