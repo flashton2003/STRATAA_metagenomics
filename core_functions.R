@@ -19,27 +19,30 @@ library(Maaslin2)
 
 read_metadata <- function(path_to_metadata){
   meta <- read.csv(path_to_metadata, header=T, sep = "\t")
+  # View(meta)
   # i dont think this line does anything, probably just there for historic reasons
   names(meta)[names(meta) == "sample_ID"] <- "isolate"
   names(meta)[names(meta) == "ID"] <- "isolate"
+  meta <- meta %>% rename(SampleID = Lane)
   meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("0-1", "1-5", "6-15", ">15")))
   meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
   meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_assumptions, sep = '_')
+
+  meta <- meta %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Control', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group))
+  # strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
   
   meta <- meta %>% arrange(desc(number_of_reads)) %>% distinct(StudyID, .keep_all = TRUE)
-
+  meta <- meta %>% filter(!is.na(isolate) & isolate != "")
   return(meta)
 }
 
 
 get_baseline_characteristics <- function(meta){
   meta_subset <- meta %>% select(Group, Sex, Country, Age, Antibiotics_taken_before_sampling_assumptions)
-  
   pct_female <- meta_subset %>% group_by(Group, Country, Sex) %>% summarise(n = n()) %>% pivot_wider(names_from = c(Sex), values_from = n) %>% mutate(pct_fem = (Female / sum(c(Female, Male))) * 100) %>% select(c(Group, Country, pct_fem))
-  
   pct_antibiotics <- meta_subset %>% group_by(Group, Country, Antibiotics_taken_before_sampling_assumptions) %>% summarise(n = n()) %>% pivot_wider(names_from = c(Antibiotics_taken_before_sampling_assumptions), values_from = n)
   pct_antibiotics[is.na(pct_antibiotics)] <- 0
-  pct_antibiotics <- pct_antibiotics %>% mutate(pct_anti = (Yes / sum(c(No, Yes, Unknown))) * 100) %>% select(c(Group, Country, pct_anti))
+  pct_antibiotics <- pct_antibiotics %>% mutate(pct_anti = (Yes / sum(c(No, Yes))) * 100) %>% select(c(Group, Country, pct_anti))
   
   baseline_chars <- meta_subset %>% group_by(Country, Group) %>% summarise(number = n(), median_age = median(Age)) %>% left_join(pct_female, by = c('Group', 'Country')) %>% left_join(pct_antibiotics, by = c('Group', 'Country'))
   return(baseline_chars)
@@ -333,13 +336,17 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
 }
 
 strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest, participant_group_colours){
+  # View(metadata)
+  # View(metaphlan_data)
   metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
   metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
   metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
-  
+  # View(metadata_coi)
+  # View(metaphlan_data_coi)
   rbd_output <- run_beta_diversity(metaphlan_data_coi, metadata_coi, groups_of_interest)
-
-  # View(pcoa_df)
+  # View(rbd_output)
+  # View(rbd_output$pcoa_df)
+  # View(participant_group_colours)
   title <- paste(countries_of_interest, collapse = "_")
   pc12 <- ggplot(rbd_output$pcoa_df, aes(x = PC1, y = PC2, colour = Group)) + 
     geom_point() +
@@ -347,6 +354,7 @@ strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_intere
     # coord_fixed() + 
     scale_color_manual(values = participant_group_colours) +
     stat_ellipse()
+  show(pc12)
   pc34 <- ggplot(rbd_output$pcoa_df, aes(x = PC3, y = PC4, colour = Group)) + 
     geom_point() +
     ggtitle(title) +
@@ -360,8 +368,8 @@ strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_intere
 
 metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_interest, groups_of_interest, comparisons, participant_group_colours) {
   metaphlan_data <- metaphlan_data %>% select(!lowest_taxonomic_level)
+  # View(metaphlan_data)
   alpha <- rbiom::alpha.div(as.matrix(metaphlan_data))
-  # View(alpha)
   alpha_meta <- left_join(alpha, metaphlan_metadata, by = c('Sample' = 'SampleID')) %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
   # View(alpha_meta)
   # if the length of countries of interest is greater than 1, then include Country in the model
@@ -385,7 +393,7 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   
   alpha_anova_summary_with_var_names <- cbind(rownames(alpha_anova_summary[[1]]), data.frame(alpha_anova_summary[[1]], row.names = NULL))
   alpha_anova_summary_with_var_names <- alpha_anova_summary_with_var_names %>% mutate(is_it_significant = ifelse(`Pr..F.` < 0.01, 'significant', 'not_significant')) %>% arrange(desc(is_it_significant), `Pr..F.`)
-  
+
   # this makes a list of vectors, each of which contains a pair of countries to compare
   if (length(countries_of_interest) > 1){
     country_comps <- combn(countries_of_interest, 2)
@@ -410,6 +418,7 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   show(alpha_plot_group)
   
   antibiotic_comps <- list(c('Yes', 'No'))
+
   alpha_plot_antibiotics <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Antibiotics_taken_before_sampling_assumptions", color = "Antibiotics_taken_before_sampling_assumptions") + 
     stat_compare_means(comparisons = antibiotic_comps, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
     rremove("x.text") + 
@@ -418,14 +427,16 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
 
     # stat_compare_means(comparisons = antibiotic_comps, label = 'p.signif', symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
 
-
   df <- data.frame(country = c(rep("Bangladesh", 6), rep("Malawi", 6), rep("Nepal", 6)),
                   antibiotic_presentation = rep(c("Pre", "Post"), 9),
                   age_bracket = rep(c("0-4", "5-14", "15-24"), each = 6),
                   value = rnorm(18))
+  
 if ('Acute typhoid' %in% groups_of_interest){
   # Create a box plot for each combination of country, antibiotic_presentation, and age_bracket
+  
   alpha_meta_no_unknowns <- alpha_meta %>% filter(Antibiotics_taken_before_sampling_assumptions != 'Unknown')
+  
   p <- ggplot(alpha_meta_no_unknowns, aes(x = age_bracket , y = Shannon, fill = Antibiotics_taken_before_sampling_assumptions)) +
     geom_boxplot() +
     facet_grid(cols = vars(Country )) +
@@ -719,11 +730,16 @@ add_prevalence_to_maaslin_output <- function(output_dir, prevalence) {
 }
 
 
-calculate_prevalence <- function(feature_data, metadata, country, groups_for_analysis, variables_for_analysis) {
+calculate_prevalence <- function(feature_data, metadata, country, groups_for_analysis, strataa_patch) {
   
-  # Filter the metadata to get the correct country and groups for analysis
-  metadata_filtered <- metadata %>% 
+  if (strataa_patch == 'patch'){
+    metadata_filtered <- metadata
+  } else if (strataa_patch == 'strataa') {
+    metadata_filtered <- metadata %>% 
     filter(Country == country, Group %in% groups_for_analysis)
+  }
+  # Filter the metadata to get the correct country and groups for analysis
+  
   # set SampleID column instead of rownames.
   metadata_filtered <- metadata_filtered %>% 
     mutate(SampleID = rownames(metadata_filtered))
@@ -735,7 +751,9 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
   # feature data is in a square matrix, so pivot it to long format
   feature_data <- feature_data %>% 
     pivot_longer(cols = -feature, names_to = "SampleID", values_to = "prevalence")
-  
+  View(feature_data)
+  View(metadata_filtered)
+  feature_data <- feature_data %>% mutate(SampleID = str_replace(SampleID, '#', '_'))
   # Join the feature data with the metadata
   # remove everything with NA for group, these are things from the feature data that aren't in the filtered metadata
   feature_metadata <- feature_data %>% 
@@ -751,7 +769,7 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
   # variable is e.g. Group/Sex, value is e.g. AcuteTyphoid/Male etc.
   prevalence <- feature_metadata_longer %>% 
     group_by(feature, variable, value) %>% 
-    summarize(Median_Prevalence = median(prevalence))
+    summarize(Median_Prevalence = median(prevalence), )
   
   # View(prevalence)
   # Return the prevalence data frame
@@ -779,7 +797,7 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
            fixed_effects  = variables_for_analysis,
            reference = reference_groups)
   if (input_type == 'metaphlan'){
-    prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, variables_for_analysis)
+    prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, 'strataa')
     add_prevalence_to_maaslin_output(output_dir, prevalence)
   }
   
@@ -1020,20 +1038,20 @@ run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, p
 
 
 plot_per_country_abundance <- function(phyla_clean_metadata, country, group_order){
-    # thanks chatgpt!
     phyla_clean_country <- phyla_clean_metadata %>% filter(Country == country) %>% filter(Group %in% group_order)
-
+    # View(phyla_clean_country)
     phyla_clean_country_fct <- phyla_clean_country %>%
-    mutate(Group = factor(Group, levels = group_order),  # Convert group to a factor with the desired order
-            group_order_numeric = as.numeric(Group),  # Create a new numeric variable based on the order of group
-            sample = fct_reorder(sample, group_order_numeric))  # Reorder sample based on group_order_numeric
-
+      mutate(Group = factor(Group, levels = group_order),  # Convert group to a factor with the desired order
+      group_order_numeric = as.numeric(Group),  # Create a new numeric variable based on the order of group
+      sample = fct_reorder(sample, group_order_numeric))  # Reorder sample based on group_order_numeric
+    # View(phyla_clean_country_fct)
     p <- ggplot(data = phyla_clean_country_fct, aes(x = sample, y = relative_abundance, fill = clade_name)) + 
         geom_bar(stat = "identity") + 
         theme(axis.text.x = element_text(angle = 90, hjust = 1), axis.title.x = element_blank()) + 
         scale_x_discrete(breaks=phyla_clean_country_fct$sample, labels=phyla_clean_country_fct$Group) + 
         ggtitle(country) +
         ylim(0, 100.01)
+    # show(p)
     return(p)
 }
 

@@ -30,8 +30,6 @@ library(vegan)
 library(dplyr)
 library(forcats)
 library(Maaslin2)
-
-
 ```
 
 
@@ -48,7 +46,6 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 ## Metadata basics
 
 First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
-
 
 ```{r metadata_read_in}
 
@@ -87,8 +84,6 @@ summary_table %>% kbl() %>% kable_styling()
 metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(metaphlan_data), "\\|"), function(x) x[length(x)])
 metaphlan_data_species <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
-
-
 ```
 
 ## Alpha diversity
@@ -160,11 +155,8 @@ baseline_metadata %>% group_by(Run, Diagnosis) %>% summarise(n = n()) %>% kbl() 
 ## maaslin2 metaphlan - all species
 
 ```{r }
-
-
 metaphlan_data_species_only <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__')) %>% select(!lowest_taxonomic_level)
 colnames(metaphlan_data_species_only) <- colnames(metaphlan_data_species_only) %>% str_replace_all('#', '_')
-
 ```
 
 ```{r maaslin2_baseline}
