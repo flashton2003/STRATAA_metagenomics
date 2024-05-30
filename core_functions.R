@@ -731,15 +731,13 @@ add_prevalence_to_maaslin_output <- function(output_dir, prevalence) {
 
 
 calculate_prevalence <- function(feature_data, metadata, country, groups_for_analysis, strataa_patch) {
-  
+  # Filter the metadata to get the correct country and groups for analysis
   if (strataa_patch == 'patch'){
     metadata_filtered <- metadata
   } else if (strataa_patch == 'strataa') {
     metadata_filtered <- metadata %>% 
     filter(Country == country, Group %in% groups_for_analysis)
   }
-  # Filter the metadata to get the correct country and groups for analysis
-  
   # set SampleID column instead of rownames.
   metadata_filtered <- metadata_filtered %>% 
     mutate(SampleID = rownames(metadata_filtered))
@@ -751,11 +749,14 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
   # feature data is in a square matrix, so pivot it to long format
   feature_data <- feature_data %>% 
     pivot_longer(cols = -feature, names_to = "SampleID", values_to = "prevalence")
-  View(feature_data)
-  View(metadata_filtered)
+  # View(feature_data)
+  # View(metadata_filtered)
   feature_data <- feature_data %>% mutate(SampleID = str_replace(SampleID, '#', '_'))
+  metadata_filtered <- metadata_filtered %>% mutate(SampleID = str_replace(SampleID, '#', '_'))
   # Join the feature data with the metadata
   # remove everything with NA for group, these are things from the feature data that aren't in the filtered metadata
+  # View(feature_data)
+  # View(metadata_filtered)
   feature_metadata <- feature_data %>% 
     left_join(metadata_filtered, by = "SampleID") %>% filter(!is.na(Group))
   # View(feature_metadata)
@@ -952,7 +953,6 @@ run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_c
 }
 
 
-
 plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest, participant_group_colours){
   # View(prevalence_meta)
   
@@ -1020,7 +1020,6 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
 }
 
 
-
 run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, participant_group_colours){
   # we do this so that we can combine plots for the same species from bang and mal together
   m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute typhoid', 'Control'), participant_group_colours)
@@ -1034,7 +1033,6 @@ run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, p
   show(p)
   return(p)
 }
-
 
 
 plot_per_country_abundance <- function(phyla_clean_metadata, country, group_order){
@@ -1088,4 +1086,138 @@ prep_data_to_plot_phyla <- function(phyla, metadata_select){
   phyla_clean_metadata <- phyla_clean %>% left_join(metadata_select, by = c("sample" = "SampleID"))
   # phyla_clean_metadata <- phyla_clean_metadata %>% mutate(Group = ifelse(Group == "Acute typhoid", "Typhi", Group)) %>% mutate(Group = ifelse(Group == "Control", "Healthy", Group))
   return(phyla_clean_metadata)
+}
+
+
+get_maaslin_results_for_species <- function(combined_maaslins, species_name) {
+  # grepl for the species name, and then filter for the Group metadata (which is the case/control assc) and then select all columns except feature, metadata, value
+  maaslin_results_for_species <- combined_maaslins %>% filter(grepl(species_name, lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  # pivot the data so that the columns are now the country, and the values are the coef, stderr, N, N.not.0, pval, qval
+  maaslin_results_for_species <- maaslin_results_for_species %>%
+    pivot_longer(
+      cols = starts_with("coef") | starts_with("stderr") | starts_with("N") | starts_with("N.not.0") | starts_with("pval") | starts_with("qval"),
+      names_to = c(".value", "country"),
+      names_pattern = "(.*)_(.*)"
+    )
+  # change the country names to the full names
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'bang', 'Bangladesh', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'mal', 'Malawi', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'nep', 'Nepal', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'patch', 'CHIM', maaslin_results_for_species$country)
+  # change the country to a factor, and set the levels to the desired order
+  desired_order <- c("Bangladesh", "Malawi", "Nepal", "CHIM")
+  maaslin_results_for_species$country <- factor(maaslin_results_for_species$country, levels = desired_order)
+  maaslin_results_for_species$country <- as.character(maaslin_results_for_species$country)
+  # add the 95% confidence intervals
+  maaslin_results_for_species <- maaslin_results_for_species %>%
+    mutate(
+      ci_lower = coef - 1.96 * stderr,
+      ci_upper = coef + 1.96 * stderr
+    )
+  return(maaslin_results_for_species)
+}
+
+
+get_species_of_interest_prevalence <- function(strataa_metaphlan_data_species, groups_to_analyse) {
+  patch_metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+  patch_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(patch_metaphlan_data), "\\|"), function(x) x[length(x)])
+  patch_metaphlan_data_species <- patch_metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
+
+  patch_metaphlan_data_species_temp <- patch_metaphlan_data_species %>% select(!c(lowest_taxonomic_level))
+
+  patch_metadata <- read.csv(file = patch_metadata_handle, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+  patch_metadata$SampleID <- row.names(patch_metadata)
+  patch_metadata <- patch_metadata %>% filter(Group %in% c('Typhi', 'Paratyphi'), day_group == 'baseline') %>% select(c(isolate_ID, Diagnosis)) %>% rename(SampleID = isolate_ID, Group = Diagnosis)
+  patch_prevalence <- calculate_prevalence(patch_metaphlan_data_species_temp, patch_metadata, NA, c('Typhi', 'Paratyphi'), 'patch') %>% ungroup()
+  # change disease in value column to Acute typhoid and no_disease to Control
+  patch_prevalence$value <- ifelse(patch_prevalence$value == 'disease', 'Acute typhoid', patch_prevalence$value)
+  patch_prevalence$value <- ifelse(patch_prevalence$value == 'no_disease', 'Control', patch_prevalence$value)
+  patch_prevalence['country'] <- 'CHIM'
+
+
+  strataa_metaphlan_data_species_temp <- strataa_metaphlan_data_species %>% select(!c(lowest_taxonomic_level))
+  metadata_temp <- metadata %>% select(c(SampleID, Country, Group)) 
+  row.names(metadata_temp) <- metadata_temp$SampleID
+  # View(metadata_temp)
+  # View(strataa_metaphlan_data_species_temp)
+  bgd_prevalence <- calculate_prevalence(strataa_metaphlan_data_species_temp, metadata_temp, 'Bangladesh', groups_to_analyse, 'strataa') %>% ungroup()
+  bgd_prevalence['country'] <- 'Bangladesh'
+  variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
+  mwi_prevalence <- calculate_prevalence(strataa_metaphlan_data_species_temp, metadata_temp, 'Malawi', groups_to_analyse, 'strataa') %>% ungroup()
+  mwi_prevalence['country'] <- 'Malawi'
+  variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+  nep_prevalence <- calculate_prevalence(strataa_metaphlan_data_species_temp, metadata_temp, 'Nepal', groups_to_analyse, 'strataa') %>% ungroup()
+  nep_prevalence['country'] <- 'Nepal'
+  # View(bgd_prevalence)
+  prevalence <- rbind(bgd_prevalence, mwi_prevalence, nep_prevalence, patch_prevalence)
+
+  prevalence$lowest_taxonomic_level <- sapply(str_split(prevalence$feature, "\\|"), function(x) x[length(x)])
+  return(prevalence)
+}
+
+forest_plot <- function(prevalence, species_of_interest, species_maaslin_results){
+  species_prevalence <- prevalence %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% select(!c(feature, variable))
+  # i want to pivot pcopri_species wider
+  species_prevalence <- species_prevalence %>% pivot_wider(names_from = 'value', values_from = 'Median_Prevalence')
+
+  species_maaslin_results <- species_maaslin_results %>% left_join(species_prevalence, by =c("lowest_taxonomic_level", 'country'))
+
+  species_maaslin_results <- species_maaslin_results %>%
+    mutate(across(c(coef, stderr, ci_lower, ci_upper, `Acute typhoid`, Control), ~ formatC(.x, format = "fg", digits = 3)))
+  species_maaslin_results <- species_maaslin_results %>%
+    mutate(across(c(pval, qval), ~ formatC(.x, format = "fg", digits = 2)))
+
+  tabletext <- cbind(
+    country = species_maaslin_results$country,
+    lowest_taxonomic_level = species_maaslin_results$lowest_taxonomic_level,
+    coef = species_maaslin_results$coef,
+    stderr = species_maaslin_results$stderr,
+    qval = species_maaslin_results$qval,
+    N = species_maaslin_results$N,
+    N.not.0 = species_maaslin_results$N.not.0,
+    abundunce_disease = species_maaslin_results$`Acute typhoid`,
+    abundunce_control = species_maaslin_results$Control
+  )
+
+  mean <- as.numeric(species_maaslin_results$coef)
+  lower <- as.numeric(species_maaslin_results$coef) - 1.96 * as.numeric(species_maaslin_results$stderr)
+  upper <- as.numeric(species_maaslin_results$coef) + 1.96 * as.numeric(species_maaslin_results$stderr)
+  # remove NaN values from lower and upper, dont set them as 0, remove them entirely
+
+
+  x_min <- min(na.omit(lower)) - 1  # Extend range slightly for better visualization
+  x_max <- max(na.omit(upper)) + 1
+  x_ticks <- seq(floor(x_min), ceiling(x_max), by = 2)  # Adjust 'by' for desired interval
+
+
+  # Plot the forest plot with table
+  forestplot(
+    labeltext = tabletext,
+    mean = mean,
+    lower = lower,
+    upper = upper,
+    xlab = "Effect Size",
+    xticks = x_ticks,
+    new_page = TRUE,
+    is.summary = c(FALSE, FALSE, FALSE, FALSE),
+    txt_gp = fpTxtGp(label = gpar(cex = 0.8), ticks = gpar(cex = 0.7), xlab = gpar(cex = 0.8)),
+    colgap = unit(0.2, "cm"),
+    col = fpColors(box = "royalblue", lines = "darkblue", summary = "royalblue")) %>% 
+      fp_set_zebra_style("#EFEFEF") %>% 
+      fp_add_header(country = "Cohort" %>% fp_align_center(),
+                  lowest_taxonomic_level = "Species" %>% fp_align_center(),
+                  coef = 'Coefficient' %>% fp_align_center(),
+                  stderr = 'Standard\nError' %>% fp_align_center(),
+                  qval = 'Q-value' %>% fp_align_center(),
+                  N = "N" %>% fp_align_center(),
+                  N.not.0 = "N not 0" %>% fp_align_center(),
+                  abundunce_disease = "Abundance\nacute typhoid" %>% fp_align_center(),
+                  abundunce_control = "Abundance\nControl" %>% fp_align_center()
+                  )
+}
+
+
+run_forest_plot <- function(prevalence, species_of_interest, combined_maaslins){
+  species_maaslin_results <- get_maaslin_results_for_species(combined_maaslins, species_of_interest)
+  forest_plot(prevalence, species_of_interest, species_maaslin_results)
 }

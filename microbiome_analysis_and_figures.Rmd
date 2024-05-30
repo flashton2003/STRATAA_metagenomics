@@ -343,7 +343,7 @@ The ones associated at only one site are written out to a file, you can look at 
 
 Setting up the forest plots.
 
-```{r forest_plots_setup}
+```{r combine_maaslins_for_strataa_and_patch}
 # combine the maaslines for bgd and mal, and then add in the nepal ones.
 combined_maaslins <- combine_maaslins(bangladesh_taxonomic_maaslin, malawi_taxonomic_maaslin, '_bang', '_mal', 'metaphlan')
 combined_maaslins <- combine_maaslins(combined_maaslins, nepal_taxonomic_maaslin, 'not', 'used', 'metaphlan')
@@ -368,143 +368,40 @@ patch_taxonomic_maaslin$value <- ifelse(patch_taxonomic_maaslin$value == 'no_dis
 # join the patch data to the combined maaslin data
 combined_maaslins <- combined_maaslins %>%
   left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
- 
-
-
-pcopri <- combined_maaslins %>% filter(grepl('_Prevotella_copri_clade_A', lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
-
-pcopri <- pcopri %>%
-  pivot_longer(
-    cols = starts_with("coef") | starts_with("stderr") | starts_with("N") | starts_with("N.not.0") | starts_with("pval") | starts_with("qval"),
-    names_to = c(".value", "country"),
-    names_pattern = "(.*)_(.*)"
-  )
-# pcopri <- pcopri %>% select(lowest_taxonomic_level, country, coef, stderr, qval)
-
-# in pcopri, change the country column entries from 'bang' to 'Bangladesh', 'mal' to 'Malawi', and 'nep' to 'Nepal' and from 'patch' to 'CHIM'
-pcopri$country <- ifelse(pcopri$country == 'bang', 'Bangladesh', pcopri$country)
-pcopri$country <- ifelse(pcopri$country == 'mal', 'Malawi', pcopri$country)
-pcopri$country <- ifelse(pcopri$country == 'nep', 'Nepal', pcopri$country)
-pcopri$country <- ifelse(pcopri$country == 'patch', 'CHIM', pcopri$country)
-
-desired_order <- c("Bangladesh", "Malawi", "Nepal", "CHIM")
-pcopri$country <- factor(pcopri$country, levels = desired_order)
-pcopri$country <- as.character(pcopri$country)
-
-pcopri <- pcopri %>%
-  mutate(
-    ci_lower = coef - 1.96 * stderr,
-    ci_upper = coef + 1.96 * stderr
-  ) #%>%
-  # arrange(coef)
 
 ```
 
-for the forest plot, i also want to include the per-cohort abundance IQRs for the species of interest.
+for the forest plot, i also want to include the per-cohort abundance medians for the species of interest.
 
-```{r species_of_interest_abundance}
-
-
-# run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups, input_type){
-# run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'metaphlan')
-# prevalence <- calculate_prevalence(feature_data, metadata, country, groups_for_analysis, variables_for_analysis)
+```{r species_of_interest_prevalence}
 
 groups_to_analyse <- c('Acute typhoid', 'Control')
+prevalence <- get_species_of_interest_prevalence(strataa_metaphlan_data_species, groups_to_analyse)
 
-patch_metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
-patch_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(patch_metaphlan_data), "\\|"), function(x) x[length(x)])
-patch_metaphlan_data_species <- patch_metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
+```
 
-patch_metaphlan_data_species_temp <- patch_metaphlan_data_species %>% select(!c(lowest_taxonomic_level))
+```{r per_species_data_for_forest_plot}
 
-patch_metadata <- read.csv(file = patch_metadata_handle, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
-patch_metadata$SampleID <- row.names(patch_metadata)
-patch_metadata <- patch_metadata %>% filter(Group %in% c('Typhi', 'Paratyphi'), day_group == 'baseline') %>% select(c(isolate_ID, Diagnosis)) %>% rename(SampleID = isolate_ID, Group = Diagnosis)
 
-strataa_metaphlan_data_species_temp <- strataa_metaphlan_data_species %>% select(!c(lowest_taxonomic_level))
-metadata_temp <- metadata %>% select(c(SampleID, Country, Group)) 
-row.names(metadata_temp) <- metadata_temp$SampleID
-bgd_prevalence <- calculate_prevalence(strataa_metaphlan_data_species_temp, metadata_temp, 'Bangladesh', groups_to_analyse, 'strataa') %>% ungroup()
-bgd_prevalence['country'] <- 'Bangladesh'
-variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
-mwi_prevalence <- calculate_prevalence(strataa_metaphlan_data_species_temp, metadata_temp, 'Malawi', groups_to_analyse, 'strataa') %>% ungroup()
-mwi_prevalence['country'] <- 'Malawi'
-variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
-nep_prevalence <- calculate_prevalence(strataa_metaphlan_data_species_temp, metadata_temp, 'Nepal', groups_to_analyse, 'strataa') %>% ungroup()
-nep_prevalence['country'] <- 'Nepal'
+run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', combined_maaslins)
+'s__GGB4266_SGB5809'
+'s__Haemophilus_parainfluenzae'
+'s__Clostridium_SGB6179'
+'s__Romboutsia_timonensis'
+'s__Lachnospiraceae_bacterium'
 
-patch_prevalence <- calculate_prevalence(patch_metaphlan_data_species_temp, patch_metadata, NA, c('Typhi', 'Paratyphi'), 'patch') %>% ungroup()
-# change disease in value column to Acute typhoid and no_disease to Control
-patch_prevalence$value <- ifelse(patch_prevalence$value == 'disease', 'Acute typhoid', patch_prevalence$value)
-patch_prevalence$value <- ifelse(patch_prevalence$value == 'no_disease', 'Control', patch_prevalence$value)
-patch_prevalence['country'] <- 'CHIM'
+pcopri_maaslins_results <- get_maaslin_results_for_species(combined_maaslins, '_Prevotella_copri_clade_A')
+s__GGB4266_SGB5809_maaslins_results <- get_maaslin_results_for_species(combined_maaslins, 's__GGB4266_SGB5809')
+hpara_maaslins_results <- get_maaslin_results_for_species(combined_maaslins, 's__Haemophilus_parainfluenzae')
 
-prevalence <- rbind(bgd_prevalence, mwi_prevalence, nep_prevalence, patch_prevalence)
-
-prevalence$lowest_taxonomic_level <- sapply(str_split(prevalence$feature, "\\|"), function(x) x[length(x)])
-
-pcopri_species <- prevalence %>% filter(grepl('_Prevotella_copri_clade_A', lowest_taxonomic_level)) %>% select(!c(feature, variable))
-# i want to pivot pcopri_species wider
-pcopri_species_prevalence <- pcopri_species %>% pivot_wider(names_from = 'value', values_from = 'Median_Prevalence')
-
-pcopri <- pcopri %>% left_join(pcopri_species_prevalence, by =c("lowest_taxonomic_level", 'country'))
 ```
 
 do the forest plot
 
 ```{r forest_plot2}
-
-pcopri <- pcopri %>%
-  mutate(across(c(coef, stderr, ci_lower, ci_upper, `Acute typhoid`, Control), ~ formatC(.x, format = "fg", digits = 3)))
-pcopri <- pcopri %>%
-  mutate(across(c(pval, qval), ~ formatC(.x, format = "fg", digits = 2)))
-
-
-tabletext <- cbind(
-  country = pcopri$country,
-  lowest_taxonomic_level = pcopri$lowest_taxonomic_level,
-  coef = pcopri$coef,
-  stderr = pcopri$stderr,
-  qval = pcopri$qval,
-  N = pcopri$N,
-  N.not.0 = pcopri$N.not.0,
-  abundunce_disease = pcopri$`Acute typhoid`,
-  abundunce_control = pcopri$Control
-)
-
-mean <- as.numeric(pcopri$coef)
-lower <- as.numeric(pcopri$coef) - 1.96 * as.numeric(pcopri$stderr)
-upper <- as.numeric(pcopri$coef) + 1.96 * as.numeric(pcopri$stderr)
-
-x_min <- min(lower) - 1  # Extend range slightly for better visualization
-x_max <- max(upper) + 1
-x_ticks <- seq(floor(x_min), ceiling(x_max), by = 2)  # Adjust 'by' for desired interval
-
-
-# Plot the forest plot with table
-forestplot(
-  labeltext = tabletext,
-  mean = mean,
-  lower = lower,
-  upper = upper,
-  xlab = "Effect Size",
-  xticks = x_ticks,
-  new_page = TRUE,
-  is.summary = c(FALSE, FALSE, FALSE, FALSE),
-  txt_gp = fpTxtGp(label = gpar(cex = 0.8), ticks = gpar(cex = 0.7), xlab = gpar(cex = 0.8)),
-  colgap = unit(0.2, "cm"),
-  col = fpColors(box = "royalblue", lines = "darkblue", summary = "royalblue")) %>% 
-    fp_set_zebra_style("#EFEFEF") %>% 
-    fp_add_header(country = "Cohort" %>% fp_align_center(),
-                lowest_taxonomic_level = "Species" %>% fp_align_center(),
-                coef = 'Coefficient' %>% fp_align_center(),
-                stderr = 'Standard\nError' %>% fp_align_center(),
-                qval = 'Q-value' %>% fp_align_center(),
-                N = "N" %>% fp_align_center(),
-                N.not.0 = "N not 0" %>% fp_align_center(),
-                abundunce_disease = "Abundance\nacute typhoid" %>% fp_align_center(),
-                abundunce_control = "Abundance\nControl" %>% fp_align_center()
-                )
+run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', pcopri_maaslins_results)
+run_forest_plot(prevalence, , s__GGB4266_SGB5809_maaslins_results)
+run_forest_plot(prevalence, , hpara_maaslins_results)
 
 ```
 
