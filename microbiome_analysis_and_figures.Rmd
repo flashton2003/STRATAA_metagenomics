@@ -376,20 +376,21 @@ for the forest plot, i also want to include the per-cohort abundance medians for
 ```{r species_of_interest_prevalence}
 
 groups_to_analyse <- c('Acute typhoid', 'Control')
-prevalence <- get_species_of_interest_prevalence(strataa_metaphlan_data_species, groups_to_analyse)
+prevalence <- get_prevalence(strataa_metaphlan_data_species, groups_to_analyse)
 
 ```
 do the forest plot
 
 ```{r per_species_data_for_forest_plot}
 
+run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae', 's__Romboutsia_timonensis', 's__Lachnospiraceae_bacterium'), combined_maaslins)
 
-run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', combined_maaslins)
-run_forest_plot(prevalence, 's__Clostridium_SGB6179', combined_maaslins)
-run_forest_plot(prevalence, 's__GGB4266_SGB5809', combined_maaslins)
-run_forest_plot(prevalence, 's__Haemophilus_parainfluenzae', combined_maaslins)
-run_forest_plot(prevalence, 's__Romboutsia_timonensis', combined_maaslins)
-run_forest_plot(prevalence, 's__Lachnospiraceae_bacterium', combined_maaslins)
+# run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', combined_maaslins)
+# run_forest_plot(prevalence, 's__Clostridium_SGB6179', combined_maaslins)
+# run_forest_plot(prevalence, 's__GGB4266_SGB5809', combined_maaslins)
+# run_forest_plot(prevalence, 's__Haemophilus_parainfluenzae', combined_maaslins)
+# run_forest_plot(prevalence, 's__Romboutsia_timonensis', combined_maaslins)
+# run_forest_plot(prevalence, 's__Lachnospiraceae_bacterium', combined_maaslins)
 
 
 

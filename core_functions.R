@@ -1089,9 +1089,10 @@ prep_data_to_plot_phyla <- function(phyla, metadata_select){
 }
 
 
-get_maaslin_results_for_species <- function(combined_maaslins, species_name) {
+get_maaslin_results_for_species <- function(combined_maaslins, species_of_interest){
   # grepl for the species name, and then filter for the Group metadata (which is the case/control assc) and then select all columns except feature, metadata, value
-  maaslin_results_for_species <- combined_maaslins %>% filter(grepl(species_name, lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  # maaslin_results_for_species <- combined_maaslins %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  maaslin_results_for_species <- combined_maaslins %>% filter(lowest_taxonomic_level %in% species_of_interest) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
   # pivot the data so that the columns are now the country, and the values are the coef, stderr, N, N.not.0, pval, qval
   maaslin_results_for_species <- maaslin_results_for_species %>%
     pivot_longer(
@@ -1118,7 +1119,7 @@ get_maaslin_results_for_species <- function(combined_maaslins, species_name) {
 }
 
 
-get_species_of_interest_prevalence <- function(strataa_metaphlan_data_species, groups_to_analyse) {
+get_prevalence <- function(strataa_metaphlan_data_species, groups_to_analyse) {
   patch_metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
   patch_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(patch_metaphlan_data), "\\|"), function(x) x[length(x)])
   patch_metaphlan_data_species <- patch_metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
@@ -1133,7 +1134,6 @@ get_species_of_interest_prevalence <- function(strataa_metaphlan_data_species, g
   patch_prevalence$value <- ifelse(patch_prevalence$value == 'disease', 'Acute typhoid', patch_prevalence$value)
   patch_prevalence$value <- ifelse(patch_prevalence$value == 'no_disease', 'Control', patch_prevalence$value)
   patch_prevalence['country'] <- 'CHIM'
-
 
   strataa_metaphlan_data_species_temp <- strataa_metaphlan_data_species %>% select(!c(lowest_taxonomic_level))
   metadata_temp <- metadata %>% select(c(SampleID, Country, Group)) 
@@ -1155,8 +1155,10 @@ get_species_of_interest_prevalence <- function(strataa_metaphlan_data_species, g
   return(prevalence)
 }
 
+
 forest_plot <- function(prevalence, species_of_interest, species_maaslin_results){
-  species_prevalence <- prevalence %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% select(!c(feature, variable))
+  # species_prevalence <- prevalence %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% select(!c(feature, variable))
+  species_prevalence <- prevalence %>% filter(lowest_taxonomic_level %in% species_of_interest) %>% select(!c(feature, variable))
   # i want to pivot pcopri_species wider
   species_prevalence <- species_prevalence %>% pivot_wider(names_from = 'value', values_from = 'Median_Prevalence')
 
@@ -1168,12 +1170,12 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
     mutate(across(c(pval, qval), ~ formatC(.x, format = "fg", digits = 2)))
 
   tabletext <- cbind(
-    country = species_maaslin_results$country,
     lowest_taxonomic_level = species_maaslin_results$lowest_taxonomic_level,
+    country = species_maaslin_results$country,
+    N = species_maaslin_results$N,
     coef = species_maaslin_results$coef,
     stderr = species_maaslin_results$stderr,
     qval = species_maaslin_results$qval,
-    N = species_maaslin_results$N,
     abundunce_disease = species_maaslin_results$`Acute typhoid`,
     abundunce_control = species_maaslin_results$Control
   )
@@ -1183,11 +1185,9 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
   upper <- as.numeric(species_maaslin_results$coef) + 1.96 * as.numeric(species_maaslin_results$stderr)
   # remove NaN values from lower and upper, dont set them as 0, remove them entirely
 
-
   x_min <- min(na.omit(lower)) - 1  # Extend range slightly for better visualization
   x_max <- max(na.omit(upper)) + 1
   x_ticks <- seq(floor(x_min), ceiling(x_max), by = 2)  # Adjust 'by' for desired interval
-
 
   # Plot the forest plot with table
   forestplot(
