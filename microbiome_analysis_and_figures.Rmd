@@ -379,32 +379,21 @@ groups_to_analyse <- c('Acute typhoid', 'Control')
 prevalence <- get_species_of_interest_prevalence(strataa_metaphlan_data_species, groups_to_analyse)
 
 ```
+do the forest plot
 
 ```{r per_species_data_for_forest_plot}
 
 
 run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', combined_maaslins)
-'s__GGB4266_SGB5809'
-'s__Haemophilus_parainfluenzae'
-'s__Clostridium_SGB6179'
-'s__Romboutsia_timonensis'
-'s__Lachnospiraceae_bacterium'
+run_forest_plot(prevalence, 's__Clostridium_SGB6179', combined_maaslins)
+run_forest_plot(prevalence, 's__GGB4266_SGB5809', combined_maaslins)
+run_forest_plot(prevalence, 's__Haemophilus_parainfluenzae', combined_maaslins)
+run_forest_plot(prevalence, 's__Romboutsia_timonensis', combined_maaslins)
+run_forest_plot(prevalence, 's__Lachnospiraceae_bacterium', combined_maaslins)
 
-pcopri_maaslins_results <- get_maaslin_results_for_species(combined_maaslins, '_Prevotella_copri_clade_A')
-s__GGB4266_SGB5809_maaslins_results <- get_maaslin_results_for_species(combined_maaslins, 's__GGB4266_SGB5809')
-hpara_maaslins_results <- get_maaslin_results_for_species(combined_maaslins, 's__Haemophilus_parainfluenzae')
+
 
 ```
-
-do the forest plot
-
-```{r forest_plot2}
-run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', pcopri_maaslins_results)
-run_forest_plot(prevalence, , s__GGB4266_SGB5809_maaslins_results)
-run_forest_plot(prevalence, , hpara_maaslins_results)
-
-```
-
 
 
 ### plots of species of interest

@@ -1174,7 +1174,6 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
     stderr = species_maaslin_results$stderr,
     qval = species_maaslin_results$qval,
     N = species_maaslin_results$N,
-    N.not.0 = species_maaslin_results$N.not.0,
     abundunce_disease = species_maaslin_results$`Acute typhoid`,
     abundunce_control = species_maaslin_results$Control
   )
@@ -1210,9 +1209,8 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
                   stderr = 'Standard\nError' %>% fp_align_center(),
                   qval = 'Q-value' %>% fp_align_center(),
                   N = "N" %>% fp_align_center(),
-                  N.not.0 = "N not 0" %>% fp_align_center(),
-                  abundunce_disease = "Abundance\nacute typhoid" %>% fp_align_center(),
-                  abundunce_control = "Abundance\nControl" %>% fp_align_center()
+                  abundunce_disease = "Median\nabundance\ntyphoid" %>% fp_align_center(),
+                  abundunce_control = "Median\nabundance\ncontrol" %>% fp_align_center()
                   )
 }
 
