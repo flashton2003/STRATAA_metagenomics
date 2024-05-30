@@ -341,7 +341,9 @@ There were `r nrow(combined_results$mwi_maaslin_only)` species significantly (q-
 
 The ones associated at only one site are written out to a file, you can look at them manually there.
 
-Setting up the forest plots.
+### Forest plot
+
+Setting up the forest plots. Need to combine all three maaslin outputs, and then add in the patch data.
 
 ```{r combine_maaslins_for_strataa_and_patch}
 # combine the maaslines for bgd and mal, and then add in the nepal ones.
@@ -382,17 +384,8 @@ prevalence <- get_prevalence(strataa_metaphlan_data_species, groups_to_analyse)
 do the forest plot
 
 ```{r per_species_data_for_forest_plot}
-
-run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae', 's__Romboutsia_timonensis', 's__Lachnospiraceae_bacterium'), combined_maaslins)
-
-# run_forest_plot(prevalence, 's__Prevotella_copri_clade_A', combined_maaslins)
-# run_forest_plot(prevalence, 's__Clostridium_SGB6179', combined_maaslins)
-# run_forest_plot(prevalence, 's__GGB4266_SGB5809', combined_maaslins)
-# run_forest_plot(prevalence, 's__Haemophilus_parainfluenzae', combined_maaslins)
-# run_forest_plot(prevalence, 's__Romboutsia_timonensis', combined_maaslins)
-# run_forest_plot(prevalence, 's__Lachnospiraceae_bacterium', combined_maaslins)
-
-
+# prevalence is the relative abundance data, the species of interest are the ones that are significantly associated with health/disease in two countries, and combined_maaslins is the maaslin output with the associations
+run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae', 's__Romboutsia_timonensis'), combined_maaslins)
 
 ```
 
