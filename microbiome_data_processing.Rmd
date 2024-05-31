@@ -1,4 +1,18 @@
 
+---
+title: "STRATAA Microbiome data processing"
+author: "Philip Ashton"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+        toc: true
+        toc_float: true
+        theme: united
+        number_sections: true
+
+---
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 ```
@@ -28,11 +42,11 @@ strataa_carrier_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microb
 ```{r read_in_metadata}
 metadata <- read_metadata(metadata_handle)
 
-rownames(metadata) <- metadata$Lane
-strataa_metaphlan_metadata <- metadata %>% dplyr::select(Lane, Group, Sex, Country, Age, Antibiotics_taken_before_sampling_assumptions, sequencing_lane)
+rownames(metadata) <- metadata$SampleID
+strataa_metaphlan_metadata <- metadata %>% dplyr::select(SampleID, sequencing_lane, Group, Sex, Country, Age, Antibiotics_taken_before_sampling_assumptions, sequencing_lane)
 
-strataa_metaphlan_metadata %>% filter(Group == 'Acute_Typhi', Country == 'Malawi') %>% group_by(Antibiotics_taken_before_sampling_assumptions) %>% summarise(n = n())
-
+# strataa_metaphlan_metadata %>% filter(Group == 'Acute_Typhi', Country == 'Malawi') %>% group_by(Antibiotics_taken_before_sampling_assumptions) %>% summarise(n = n())
+# strataa_metaphlan_metadata
 ```
 
 
@@ -84,7 +98,7 @@ health vs acute vs carrier
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey', 'Acute_Typhi')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey", "Lane,32712_2"), 'metaphlan')
+run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey", "sequencing_lane,32712_2"), 'metaphlan')
 # checking the effect of excluding sequencing lane
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Group,Control_HealthySerosurvey"), 'metaphlan')
@@ -144,7 +158,7 @@ variables_for_analysis <- c("Group", "Sex", "Age")
 # variables_for_analysis <- c("Group")
 run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
-run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("Lane,32712_2"), 'bigmap')
+run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32712_2"), 'bigmap')
 
 ```
 

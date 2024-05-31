@@ -13,6 +13,7 @@ library(tidyr)
 library(vegan)
 library(VennDiagram)
 library(Maaslin2)
+library(forestplot)
 
 
 #source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
@@ -27,10 +28,8 @@ read_metadata <- function(path_to_metadata){
   meta <- meta %>% mutate(age_bracket=cut(Age, breaks=c(0, 1, 5, 15, Inf), labels=c("0-1", "1-5", "6-15", ">15")))
   meta$group_country <- paste(meta$Group, meta$Country, sep = '_')
   meta$group_antibiotic <- paste(meta$Group, meta$Antibiotics_taken_before_sampling_assumptions, sep = '_')
-
-  meta <- meta %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Control', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group))
-  # strataa_metaphlan_metadata <- strataa_metaphlan_metadata %>% mutate(SampleID = rownames(strataa_metaphlan_metadata))
   
+  # keep only one sample per participant, the one with the most reads.
   meta <- meta %>% arrange(desc(number_of_reads)) %>% distinct(StudyID, .keep_all = TRUE)
   meta <- meta %>% filter(!is.na(isolate) & isolate != "")
   return(meta)
@@ -317,7 +316,7 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
   pcoa_df <- mutate(pcoa_df, SampleID = rownames(metaphlan_data_mat)) %>% left_join(metadata, by = 'SampleID')
   # pn <- adonis(dist_mat~Sex*Group*Age*Antibiotics_taken_before_sampling_assumptions, data = metadata, permutations = 100)
   # View(pn)
-  if ('Carrier' %in% groups_of_interest){
+  if ('High Vi-titre' %in% groups_of_interest){
     pn <- adonis2(dist_mat~Sex*Group*Age, data = metadata, permutations = 1000)
   } else if ('patch_baseline' %in% groups_of_interest){
     pn <- adonis2(dist_mat~Gender*Diagnosis*age_at_challenge, data = metadata, permutations = 1000)
@@ -375,14 +374,14 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   # if the length of countries of interest is greater than 1, then include Country in the model
   # if carrier is in the groups of interest, don't include antibiotics in the model (because carriers and healthy are all assumed "No" for antibiotics)
   if (length(countries_of_interest) > 1) {
-    if ('Carrier' %in% groups_of_interest){
+    if ('High Vi-titre' %in% groups_of_interest){
       alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age, data = alpha_meta)
     } else {
       alpha_anova <- aov(Shannon ~ Country * Sex *Group * Age * Antibiotics_taken_before_sampling_assumptions, data = alpha_meta)
     }
     
   } else if (length(countries_of_interest) == 1) {
-    if ('Carrier' %in% groups_of_interest){
+    if ('High Vi-titre' %in% groups_of_interest){
       alpha_anova <- aov(Shannon ~ Sex *Group * Age, data = alpha_meta)
     } else {
       alpha_anova <- aov(Shannon ~ Sex *Group * Age * Antibiotics_taken_before_sampling_assumptions, data = alpha_meta)
@@ -407,7 +406,9 @@ metaphlan_alpha <- function(metaphlan_data, metaphlan_metadata, countries_of_int
   } else {
     alpha_by_country <- NULL
   }
-  # View(participant_group_colours)
+  # View(alpha_meta)
+  alpha_meta$Group <- factor(alpha_meta$Group, levels = c("Household contact", "Acute typhoid", "High Vi-titre"))
+
   alpha_plot_group <- ggboxplot(alpha_meta, facet.by = "Country", y = "Shannon", x = "Group", color = "Group") + 
     stat_compare_means(comparisons = comparisons, label = 'p.signif', symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, Inf), symbols = c("***", "**", "*", "ns"))) + 
     rremove("x.text") + 
@@ -780,6 +781,7 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups, input_type){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_assumptions %in% c('Yes', 'No'))
+  View(metadata_to_analyse)
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
   # View(dim(feature_data))
@@ -956,10 +958,10 @@ run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_c
 plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest, participant_group_colours){
   
   # we specify the annotation positions manually using these list of lists
-  country_species_y_value <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=6, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809' = 14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7, 's__Lachnospiraceae_bacterium'=2), 'Malawi'=list('s__Prevotella_copri_clade_A'=47, 's__Clostridium_SGB6179'=0.6, 's__GGB4266_SGB5809'=5.5, 's__Haemophilus_parainfluenzae'=3, 's__Romboutsia_timonensis'=2, 's__Lachnospiraceae_bacterium'=2), 'Nepal'=list('s__Prevotella_copri_clade_A'=6, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809'=14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7, 's__Lachnospiraceae_bacterium'=2))
+  country_species_y_value <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=6, 's__Clostridium_SGB6179'=5, 's__GGB4266_SGB5809' = 14, 's__Haemophilus_parainfluenzae'=1.5, 's__Romboutsia_timonensis'=7), 'Malawi'=list('s__Prevotella_copri_clade_A'=47, 's__Clostridium_SGB6179'=0.6, 's__GGB4266_SGB5809'=5.5, 's__Haemophilus_parainfluenzae'=3, 's__Romboutsia_timonensis'=2, 's__Lachnospiraceae_bacterium'=2), 'Nepal'=list('s__Prevotella_copri_clade_A'=20, 's__Clostridium_SGB6179'=1, 's__GGB4266_SGB5809'=5, 's__Haemophilus_parainfluenzae'=0.25, 's__Romboutsia_timonensis'=2))
   # for the number of samples in each group, we need to use this function, and i can't figure out how to dynamically return 
   # the y value dependiing on the input from within the stat_summary call so we have to do this shit show.
-  country_species_fun_data <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 6, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 4.5, label = length(x)))}, 's__GGB4266_SGB5809' = function(x){return(c(y = 10, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 1.25, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 6, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.75, label = length(x)))}), 'Malawi'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 45, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 0.5, label = length(x)))}, 's__GGB4266_SGB5809'=function(x){return(c(y = 5, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 2.5, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 1.5, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.5, label = length(x)))}), 'Nepal'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 6, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 4.5, label = length(x)))}, 's__GGB4266_SGB5809' = function(x){return(c(y = 10, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 1.25, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 6, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.75, label = length(x)))}))
+  # country_species_fun_data <- list('Bangladesh'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 6, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 4.5, label = length(x)))}, 's__GGB4266_SGB5809' = function(x){return(c(y = 10, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 1.25, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 6, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.75, label = length(x)))}), 'Malawi'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 45, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 0.5, label = length(x)))}, 's__GGB4266_SGB5809'=function(x){return(c(y = 5, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 2.5, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 1.5, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.5, label = length(x)))}), 'Nepal'=list('s__Prevotella_copri_clade_A'=function(x){return(c(y = 6, label = NA))}, 's__Clostridium_SGB6179'=function(x){return(c(y = 4.5, label = length(x)))}, 's__GGB4266_SGB5809' = function(x){return(c(y = 10, label = length(x)))}, 's__Haemophilus_parainfluenzae'=function(x){return(c(y = 1.25, label = length(x)))}, 's__Romboutsia_timonensis'=function(x){return(c(y = 6, label = length(x)))}, 's__Lachnospiraceae_bacterium'=function(x){return(c(y = 1.75, label = length(x)))}))
   # country_species_fun_data <- list()
   # give.n <- country_species_fun_data[[country_of_interest]][[species_of_interest]]
   
@@ -974,8 +976,8 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
     ggtitle(country_of_interest) +
     theme(legend.position="none") + 
     scale_color_manual(values = participant_group_colours) +
-    scale_fill_manual(values = participant_group_colours) +
-    stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75))
+    scale_fill_manual(values = participant_group_colours) #+
+    # stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75))
     # stat_summary(fun.data = give.n, geom = "text", fun = median, position = position_dodge(width = 0.75))
 
   # add the p values to the plot, has to be done like this because there are
@@ -986,7 +988,6 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
     p <- p + annotate("text", x = 3, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj)))
   } else if (country_of_interest == 'Bangladesh' & species_of_interest != 's__Prevotella_copri_clade_A'){
     p <- p + 
-      annotate("text", x = 2, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[1]]))) +
       annotate("text", x = 3, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[2]]))) +
       annotate("text", x = 4, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[3]])))
   }
@@ -1006,10 +1007,9 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
       theme(legend.position="none") + 
       scale_color_manual(values = participant_group_colours) +
       scale_fill_manual(values = participant_group_colours) +
-      stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75)) +
-      ylim(c(0, 10))
+      ylim(c(0, 10)) #+
+      # stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75)) +
    p <- p + 
-      annotate("text", x = 2, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[1]]))) +
       annotate("text", x = 3, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[2]]))) +
       annotate("text", x = 4, y = country_species_y_value[[country_of_interest]][[species_of_interest]], label = paste0('p = ', toString(abundance_compared[,6]$p.adj[[3]])))
     return(p)
@@ -1025,17 +1025,26 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
 
 run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, participant_group_colours){
   # we do this so that we can combine plots for the same species from bang and mal together
-  m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute typhoid', 'Control'), participant_group_colours)
+  m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute typhoid', 'Household contact'), participant_group_colours)
   m <- m + theme(text = element_text(size = 15))
-  b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', c('Acute typhoid', 'Control'), participant_group_colours)
+  b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', c('Acute typhoid', 'Household contact'), participant_group_colours)
   # show(m)
   b <- b + theme(text = element_text(size = 15))
-  n <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Nepal', c('Acute typhoid', 'Control'), participant_group_colours)
+  n <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Nepal', c('Acute typhoid', 'Household contact'), participant_group_colours)
   # show(m)
   n <- n + theme(text = element_text(size = 15))
   
-  p <- m / b / n
-  outhandle_name <- paste(species_of_interest, 'Acute typhoid',  'Control', 'Bangladesh', 'Malawi', 'Nepal', 'png', sep = '.')
+  # to combine the y-axis titles, need to make another plot which is just text (eyeroll)
+  p4 <- ggplot(data.frame(l = m$labels$y, x = 1, y = 1)) +
+      geom_text(aes(x, y, label = l), angle = 90, size = 6) + 
+      theme_void() +
+      coord_cartesian(clip = "off")
+  # set all the y axis titles as blank
+  b$labels$y <- m$labels$y <- n$labels$y <- " "
+  # combine the y  axis title plot with the three plots
+  p <- p4 + (m / b / n) + plot_layout(widths = c(1, 15))#& theme(
+
+  outhandle_name <- paste(species_of_interest, 'Acute typhoid',  'Household contact', 'Bangladesh', 'Malawi', 'Nepal', 'png', sep = '.')
   ggsave(file.path(maaslin_taxonomic_output_root_folder, outhandle_name), p, width = 10, height = 7)
   show(p)
   return(p)
@@ -1070,7 +1079,7 @@ prep_data_to_plot_phyla <- function(phyla, metadata_select){
       summarise(count = sum(relative_abundance > 1)) %>% 
       filter(count < (length(unique(phyla$sample)) / 10)) %>% 
       pull(clade_name)
-  View(phyla_to_exclude)
+  # View(phyla_to_exclude)
 
   # in order to make each sample add up to 100, we need to add the excluded taxa back in as a single "rare taxa" phylum.
   # first we need to calculate the relative abundance of the excluded taxa in each sample.
@@ -1085,8 +1094,8 @@ prep_data_to_plot_phyla <- function(phyla, metadata_select){
     filter(!(clade_name %in% phyla_to_exclude))
   # and add the excluded taxa back in.
   phyla_clean <- rbind(phyla_clean, excluded_phyla)
-  View(phyla_clean)
-  View(excluded_phyla)
+  # View(phyla_clean)
+  # View(excluded_phyla)
 
   # colnames(strataa_metaphlan_metadata)
   # metadata_select <- strataa_metaphlan_metadata %>% dplyr::select(SampleID, Group, Country)
@@ -1137,9 +1146,9 @@ get_prevalence <- function(strataa_metaphlan_data_species, groups_to_analyse) {
   patch_metadata$SampleID <- row.names(patch_metadata)
   patch_metadata <- patch_metadata %>% filter(Group %in% c('Typhi', 'Paratyphi'), day_group == 'baseline') %>% select(c(isolate_ID, Diagnosis)) %>% rename(SampleID = isolate_ID, Group = Diagnosis)
   patch_prevalence <- calculate_prevalence(patch_metaphlan_data_species_temp, patch_metadata, NA, c('Typhi', 'Paratyphi'), 'patch') %>% ungroup()
-  # change disease in value column to Acute typhoid and no_disease to Control
+  # change disease in value column to Acute typhoid and no_disease to Household contact, so that they match the strataa data
   patch_prevalence$value <- ifelse(patch_prevalence$value == 'disease', 'Acute typhoid', patch_prevalence$value)
-  patch_prevalence$value <- ifelse(patch_prevalence$value == 'no_disease', 'Control', patch_prevalence$value)
+  patch_prevalence$value <- ifelse(patch_prevalence$value == 'no_disease', 'Household contact', patch_prevalence$value)
   patch_prevalence['country'] <- 'CHIM'
 
   strataa_metaphlan_data_species_temp <- strataa_metaphlan_data_species %>% select(!c(lowest_taxonomic_level))
@@ -1172,7 +1181,7 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
   species_maaslin_results <- species_maaslin_results %>% left_join(species_prevalence, by =c("lowest_taxonomic_level", 'country'))
 
   species_maaslin_results <- species_maaslin_results %>%
-    mutate(across(c(coef, stderr, ci_lower, ci_upper, `Acute typhoid`, Control), ~ formatC(.x, format = "fg", digits = 3)))
+    mutate(across(c(coef, stderr, ci_lower, ci_upper, `Acute typhoid`, `Household contact`), ~ formatC(.x, format = "fg", digits = 3)))
   species_maaslin_results <- species_maaslin_results %>%
     mutate(across(c(pval, qval), ~ formatC(.x, format = "fg", digits = 2)))
 
@@ -1184,7 +1193,7 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
     stderr = species_maaslin_results$stderr,
     qval = species_maaslin_results$qval,
     abundunce_disease = species_maaslin_results$`Acute typhoid`,
-    abundunce_control = species_maaslin_results$Control
+    abundunce_control = species_maaslin_results$`Household contact`
   )
 
   mean <- as.numeric(species_maaslin_results$coef)

@@ -11,7 +11,7 @@ output:
 ---
 
 
-```{r setup, include=FALSE}
+```{r setup, error=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 
 ```
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 # STRATAA microbiome analysis
 
 ## Imports
-```{r imports}
+```{r imports, error=FALSE}
 library(rbiom)
 library(kableExtra)
 library(ggplot2)
@@ -38,7 +38,7 @@ library(RColorBrewer)
 
 The file handles are set in config.R as they're used by both this script and data_cleaning.
 
-```{r source}
+```{r source, error=FALSE}
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
@@ -48,18 +48,18 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 
 First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
 
-```{r metadata_read_in}
+```{r metadata_read_in, error=FALSE}
 metadata <- read_metadata(metadata_handle)
+# putting this here so that the output files of maaslin get named accroding to the variable names in the metadata file.
+metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
 
-metadata <- metadata %>% mutate(Group = if_else(Group == 'Control', 'Control', Group))
-metadata <- metadata %>% mutate(Group = if_else(Group == 'Acute typhoid', 'Acute typhoid', Group))
 
 three_qual_colours <- brewer.pal(3, "Dark2")
 
-participant_group_colours <- c("Acute typhoid" = three_qual_colours[[2]], "Control" = three_qual_colours[[1]], "Carrier" = three_qual_colours[[3]])
+participant_group_colours <- c("Acute typhoid" = three_qual_colours[[2]], "Household contact" = three_qual_colours[[1]], "High Vi-titre" = three_qual_colours[[3]])
 ```
 
-```{r metadata_basics}
+```{r metadata_basics, error=FALSE}
 number_per_country <- metadata %>% group_by(Country) %>% summarise(count = n())
 
 number_per_country %>% kbl() %>% kable_styling()
@@ -70,7 +70,7 @@ metadata %>% group_by(Country, Group) %>% summarise(count = n()) %>% kbl() %>% k
 
 metadata %>% group_by(Group) %>% summarise(count = n(), median_age = median(Age)) %>% kbl() %>% kable_styling()
 baseline_chars <- get_baseline_characteristics(metadata)
-comparisons_groups <- list(c("Acute typhoid", "Carrier"), c("Acute typhoid", "Control"), c("Carrier", "Control"))
+comparisons_groups <- list(c("Acute typhoid", "High Vi-titre"), c("Acute typhoid", "Household contact"), c("High Vi-titre", "Household contact"))
 
 ggboxplot(metadata, y = "Age", x = "Group", color = "Group") + 
   stat_compare_means() + 
@@ -82,19 +82,12 @@ ggboxplot(metadata, y = "Age", x = "Group", color = "Group") +
    # +rotate_x_text(angle = 45)
 
 
-# baseline_chars$pct_anti
-# baseline_chars$pct_anti %>% na_if(0)
+baseline_chars_table <- baseline_chars %>% 
+  rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% 
+  pivot_longer(!c(Country, Group)) %>% 
+  rename(variable_name = name) %>% 
+  pivot_wider(names_from = Country, values_from = value)
 
-
-# BEWARE - na_if(0.0) will convert ALL 0s to NAs, this is ok as they're only in the antibiotics of carriers and controls
-# at the moment, but if others get added in, will screw with it.
-# baseline_chars %>% rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% pivot_longer(!c(Country, Group)) %>% rename(variable_name = name) %>% pivot_wider(names_from = Group, values_from = value) %>% filter(variable_name != 'number') %>% na_if(0.0) %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
-
-# na_if stopped working, so had to do this instead
-baseline_chars_table <- baseline_chars %>% rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% pivot_longer(!c(Country, Group)) %>% rename(variable_name = name) %>% pivot_wider(names_from = Country, values_from = value)
-
-# baseline_chars_table$Carrier <- replace(baseline_chars_table$Carrier,which(baseline_chars_table$Carrier==0),NA)
-# baseline_chars_table$`Control` <- replace(baseline_chars_table$`Control`,which(baseline_chars_table$`Control`==0),NA)
 baseline_chars_table %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
 
 # the kruskal wallis test is positive, showing a difference between the groups, so we move onto pairwise tests.
@@ -102,16 +95,16 @@ baseline_chars_table %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
 comparisons_countries <- list(c('Bangladesh', 'Malawi'), c('Bangladesh', 'Nepal'), c('Malawi', 'Nepal'))
 # default stat method when doing pairwise tests in wilcoxon.
 metadata_for_plotting <- metadata
-metadata_for_plotting$Group <- factor(metadata_for_plotting$Group, levels = c("Control", "Acute typhoid", "Carrier"))
+metadata_for_plotting$Group <- factor(metadata_for_plotting$Group, levels = c("Household contact", "Acute typhoid", "High Vi-titre"))
 ggboxplot(metadata_for_plotting, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons_groups) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") + scale_color_manual(values = participant_group_colours) # +rotate_x_text(angle = 45)
-ggboxplot(metadata_for_plotting, facet.by = "Group", y = "Age", x = "Country", color = "Country") + stat_compare_means(comparisons = comparisons_countries) + rotate_x_text(angle = 45)
+# ggboxplot(metadata_for_plotting, facet.by = "Group", y = "Age", x = "Country", color = "Country") + stat_compare_means(comparisons = comparisons_countries) + rotate_x_text(angle = 45)
 
 ```
 
-```{r metadata_basic_plots, fig.width = 4, fig.height= 8}
+```{r metadata_basic_plots, error=FALSE, fig.width = 4, fig.height= 8}
 country_group_sex <- metadata %>% group_by(Country, Group, Sex) %>% summarise(count = n()) 
-comparisons_groups <- list(c("Acute typhoid", "Carrier"), c("Acute typhoid", "Control"), c("Carrier", "Control"))
-country_group_sex %>% group_by(Country, Sex) %>% summarise(n = sum(count))
+comparisons_groups <- list(c("Acute typhoid", "High Vi-titre"), c("Acute typhoid", "Household contact"), c("High Vi-titre", "Household contact"))
+# country_group_sex %>% group_by(Country, Sex) %>% summarise(n = sum(count))
 plot_sex <- function(eg1, c){
   d <- eg1 %>% filter(Country == c)
   p <- ggplot(d, aes(x = Group, y = count, fill = Sex)) + 
@@ -124,6 +117,8 @@ plot_sex <- function(eg1, c){
   return(p)
 }
 
+country_group_sex$Group <- factor(country_group_sex$Group, levels = c("Household contact", "Acute typhoid", "High Vi-titre"))
+
 m_sex <- plot_sex(country_group_sex, 'Malawi')
 b_sex <- plot_sex(country_group_sex, 'Bangladesh')
 n_sex <- plot_sex(country_group_sex, 'Nepal')
@@ -132,7 +127,7 @@ m_sex / b_sex / n_sex
 
 ## sequencing read stats
 
-```{r sequencing_read_stats}
+```{r sequencing_read_stats, error=FALSE}
 
 # todo - replace with the read stats from the metadata file.
 # read_stats_path <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/data_munging/2023.08.28/2023.08.28 strataa microbiome number of reads.csv'
@@ -143,7 +138,7 @@ ggboxplot(metadata, facet.by = "Country", x = "Group", y = "number_of_reads", co
 ```
 
 ## read in metaphlan data
-```{r read_in_metaphlan}
+```{r read_in_metaphlan, error=FALSE}
 strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 strataa_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(strataa_metaphlan_data), "\\|"), function(x) x[length(x)])
 strataa_metaphlan_data_species <- strataa_metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
@@ -152,116 +147,37 @@ strataa_metaphlan_data_species <- strataa_metaphlan_data %>% filter(str_starts(l
 
 ```
 
-## all countries, all groups
-
-### Alpha diversity - metaphlan
-
-Alpha diversity - all countries, all groups
-
-```{r alpha_diversity_all_countries_all_groups}
-all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Carrier', 'Control'), comparisons = list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Control', 'Carrier')), participant_group_colours)
-all_countries_all_groups_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
-all_countries_all_groups_alpha$alpha_plot_group
-all_countries_all_groups_alpha$alpha_plot_antibiotics
-all_countries_all_groups_alpha$alpha_by_country
-
-```
-
-### Beta diversity - metaphlan
-
-All groups.
-```{r beta_diversity_all_groups}
-all_countries_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
-all_countries_beta_all_groups$pn_res %>% kbl %>% kable_styling()
-
-bgd_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
-bgd_beta_all_groups$pn_res %>% kbl %>% kable_styling()
-# bgd_beta_all_groups$pc12
-# bgd_beta_all_groups$pc34
-
-mal_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
-mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
-mal_beta_all_groups$pc12
-# mal_beta_all_groups$pc34
-
-nep_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
-nep_beta_all_groups$pn_res %>% kbl %>% kable_styling()
-
-all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_groups$pc12
-
-```
-
 ## Healthy vs Typhi
-
-### Plot phyla bar plots
-
-```{r phyla_barplots}
-
-phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
-metadata_for_phyla_plots <- metadata %>% dplyr::select(SampleID, Group, Country)
-
-phyla_clean_metadata <- prep_data_to_plot_phyla(phyla, metadata)
-
-order_of_groups <- c("Acute typhoid", "Control")
-bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
-# bangladesh_phyla_plot
-malawi_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Malawi", group_order = order_of_groups)
-# malawi_phyla_plot
-nepal_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Nepal", group_order = order_of_groups)
-# nepal_phyla_plot
-bangladesh_phyla_plot / malawi_phyla_plot / nepal_phyla_plot
-```
-
-```{r phyla_table}
-# going back to phyla so that get all the weird rare ones.
-# need to join to meta-data
-# remove carriers
-# group by clade, group, country
-# summarise to get the median.
-# pivot wider to get the table.
-# dplyr::select(order(colnames(.))) rearranges the columns in alphabetical order
-# relocate moves the clade_name column to the first column.
-phyla %>% left_join(metadata_for_phyla_plots, by = c("sample" = "SampleID")) %>% filter(Group != 'Carrier') %>% group_by(clade_name, Group, Country) %>% summarise(median_prevalence = median(relative_abundance)) %>% pivot_wider(names_from = c('Country', 'Group'), values_from =  'median_prevalence') %>% dplyr::select(order(colnames(.))) %>% relocate(clade_name, .before = 1) %>% kbl() %>% kable_styling()
-
-```
 
 ### alpha diversity
 Alpha diversity - all countries, healthy and acute
 
-```{r alpha_diversity_healthy_acute}
+```{r alpha_diversity_healthy_acute, error=FALSE}
 
-all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Control'), comparisons = list(c('Acute typhoid', 'Control')), participant_group_colours = participant_group_colours)
+all_countries_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'Household contact'), comparisons = list(c('Acute typhoid', 'Household contact')), participant_group_colours = participant_group_colours)
 # all_countries_healthy_acute_alpha$alpha_by_country
 all_countries_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_acute_alpha$alpha_plot_group
-all_countries_healthy_acute_alpha$alpha_plot_antibiotics
-
+# all_countries_healthy_acute_alpha$alpha_plot_antibiotics
 ```
 
-alpha diversity, malawi only
 
-```{r alpha_diversity_malawi}
-malawi_healthy_acute_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi'), groups_of_interest = c('Acute typhoid', 'Control'), comparisons = list(c('Acute typhoid', 'Control')), participant_group_colours)
-malawi_healthy_acute_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
-malawi_healthy_acute_alpha$alpha_plot_group
-malawi_healthy_acute_alpha$alpha_plot_antibiotics
-```
 
 ### beta diversity 
 
 Acute vs healthy.
-```{r beta_diversity_healthy_acute}
+```{r beta_diversity_healthy_acute, error=FALSE}
 
-all_countries_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute typhoid', 'Control'), participant_group_colours)
+all_countries_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute typhoid', 'Household contact'), participant_group_colours)
 all_countries_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-bgd_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('Acute typhoid', 'Control'), participant_group_colours)
+bgd_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('Acute typhoid', 'Household contact'), participant_group_colours)
 bgd_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Acute typhoid', 'Control'), participant_group_colours)
+mal_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Acute typhoid', 'Household contact'), participant_group_colours)
 mal_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Acute typhoid', 'Control'), participant_group_colours)
+nep_beta_acute_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Acute typhoid', 'Household contact'), participant_group_colours)
 nep_beta_acute_healthy$pn_res %>% kbl %>% kable_styling()
 
 all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_acute_healthy$pc12 + nep_beta_acute_healthy$pc12 + plot_layout(guides = 'collect')
@@ -270,32 +186,34 @@ all_countries_beta_acute_healthy$pc12 + bgd_beta_acute_healthy$pc12 + mal_beta_a
 ### maaslin2 taxonomy
 Maaslin basics
 
-```{r basics_for_maaslin_taxonomic}
+```{r basics_for_maaslin_taxonomic, error=FALSE}
+# the names here should be the full name from the metadata file, not the "presentation" name
+# because this is used to read in the files, which are written using the full name.
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
 nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 ```
 
-```{r read_in_maaslin_taxonomic}
+```{r read_in_maaslin_taxonomic, error=FALSE}
 bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
 malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
 nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
 ```
 
-```{r filter_maaslin_taxonomic}
+```{r filter_maaslin_taxonomic, error=FALSE}
 bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
 malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
 nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
 ```
 
-```{r basic_stats_maaslin_taxonomic}
+```{r basic_stats_maaslin_taxonomic, error=FALSE}
 bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
 malawi_maaslin_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
 nepal_maaslin_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
 ```
 
-```{r volcano_plots_maaslin_taxonomic}
+```{r volcano_plots_maaslin_taxonomic, error=FALSE}
 
 malawi_maaslin_stats$volcano_plot / bangladesh_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
 nrow(malawi_maaslin_stats$maaslin_results_sig)
@@ -310,7 +228,7 @@ Combine the taxonomic maaslins, and print out the species that are sig in both a
 Because sequencing run and participant type are totally confounded for Bangladesh, need to exclude sequencing run from the final model for Bangladesh (otherwise, wipes out the signals).
 
 associated at both sites
-```{r combine_maaslins_taxonomic}
+```{r combine_maaslins_taxonomic, error=FALSE}
 
 bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
 combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
@@ -345,7 +263,7 @@ The ones associated at only one site are written out to a file, you can look at 
 
 Setting up the forest plots. Need to combine all three maaslin outputs, and then add in the patch data.
 
-```{r combine_maaslins_for_strataa_and_patch}
+```{r combine_maaslins_for_strataa_and_patch, error=FALSE}
 # combine the maaslines for bgd and mal, and then add in the nepal ones.
 combined_maaslins <- combine_maaslins(bangladesh_taxonomic_maaslin, malawi_taxonomic_maaslin, '_bang', '_mal', 'metaphlan')
 combined_maaslins <- combine_maaslins(combined_maaslins, nepal_taxonomic_maaslin, 'not', 'used', 'metaphlan')
@@ -368,31 +286,30 @@ patch_taxonomic_maaslin$metadata <- ifelse(patch_taxonomic_maaslin$metadata == '
 patch_taxonomic_maaslin$value <- ifelse(patch_taxonomic_maaslin$value == 'no_disease', 'Control_HealthySerosurvey', patch_taxonomic_maaslin$value)
 
 # join the patch data to the combined maaslin data
-combined_maaslins <- combined_maaslins %>%
-  left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
+combined_maaslins <- combined_maaslins %>% left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
 
 ```
 
 for the forest plot, i also want to include the per-cohort abundance medians for the species of interest.
 
-```{r species_of_interest_prevalence}
+```{r species_of_interest_prevalence, error=FALSE}
 
-groups_to_analyse <- c('Acute typhoid', 'Control')
+groups_to_analyse <- c('Acute typhoid', 'Household contact')
 prevalence <- get_prevalence(strataa_metaphlan_data_species, groups_to_analyse)
 
 ```
 do the forest plot
 
-```{r per_species_data_for_forest_plot}
+```{r per_species_data_for_forest_plot, error=FALSE}
 # prevalence is the relative abundance data, the species of interest are the ones that are significantly associated with health/disease in two countries, and combined_maaslins is the maaslin output with the associations
-run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae', 's__Romboutsia_timonensis'), combined_maaslins)
+run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae'), combined_maaslins)
 
 ```
 
 
 ### plots of species of interest
 
-```{r plot_species_of_interest_taxonomic}
+```{r plot_species_of_interest_taxonomic, error=FALSE}
 
 strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) %>% pivot_longer(!c(feature, lowest_taxonomic_level), names_to = "SampleID", values_to = "prevalence")
 # View(head(strataa_metaphlan_data_longer))
@@ -402,29 +319,19 @@ pc <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevo
 cs <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', participant_group_colours)
 SGB5809 <-run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', participant_group_colours)
 hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', participant_group_colours)
-rt <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', participant_group_colours)
-lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', participant_group_colours)
+# rt <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', participant_group_colours)
+# lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', participant_group_colours)
 
-pc
+# pc
   # pc + cs + SGB5809 + hp + rt + lb
 
-```
-
-### P. copri clades
-
-Print the results for all the P. copri clades
-
-```{r print_pcopri_results, eval = FALSE}
-# all_taxa_maaslin <- combined_maaslins$all_features
-# p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
-# write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
 ```
 
 ### maaslin functional groups 
 
 Functional groups associated with health
 
-```{r read_in_maaslin_functional}
+```{r read_in_maaslin_functional, error=FALSE}
 
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
@@ -435,33 +342,68 @@ bang_func_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_varia
 mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
 ```
 
-```{r maaslin_functional_groups}
-# combined_results <- run_combine_maaslins(bang_func_maaslin, mal_func_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
-bang_mal <- list(bang_func_maaslin, mal_func_maaslin)
-combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+```{r maaslin_functional_groups, error=FALSE}
 
-combined_results$positive_coef %>%
-  dplyr::select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-  kbl() %>% kable_styling()
+positive_table <- combined_results$positive_coef %>%
+  dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
+         `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, ~as.character(signif(., 3))) %>% 
+  kbl() %>% 
+  kable_styling()
 
-combined_results$negative_coef %>%
-  dplyr::select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-  kbl() %>% kable_styling()
+# Process negative coefficients
+negative_table <- combined_results$negative_coef %>%
+  dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
+         `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, ~as.character(signif(., 3))) %>% 
+  kbl() %>% 
+  kable_styling()
 
-combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% dplyr::select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
-combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% dplyr::select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+# Split species and clean data for positive coefficients
+positive_cleaned <- combined_results$positive_coef %>% 
+  mutate(split_species = str_split(Species, '_')) %>% 
+  mutate(genus = sapply(split_species, "[[", 1)) %>% 
+  mutate(specific = sapply(split_species, "[[", 2)) %>% 
+  mutate(clean_species = paste(genus, specific, sep = ' ')) %>% 
+  dplyr::select(-split_species, -genus, -specific) %>% 
+  relocate(clean_species, .after = Species) %>% 
+  group_by(MGC_class) %>% 
+  arrange(Species) %>% 
+  summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% 
+  arrange(desc(n), MGC_class) %>%  
+  kbl() %>% 
+  kable_styling()
+
+# Split species and clean data for negative coefficients
+negative_cleaned <- combined_results$negative_coef %>% 
+  mutate(split_species = str_split(Species, '_')) %>% 
+  mutate(genus = sapply(split_species, "[[", 1)) %>% 
+  mutate(specific = sapply(split_species, "[[", 2)) %>% 
+  mutate(clean_species = paste(genus, specific, sep = ' ')) %>% 
+  dplyr::select(-split_species, -genus, -specific) %>% 
+  relocate(clean_species, .after = Species) %>% 
+  group_by(MGC_class) %>% 
+  arrange(Species) %>% 
+  summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% 
+  arrange(desc(n), MGC_class) %>%  
+  kbl() %>% 
+  kable_styling()
+
+# Display the tables
+positive_table
+negative_table
+positive_cleaned
+negative_cleaned
 
 ```
 
 ## healthy vs carrier
 ### phylum plots
 
-```{r phylum_plots_carrier_healthy}
-order_of_groups <- c("Carrier", "Healthy")
+```{r phylum_plots_carrier_healthy, error=FALSE}
+order_of_groups <- c("High Vi-titre", "Household contacts")
 # bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
 # bangladesh_phyla_plot
 malawi_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Malawi", group_order = order_of_groups)
@@ -477,9 +419,9 @@ malawi_phyla_plot / nepal_phyla_plot
 
 Alpha diversity - all countries, healthy and carrier
 
-```{r alpha_diversity_healthy_carrier}
+```{r alpha_diversity_healthy_carrier, error=FALSE}
 
-all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control'), comparisons = list(c('Carrier', 'Control')), participant_group_colours)
+all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('High Vi-titre', 'Household contact'), comparisons = list(c('High Vi-titre', 'Household contact')), participant_group_colours)
 all_countries_healthy_carrier_alpha$alpha_by_country
 all_countries_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
 all_countries_healthy_carrier_alpha$alpha_plot_group
@@ -487,19 +429,19 @@ all_countries_healthy_carrier_alpha$alpha_plot_group
 
 ### beta diversity
 
-Carrier vs healthy.
-```{r beta_diversity_healthy_carrier}
+High Vi-titre vs healthy.
+```{r beta_diversity_healthy_carrier, error=FALSE}
 
-all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('Carrier', 'Control'), participant_group_colours)
+all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('High Vi-titre', 'Household contact'), participant_group_colours)
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('Carrier', 'Control'))
+# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('High Vi-titre', 'Household contact'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Carrier', 'Control'), participant_group_colours)
+mal_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('High Vi-titre', 'Household contact'), participant_group_colours)
 mal_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Carrier', 'Control'), participant_group_colours)
+nep_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('High Vi-titre', 'Household contact'), participant_group_colours)
 nep_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
 mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
@@ -507,34 +449,35 @@ mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guid
 
 ### maaslin taxonomic groups
 
-```{r basics_for_maaslin_taxonomic_carrier_healthy}
+```{r basics_for_maaslin_taxonomic_carrier_healthy, error=FALSE}
+# groups_to_analyse <- c('Acute_typhi', 'Control_HealthySerosurvey')
 
-groups_to_analyse <- c('Carrier', 'Control')
+groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 # bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 nep_variables_for_analysis <- c("Group", "Sex", "Age")
 
 ```
 
-```{r read_in_maaslin_taxonomic_carrier_healthy}
+```{r read_in_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
 malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
 nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
 ```
 
-```{r filter_maaslin_taxonomic_carrier_healthy}
+```{r filter_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
 malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
 nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
 ```
 
-```{r basic_stats_maaslin_taxonomic_carrier_healthy}
+```{r basic_stats_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
 malawi_maaslin_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
 nepal_maaslin_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
 ```
 
-```{r volcano_plots_maaslin_taxonomic_carrier_healthy}
+```{r volcano_plots_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # / bangladesh_maaslin_stats$volcano_plot 
 malawi_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
 nrow(malawi_maaslin_stats$maaslin_results_sig)
@@ -546,7 +489,7 @@ We're not including the bangladesh samples in this analysis, because the banglad
 
 There are no species significantly associated with carrier status in all Mal and Nep, so not including the combine.
 
-```{r combine_maaslins_taxonomic_carrier_healthy}
+```{r combine_maaslins_taxonomic_carrier_healthy, error=FALSE}
 
 # combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
 
@@ -593,18 +536,18 @@ There are no species significantly associated with carrier status in all Mal and
 
 ### functional groups
 
-```{r read_in_maaslin_functional_healthy_carrier}
+```{r read_in_maaslin_functional_healthy_carrier, error=FALSE}
 # bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 # nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
-groups_to_analyse <- c('Carrier', 'Control')
+groups_to_analyse <- c('High Vi-titre', 'Household contact')
 
 # bang_func_carr_health_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
 mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
 ```
 
 
-```{r maaslin_functional_groups_healthy_carrier}
+```{r maaslin_functional_groups_healthy_carrier, error=FALSE}
 # combined_results <- run_combine_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
 # bang_mal <- list(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin)
@@ -635,9 +578,9 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 
 ### alpha
 
-```{r alpha_diversity_healthy_acute_carrier}
+```{r alpha_diversity_healthy_acute_carrier, error=FALSE}
 
-all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('Carrier', 'Control', 'Acute typhoid'), comparisons = list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Carrier', 'Control')), participant_group_colours)
+all_countries_healthy_acute_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('High Vi-titre', 'Household contact', 'Acute typhoid'), comparisons = list(c('Acute typhoid', 'High Vi-titre'), c('Acute typhoid', 'Household contact'), c('High Vi-titre', 'Household contact')), participant_group_colours)
 
 all_countries_healthy_acute_carrier_alpha$alpha_by_country
 all_countries_healthy_acute_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
@@ -646,20 +589,20 @@ all_countries_healthy_acute_carrier_alpha$alpha_plot_group
 
 ### beta
 
-```{r beta_diversity_healthy_acute_carrier}
+```{r beta_diversity_healthy_acute_carrier, error=FALSE}
 
-all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
+all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
 all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data, metadata, c('Bangladesh'), c('Carrier', 'Control'))
+# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data, metadata, c('Bangladesh'), c('High Vi-titre', 'Household contact'))
 # bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
+mal_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
 mal_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 mal_beta_acute_carrier_healthy$pc12
 # mal_beta_acute_carrier_healthy$pc34
 
-nep_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Acute typhoid', 'Carrier', 'Control'), participant_group_colours)
+nep_beta_acute_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
 nep_beta_acute_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 nep_beta_acute_carrier_healthy$pc12
 # nep_beta_acute_carrier_healthy$pc34
@@ -669,8 +612,8 @@ mal_beta_acute_carrier_healthy$pc12 / nep_beta_acute_carrier_healthy$pc12  + plo
 
 ### maaslin2 taxonomic
 
-```{r read_in_heal_ac_car_taxonomic}
-groups_to_analyse <- c('Carrier', 'Control', 'Acute typhoid')
+```{r read_in_heal_ac_car_taxonomic, error=FALSE}
+groups_to_analyse <- c('High Vi-titre', 'Household contact', 'Acute typhoid')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 heal_ac_car_taxonomic_np <- read_in_maaslin('Nepal', groups_to_analyse, variables_for_analysis, 'metaphlan')
 heal_ac_car_taxonomic_np_sig <- filter_taxonomic_maaslin(heal_ac_car_taxonomic_np) %>% filter(qval <= 0.05) 
@@ -678,8 +621,8 @@ print(nrow(heal_ac_car_taxonomic_np_sig))
 ```
 
 
-```{r heal_ac_car_taxonomic}
-groups_to_analyse <- c('Carrier', 'Control', 'Acute typhoid')
+```{r heal_ac_car_taxonomic, error=FALSE}
+groups_to_analyse <- c('High Vi-titre', 'Household contact', 'Acute typhoid')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
 heal_ac_car_taxonomic <- read_in_maaslin('Malawi', groups_to_analyse, variables_for_analysis, 'metaphlan')
 heal_ac_car_taxonomic_cln <- filter_taxonomic_maaslin(heal_ac_car_taxonomic) #%>% filter(qval <= 0.05) 
@@ -690,41 +633,41 @@ heal_ac_car_taxonomic_mwi_sig <- filter_taxonomic_maaslin(heal_ac_car_taxonomic)
 print(nrow(heal_ac_car_taxonomic_mwi_sig))
 ```
 changes relative to healthy state
-```{r maaslin_heal_ac_car_taxonomic}
+```{r maaslin_heal_ac_car_taxonomic, error=FALSE}
 # same_same cant do from here because filtered for qvalue
 # 1
-up_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid > 0 & coef_Carrier > 0 & qval_Acute typhoid < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '1.up_up')
+up_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid > 0 & coef_High Vi-titre > 0 & qval_Acute typhoid < 0.05 & qval_High Vi-titre < 0.05) %>% mutate(type = '1.up_up')
 print(nrow(up_up))
 # write_csv(up_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.1.up_up.csv'))
 # 2
-up_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid > 0 & coef_Carrier < 0 & qval_Acute typhoid < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '2.up_down')
+up_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid > 0 & coef_High Vi-titre < 0 & qval_Acute typhoid < 0.05 & qval_High Vi-titre < 0.05) %>% mutate(type = '2.up_down')
 print(nrow(up_down))
 # write_csv(up_down, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.2.up_down.csv'))
 # 3
-up_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid > 0 & qval_Acute typhoid < 0.05 & qval_Carrier >= 0.05) %>% mutate(type = '3.up_same')
+up_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid > 0 & qval_Acute typhoid < 0.05 & qval_High Vi-titre >= 0.05) %>% mutate(type = '3.up_same')
 print(nrow(up_same))
 # write_csv(up_same, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.3.up_same.csv'))
 # 4
-down_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid < 0 & coef_Carrier > 0 & qval_Acute typhoid < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '4.down_up')
+down_up <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid < 0 & coef_High Vi-titre > 0 & qval_Acute typhoid < 0.05 & qval_High Vi-titre < 0.05) %>% mutate(type = '4.down_up')
 print(nrow(down_up))
 # write_csv(down_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.4.down_up.csv'))
 # 5
-down_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid < 0 & coef_Carrier < 0 & qval_Acute typhoid < 0.05 & qval_Carrier < 0.05) %>% mutate(type = '5.down_down')
+down_down <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid < 0 & coef_High Vi-titre < 0 & qval_Acute typhoid < 0.05 & qval_High Vi-titre < 0.05) %>% mutate(type = '5.down_down')
 print(nrow(down_down))
 # write_csv(down_down, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.5.down_down.csv'))
 # 6
-down_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid < 0 & qval_Acute typhoid < 0.05 & qval_Carrier > 0.05) %>% mutate(type = '6.down_same')
+down_same <- heal_ac_car_taxonomic_cln_w %>% filter(coef_Acute typhoid < 0 & qval_Acute typhoid < 0.05 & qval_High Vi-titre > 0.05) %>% mutate(type = '6.down_same')
 print(nrow(down_same))
 # write_csv(down_same, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.6.down_same.csv'))
 # 7
-same_up <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute typhoid > 0.05 & qval_Carrier < 0.05 & coef_Carrier > 0) %>% mutate(type = '7.same_up')
+same_up <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute typhoid > 0.05 & qval_High Vi-titre < 0.05 & coef_High Vi-titre > 0) %>% mutate(type = '7.same_up')
 print(nrow(same_up))
 # write_csv(same_up, file.path(maaslin_taxonomic_output_root_folder, 'blantyre.health_acute_carrier.7.same_up.csv'))
 # 8
-same_down <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute typhoid > 0.05 & qval_Carrier < 0.05 & coef_Carrier < 0) %>% mutate(type = '8.same_down')
+same_down <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute typhoid > 0.05 & qval_High Vi-titre < 0.05 & coef_High Vi-titre < 0) %>% mutate(type = '8.same_down')
 print(nrow(same_down))
 # 9
-same_same <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute typhoid >= 0.05 & qval_Carrier >= 0.05) %>% mutate(type = '9.same_same')
+same_same <- heal_ac_car_taxonomic_cln_w %>% filter(qval_Acute typhoid >= 0.05 & qval_High Vi-titre >= 0.05) %>% mutate(type = '9.same_same')
 print(nrow(same_same))
 
 all_patterns <- rbind(up_up, up_down, up_same, down_up, down_down, down_same, same_up, same_down, same_same)
@@ -751,7 +694,7 @@ prop.test(x = c(prop_up_in_ac_car$n_sgb, prop_down_in_ac_car$n_sgb), n = c(prop_
 prop.test(x = c(prop_up_in_health_only$n_sgb, prop_up_in_car_only$n_sgb), n = c(prop_up_in_health_only$total_n, prop_up_in_car_only$total_n), alternative = 'two.sided', correct = FALSE)
 ```
 
-```{r maaslin_heal_ac_car_sgb_plot}
+```{r maaslin_heal_ac_car_sgb_plot, error=FALSE}
 # make a new strataa_metaphlan_data object where the rowname column is an actual column
 
 strataa_metaphlan_data_cln <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) 
@@ -761,11 +704,11 @@ strataa_metaphlan_data_l <- strataa_metaphlan_data_cln %>% pivot_longer(!c(featu
 strataa_metaphlan_data_mwi_sp <- strataa_metaphlan_data_l %>% filter(Country == 'Malawi', str_detect(feature, 's__'), str_detect(feature, 't__', negate = TRUE)) %>% mutate(SGB = str_detect(feature, '_SGB'))
 head(strataa_metaphlan_data_mwi_sp)
 
-mwi_sgb_abundance <- strataa_metaphlan_data_mwi_sp %>% group_by(sample, SGB) %>% summarise(total_abundance = sum(abundance)) %>% left_join(metadata %>% mutate(sample = rownames(metadata)), by = 'sample')  %>% mutate(SGB = ifelse(SGB, 'SGB', 'non-SGB')) %>% mutate(Group = factor(Group, levels = c('Control', 'Acute typhoid', 'Carrier')))
+mwi_sgb_abundance <- strataa_metaphlan_data_mwi_sp %>% group_by(sample, SGB) %>% summarise(total_abundance = sum(abundance)) %>% left_join(metadata %>% mutate(sample = rownames(metadata)), by = 'sample')  %>% mutate(SGB = ifelse(SGB, 'SGB', 'non-SGB')) %>% mutate(Group = factor(Group, levels = c('Household contact', 'Acute typhoid', 'High Vi-titre')))
 mwi_sgb_abundance %>% group_by(SGB, Group) %>% summarise(median_abundance = median(total_abundance), n = n()) %>% kbl() %>% kable_styling()
 # mwi_sgb_abundance <- mwi_sgb_abundance 
 # do a scatter plot of the abundance of sgb in each group
-my_comparisons <- list(c('Acute typhoid', 'Carrier'), c('Acute typhoid', 'Control'), c('Carrier', 'Control'))
+my_comparisons <- list(c('Acute typhoid', 'High Vi-titre'), c('Acute typhoid', 'Household contact'), c('High Vi-titre', 'Household contact'))
 mwi_sgb_abundance_plot <- ggplot(mwi_sgb_abundance %>% filter(SGB == 'SGB'), aes(x = Group, y = total_abundance, color = Group)) +
   geom_boxplot() +
   stat_compare_means(comparisons = my_comparisons) + 
@@ -773,7 +716,7 @@ mwi_sgb_abundance_plot <- ggplot(mwi_sgb_abundance %>% filter(SGB == 'SGB'), aes
   theme(legend.position = "none") + 
   labs(y = 'SGB abundance in metagenome (%)', x = '') + 
   theme(text = element_text(size=18)) + 
-  scale_x_discrete(labels= c('Control', 'Acute typhoid', 'Presumptive carrier'))
+  scale_x_discrete(labels= c('Household contact', 'Acute typhoid', 'Presumptive carrier'))
 
 mwi_sgb_abundance_plot$layers[[2]]$aes_params$textsize <- 5
 # mwi_sgb_abundance_plot$layers[[3]]$aes_params$textsize <- 8
@@ -783,7 +726,7 @@ ggsave(file.path(metaphlan_input_folder, 'mwi_sgb_abundance.png'), mwi_sgb_abund
 
 ```
 
-```{r make_health_acc_carr_table}
+```{r make_health_acc_carr_table, error=FALSE}
 
 to_get_list <- c('k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Oscillospiraceae.g__Faecalibacterium.s__Faecalibacterium_prausnitzii', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Barnesiellaceae.g__Barnesiella.s__Barnesiella_intestinihominis', 'k__Bacteria.p__Firmicutes.c__Bacilli.o__Lactobacillales.f__Lactobacillaceae.g__Limosilactobacillus.s__Limosilactobacillus_reuteri', 'k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Pasteurellales.f__Pasteurellaceae.g__Haemophilus.s__Haemophilus_parainfluenzae', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Holdemanella.s__Holdemanella_biformis', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Mediterraneibacter.s__Ruminococcus_gnavus', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Peptostreptococcaceae.g__Paeniclostridium.s__Eubacterium_tenue', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Turicibacteraceae.g__Turicibacter.s__Turicibacter_bilis', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Turicibacteraceae.g__Turicibacter.s__Turicibacter_sanguinis', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Odoribacteraceae.g__Odoribacter.s__Odoribacter_splanchnicus', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Blautia.s__Blautia_faecis', 'k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Enterobacterales.f__Enterobacteriaceae.g__Escherichia.s__Escherichia_coli', 'k__Bacteria.p__Firmicutes.c__Clostridia.o__Eubacteriales.f__Lachnospiraceae.g__Lachnospiraceae_unclassified.s__Eubacterium_rectale', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Bacteroidaceae.g__Bacteroides.s__Bacteroides_fragilis', 'k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Holdemanella.s__Holdemanella_porci', 'k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Prevotellaceae.g__Prevotellamassilia.s__Prevotellamassilia_timonensis')
 # this one doesn't include the Oscillospiraceae, so will just have to point towards the supplementary table for those.
@@ -953,5 +896,53 @@ View(average_accuracy)
 print(head(average_importance_df, 10))
 save(average_importance_df, file = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/random_forest/2024.01.09/rf_results.final.RData")
 write_csv(average_importance_df, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/random_forest/2024.01.09/rf_results.feature_importance.csv')
+```
+
+## all countries, all groups
+
+### Alpha diversity - metaphlan
+
+Alpha diversity - all countries, all groups
+
+```{r alpha_diversity_all_countries_all_groups, error=FALSE}
+all_countries_all_groups_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Bangladesh', 'Malawi', 'Nepal'), groups_of_interest = c('Acute typhoid', 'High Vi-titre', 'Household contact'), comparisons = list(c('Acute typhoid', 'High Vi-titre'), c('Acute typhoid', 'Household contact'), c('Household contact', 'High Vi-titre')), participant_group_colours)
+all_countries_all_groups_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+all_countries_all_groups_alpha$alpha_plot_group
+all_countries_all_groups_alpha$alpha_plot_antibiotics
+all_countries_all_groups_alpha$alpha_by_country
+```
+
+### Beta diversity - metaphlan
+
+All groups.
+```{r beta_diversity_all_groups, error=FALSE}
+all_countries_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh', 'Malawi', 'Nepal'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
+all_countries_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+
+bgd_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
+bgd_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+# bgd_beta_all_groups$pc12
+# bgd_beta_all_groups$pc34
+
+mal_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
+mal_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+mal_beta_all_groups$pc12
+# mal_beta_all_groups$pc34
+
+nep_beta_all_groups <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('Acute typhoid', 'High Vi-titre', 'Household contact'), participant_group_colours)
+nep_beta_all_groups$pn_res %>% kbl %>% kable_styling()
+
+all_countries_beta_all_groups$pc12 / bgd_beta_all_groups$pc12 / nep_beta_all_groups$pc12
+
+```
+
+### P. copri clades
+
+Print the results for all the P. copri clades
+
+```{r print_pcopri_results, error=FALSE, eval = FALSE}
+# all_taxa_maaslin <- combined_maaslins$all_features
+# p_copri_maaslin <- all_taxa_maaslin %>% filter(grepl('_Prevotella_copri_', feature)) %>% filter(qval_bang < 0.05 | qval_mal < 0.05)
+# write_csv(p_copri_maaslin, file.path(maaslin_taxonomic_output_root_folder, 'combined_maaslins_p_copri.csv'))
 ```
 
