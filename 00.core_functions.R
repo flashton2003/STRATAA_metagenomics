@@ -14,7 +14,9 @@ library(vegan)
 library(VennDiagram)
 library(Maaslin2)
 library(forestplot)
-
+library(RColorBrewer)
+library(kableExtra)
+library(patchwork)
 
 #source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 
@@ -32,6 +34,8 @@ read_metadata <- function(path_to_metadata){
   # keep only one sample per participant, the one with the most reads.
   meta <- meta %>% arrange(desc(number_of_reads)) %>% distinct(StudyID, .keep_all = TRUE)
   meta <- meta %>% filter(!is.na(isolate) & isolate != "")
+  # remove the carriers from bangladesh
+  meta <- meta %>% filter(!(Group == 'Carrier' & Country == 'Bangladesh'))
   return(meta)
 }
 
@@ -1070,8 +1074,9 @@ plot_per_country_abundance <- function(phyla_clean_metadata, country, group_orde
 }
 
 
-prep_data_to_plot_phyla <- function(phyla, metadata_select){
+prep_data_to_plot_phyla <- function(strataa_metaphlan_data, metadata_select){
   # get the taxa that are phyla, not classes, or below (species etc), and tidy the data.
+  phyla <- strataa_metaphlan_data %>% mutate(clade_name = rownames(strataa_metaphlan_data)) %>% filter(grepl("p__", clade_name)) %>% filter(!grepl("c__", clade_name)) %>% pivot_longer(!c(clade_name, lowest_taxonomic_level), names_to = "sample", values_to = "relative_abundance")
 
   # relative_abundance > 1 returns a list of TRUE/FALSE values, which is then summed to get the number of samples in which the phylum is present at > 1% relative abundance.
   # then we filter to only keep phyla that are present at 1% in at least 10% of samples.

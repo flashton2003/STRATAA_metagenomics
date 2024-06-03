@@ -1,5 +1,5 @@
 ---
-title: "STRATAA Microbiome"
+title: "STRATAA Microbiome - taxonomic analysis"
 author: "Philip Ashton"
 date: "`r Sys.Date()`"
 output: 
@@ -10,13 +10,12 @@ output:
       number_sections: true
 ---
 
-
 ```{r setup, error=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 
 ```
 
-# STRATAA microbiome analysis
+# STRATAA microbiome taxonomic analysis
 
 ## Imports
 ```{r imports, error=FALSE}
@@ -34,104 +33,21 @@ library(randomForest)
 library(caret)
 ```
 
-
 ## Sources
 
 The file handles are set in config.R as they're used by both this script and data_cleaning.
 
 ```{r source, error=FALSE}
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
 
-
-## Metadata basics
-
-First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
+## Read in metadata
 
 ```{r metadata_read_in, error=FALSE}
 metadata <- read_metadata(metadata_handle)
 # putting this here so that the output files of maaslin get named accroding to the variable names in the metadata file.
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
-
-```
-
-```{r metadata_basics, error=FALSE}
-number_per_country <- metadata %>% group_by(Country) %>% summarise(count = n())
-
-number_per_country %>% kbl() %>% kable_styling()
-
-print(sum(number_per_country$count))
-
-metadata %>% group_by(Country, Group) %>% summarise(count = n()) %>% kbl() %>% kable_styling()
-
-metadata %>% group_by(Group) %>% summarise(count = n(), median_age = median(Age)) %>% kbl() %>% kable_styling()
-baseline_chars <- get_baseline_characteristics(metadata)
-comparisons_groups <- list(c("Acute typhoid", "High Vi-titre"), c("Acute typhoid", "Household contact"), c("High Vi-titre", "Household contact"))
-
-ggboxplot(metadata, y = "Age", x = "Group", color = "Group") + 
-  stat_compare_means() + 
-  stat_compare_means(comparisons = comparisons_groups) + 
-  rremove("x.text") + 
-  rremove("xlab") + 
-  rremove("x.ticks") +
-  scale_color_manual(values = participant_group_colours)
-   # +rotate_x_text(angle = 45)
-
-
-baseline_chars_table <- baseline_chars %>% 
-  rename(`Median age` = median_age, `Women (%)` = pct_fem, `Antibiotics in last 2 weeks (%)` = pct_anti) %>% 
-  pivot_longer(!c(Country, Group)) %>% 
-  rename(variable_name = name) %>% 
-  pivot_wider(names_from = Country, values_from = value)
-
-baseline_chars_table %>% kbl(digits = c(NA, NA, 1, 1, 1)) %>% kable_styling()
-
-# the kruskal wallis test is positive, showing a difference between the groups, so we move onto pairwise tests.
-# ggplot(metadata, aes(x = Country, y = Age, fill = Group)) + geom_boxplot() + stat_compare_means(method = 'kruskal.test', label = "p")
-comparisons_countries <- list(c('Bangladesh', 'Malawi'), c('Bangladesh', 'Nepal'), c('Malawi', 'Nepal'))
-# default stat method when doing pairwise tests in wilcoxon.
-metadata_for_plotting <- metadata
-metadata_for_plotting$Group <- factor(metadata_for_plotting$Group, levels = c("Household contact", "Acute typhoid", "High Vi-titre"))
-ggboxplot(metadata_for_plotting, facet.by = "Country", y = "Age", x = "Group", color = "Group") + stat_compare_means(comparisons = comparisons_groups) + rremove("x.text") + rremove("xlab") + rremove("x.ticks") + scale_color_manual(values = participant_group_colours) # +rotate_x_text(angle = 45)
-# ggboxplot(metadata_for_plotting, facet.by = "Group", y = "Age", x = "Country", color = "Country") + stat_compare_means(comparisons = comparisons_countries) + rotate_x_text(angle = 45)
-
-```
-
-```{r metadata_basic_plots, error=FALSE, fig.width = 4, fig.height= 8}
-country_group_sex <- metadata %>% group_by(Country, Group, Sex) %>% summarise(count = n()) 
-comparisons_groups <- list(c("Acute typhoid", "High Vi-titre"), c("Acute typhoid", "Household contact"), c("High Vi-titre", "Household contact"))
-# country_group_sex %>% group_by(Country, Sex) %>% summarise(n = sum(count))
-plot_sex <- function(eg1, c){
-  d <- eg1 %>% filter(Country == c)
-  p <- ggplot(d, aes(x = Group, y = count, fill = Sex)) + 
-    geom_bar(stat ='identity', position = 'fill') + 
-    ylab('Proportion') + 
-    ggtitle(c)
-    # +
-    #theme(axis.text=element_text(size=34), axis.title=element_text(size=36,face="bold"), plot.title = element_text(size = 40, face = "bold"), legend.key.size = unit(4, 'cm'), legend.title = element_text(size = 34), legend.text = element_text(size = 28))
-  
-  return(p)
-}
-
-country_group_sex$Group <- factor(country_group_sex$Group, levels = c("Household contact", "Acute typhoid", "High Vi-titre"))
-
-m_sex <- plot_sex(country_group_sex, 'Malawi')
-b_sex <- plot_sex(country_group_sex, 'Bangladesh')
-n_sex <- plot_sex(country_group_sex, 'Nepal')
-m_sex / b_sex / n_sex 
-```
-
-## sequencing read stats
-
-```{r sequencing_read_stats, error=FALSE}
-
-# todo - replace with the read stats from the metadata file.
-# read_stats_path <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/data_munging/2023.08.28/2023.08.28 strataa microbiome number of reads.csv'
-# read_stats <- read_csv(read_stats_path) %>% filter(Country != '#N/A')
-
-ggboxplot(metadata, facet.by = "Country", x = "Group", y = "number_of_reads", color = "Group") + rremove("x.text") + rremove("xlab") + rremove("x.ticks") + rotate_x_text(angle = 45) + stat_compare_means()
-
 ```
 
 ## read in metaphlan data
@@ -328,14 +244,17 @@ hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemo
 ### phylum plots
 
 ```{r phylum_plots_carrier_healthy, error=FALSE}
-order_of_groups <- c("High Vi-titre", "Household contacts")
+
+# metadata_for_phyla_plots <- metadata %>% dplyr::select(SampleID, Group, Country)
+phyla_clean_metadata <- prep_data_to_plot_phyla(strataa_metaphlan_data, metadata)
+order_of_groups <- c("High Vi-titre", "Household contact")
 # bangladesh_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Bangladesh", group_order = order_of_groups)
 # bangladesh_phyla_plot
 malawi_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Malawi", group_order = order_of_groups)
 nepal_phyla_plot <- plot_per_country_abundance(phyla_clean_metadata = phyla_clean_metadata, country = "Nepal", group_order = order_of_groups)
 
 # bangladesh_phyla_plot / 
-malawi_phyla_plot / nepal_phyla_plot
+malawi_phyla_plot / nepal_phyla_plot + plot_layout(guides = 'collect')
 ```
 
 ### alpha diversity
@@ -343,7 +262,6 @@ malawi_phyla_plot / nepal_phyla_plot
 Alpha diversity - all countries, healthy and carrier
 
 ```{r alpha_diversity_healthy_carrier, error=FALSE}
-
 all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('High Vi-titre', 'Household contact'), comparisons = list(c('High Vi-titre', 'Household contact')), participant_group_colours)
 all_countries_healthy_carrier_alpha$alpha_by_country
 all_countries_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
@@ -379,7 +297,6 @@ groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 # bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 nep_variables_for_analysis <- c("Group", "Sex", "Age")
-
 ```
 
 ```{r read_in_maaslin_taxonomic_carrier_healthy, error=FALSE}
@@ -402,59 +319,6 @@ nrow(malawi_maaslin_stats$maaslin_results_sig)
 nrow(nepal_maaslin_stats$maaslin_results_sig)
 ```
 
-```{r volcano_plots_maaslin_taxonomic_carrier_healthy, error=FALSE}
-# / bangladesh_maaslin_stats$volcano_plot 
-# malawi_maaslin_stats$volcano_plot / nepal_maaslin_stats$volcano_plot
-# nrow(bangladesh_maaslin_stats$maaslin_results_sig)
-
-```
-
 We're not including the bangladesh samples in this analysis, because the bangladesh carriers were processed differently (extracted without being frozen).
 
-There are no species significantly associated with carrier status in all Mal and Nep, so not including the combine.
-
-```{r combine_maaslins_taxonomic_carrier_healthy, error=FALSE}
-
-# combined_results <- run_combine_maaslins(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
-
-# only one species significantly associated in Nepal.
-# there are no species consistently associated across all three sites
-# bang_mal_nep <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered, nepal_taxonomic_maaslin_filtered)
-# combined_results <- run_combine_maaslins(bang_mal_nep, c('_bang', '_mwi', '_nep'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
-# View(combined_results$positive_coef)
-# View(combined_results$negative_coef)
-
-# there are no species associated in both bang and nep
-# bang_nep <- list(bangladesh_taxonomic_maaslin_filtered, nepal_taxonomic_maaslin_filtered)
-# combined_results <- run_combine_maaslins(bang_nep, c('_bang', '_nep'), bang_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
-# View(combined_results$positive_coef)
-# View(combined_results$negative_coef)
-
-# there are no species associated in both mal and nep
-# mal_nep <- list(malawi_taxonomic_maaslin_filtered, nepal_taxonomic_maaslin_filtered)
-# combined_results <- run_combine_maaslins(bang_nep, c('_mal', '_nep'), bang_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
-# View(combined_results$positive_coef)
-# View(combined_results$negative_coef)
-
-# bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
-# combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
-
-# # positive is associated with health
-# combined_results$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
-#   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-#   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-#   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-#   kbl() %>% kable_styling()
-
-# # negative is associated with carrier
-# combined_results$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
-#   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
-#   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
-#   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
-#   kbl() %>% kable_styling()
-
-# nrow(combined_results$mwi_maaslin_only)
-# nrow(combined_results$bang_maaslin_only)
-```
-
-
+There are no species significantly associated with carrier status in both Mal and Nep, so not doing the combine.
