@@ -17,6 +17,7 @@ library(forestplot)
 library(RColorBrewer)
 library(kableExtra)
 library(patchwork)
+library(forcats)
 
 #source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 
@@ -829,6 +830,7 @@ read_in_maaslin <- function(country, groups_to_analyse, variables_for_analysis, 
   return(maaslin_results)
 }
 
+
 filter_taxonomic_maaslin <- function(maaslin_results){
   maaslin_results_species <- maaslin_results %>% filter(grepl('s__', feature)) %>% filter(!grepl('t__', feature))
   maaslin_results_species_group <- maaslin_results_species %>% filter(metadata == "Group")
@@ -856,7 +858,7 @@ basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_f
 }
 
 
-combine_maaslins <- function(first_set_maaslin_results, second_set_maaslin_results, first_suffix, second_suffix, type_of_input){
+inner_join_maaslins <- function(first_set_maaslin_results, second_set_maaslin_results, first_suffix, second_suffix, type_of_input){
   # thanks chatgpt!
   if (type_of_input == 'metaphlan'){
     # we include the lowest taxonomic level in the join so that it doesn't get duplicated as bang/mal
@@ -868,6 +870,7 @@ combine_maaslins <- function(first_set_maaslin_results, second_set_maaslin_resul
   }
   return(combined_df)
 }
+
 
 filter_combined_maaslins <- function(combined_df){
   # Filter the combined data frame based on the conditions for coef > 0
@@ -883,18 +886,19 @@ filter_combined_maaslins <- function(combined_df){
   return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef, all_features = combined_df))
 }
 
-run_combine_maaslins <- function(maaslin_results, suffixes, variables_for_output_name, groups_to_analyse, analysis_type, maaslin_output_root_folder){
+
+run_inner_join_maaslins <- function(maaslin_results, suffixes, variables_for_output_name, groups_to_analyse, analysis_type, maaslin_output_root_folder){
   # maaslin_results is a list of dataframes
   # suffixes is a list of suffixes for each dataframe, to be applied to the output of the join
   groups_for_dirname <- paste(groups_to_analyse, collapse = '_vs_')
   vars_for_output_dirname <- paste(variables_for_output_name, collapse = '.')
   
   if (length(maaslin_results) >= 2){
-    combined_maaslins <- combine_maaslins(maaslin_results[[1]], maaslin_results[[2]], suffixes[[1]], suffixes[[2]], analysis_type)
+    combined_maaslins <- inner_join_maaslins(maaslin_results[[1]], maaslin_results[[2]], suffixes[[1]], suffixes[[2]], analysis_type)
   }
 
   if (length(maaslin_results) >= 3){
-    combined_maaslins <- combine_maaslins(combined_maaslins, maaslin_results[[3]], '', suffixes[[3]], analysis_type)
+    combined_maaslins <- inner_join_maaslins(combined_maaslins, maaslin_results[[3]], '', suffixes[[3]], analysis_type)
   }
   
   combined_filtered_maaslins <- filter_combined_maaslins(combined_maaslins)
