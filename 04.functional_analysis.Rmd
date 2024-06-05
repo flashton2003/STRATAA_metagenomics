@@ -18,30 +18,14 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 
 # STRATAA microbiome analysis
 
-## Imports
-```{r imports, error=FALSE}
-library(rbiom)
-library(kableExtra)
-library(ggplot2)
-library(ggpubr)
-library(ggforce)
-library(patchwork)
-library(vegan)
-library(dplyr)
-library(forcats)
-library(RColorBrewer)
-
-```
-
 ## Sources
 
 The file handles are set in config.R as they're used by both this script and data_cleaning.
 
 ```{r source, error=FALSE}
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
-
 
 ## Data import
 
@@ -49,7 +33,6 @@ source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardo
 metadata <- read_metadata(metadata_handle)
 # putting this here so that the output files of maaslin get named accroding to the variable names in the metadata file.
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
-
 ```
 
 ## typhi vs healthy
@@ -70,7 +53,11 @@ mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_f
 ```
 
 ```{r maaslin_functional_groups, error=FALSE}
+##
+bang_mal <- list(bang_func_maaslin, mal_func_maaslin)
+combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
+# View(combined_results$positive_coef)
 positive_table <- combined_results$positive_coef %>%
   dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
@@ -126,6 +113,8 @@ negative_cleaned
 
 ```
 
+There were `r nrow(combined_results$positive_coef)` MGCs significantly (q-val < 0.05) associated with health/disease in Malawi and Bangladesh.
+
 ## healthy vs carrier
 
 ### read in data
@@ -141,10 +130,10 @@ mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi
 
 ### maaslin
 ```{r maaslin_functional_groups_healthy_carrier, error=FALSE}
-# combined_results <- run_combine_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+# combined_results <- run_inner_join_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
 # bang_mal <- list(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin)
-# combined_results <- run_combine_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+# combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
 
 # # positive is associated with health
 # # combined_results$positive_coef %>%  kbl() %>% kable_styling()
