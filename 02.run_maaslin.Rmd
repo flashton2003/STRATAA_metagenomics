@@ -138,7 +138,7 @@ variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sam
 run_maaslin(strataa_disease_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", 'sequencing_lane')
 run_maaslin(strataa_disease_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32580_7"), 'bigmap')
-variables_for_analysis <- c("Group", "Sex", "Age")
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 run_maaslin(strataa_nepal_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 
 ```
