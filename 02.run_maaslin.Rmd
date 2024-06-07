@@ -19,26 +19,19 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 
 ## Sources
 ```{r imports}
-library(kableExtra)
-library(dplyr)
-library(stringr)
-library(tibble)
+# library(kableExtra)
+# library(dplyr)
+# library(stringr)
+# library(tibble)
 
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
 
-## paths
 
-```{r paths}
-strataa_disease_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/analyse_output/tsv-results/all_RPKMs.transpose.csv"
-strataa_carrier_health_bigmap_data_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.12/analyse_output_healthy_carrier/tsv-results/all_RPKMs.transpose.csv"
-#strataa_bigmap_metadata_path <- "~/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2023.05.01/2023.05.01.big_map_input.maaslin.csv"
+## read in data
 
-```
-
-## read in metadata
-
+Metadata
 ```{r read_in_metadata}
 metadata <- read_metadata(metadata_handle)
 
@@ -49,16 +42,40 @@ strataa_metaphlan_metadata <- metadata %>% dplyr::select(SampleID, sequencing_la
 # strataa_metaphlan_metadata
 ```
 
-
-## Run MAASLIN2 taxonomic
-
+Metaphlan data
 ```{r read_in_metaphlan, include=FALSE}
-
 strataa_metaphlan_data = read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 ```
 
-```{r run_maaslin_metaphlan_healthy_typhoid include=FALSE}
+bigmap data
 
+```{r read_in_bigmap_results}
+
+# strataa_bigmap_data = read.csv(strataa_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_disease_health_bigmap_data = read.csv(file = strataa_disease_health_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_carrier_health_bigmap_data = read.csv(file = strataa_carrier_health_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+strataa_nepal_bigmap_data <- read.csv(file = strataa_nepal_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+
+rownames(strataa_disease_health_bigmap_data) <- rownames(strataa_disease_health_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
+rownames(strataa_carrier_health_bigmap_data) <- rownames(strataa_carrier_health_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
+rownames(strataa_nepal_bigmap_data) <- rownames(strataa_nepal_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
+
+# strataa_bigmap_metadata is the same as strataa_metaphlan_metadata
+#strataa_bigmap_metadata = read.csv(file = strataa_bigmap_metadata_path, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
+
+#strataa_bigmap_metadata <- strataa_bigmap_metadata %>% filter(Gender != '#N/A')
+#strataa_bigmap_metadata$Age <- as.numeric(as.character(strataa_bigmap_metadata$Age))
+
+strataa_bigmap_metadata <- metadata %>% mutate(isolate_bigmap = str_replace_all(isolate, '_', '.'))
+rownames(strataa_bigmap_metadata) <- strataa_bigmap_metadata$isolate_bigmap
+
+```
+
+## Run MAASLIN2 taxonomic
+
+Acute vs household contact.
+
+```{r run_maaslin_metaphlan_healthy_typhoid include=FALSE}
 #variables_for_analysis <- c("Group")
 groups_to_analyse <- c('Acute_Typhi', 'Control_HealthySerosurvey')
 
@@ -80,9 +97,6 @@ For healthy vs carrier, not including antibiotics becayse they're all "No"
 ```{r run_maaslin_metaphlan_healthy_carrier}
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
-#bgd_acute_healthy_output_dir <- file.path(maaslin_taxonomic_output_root_folder, paste())
-variables_for_analysis <- c("Group", "Sex", "Age")
-run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomic_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'metaphlan')
 
 #variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
 variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
@@ -112,27 +126,7 @@ run_maaslin(strataa_metaphlan_data, strataa_metaphlan_metadata, maaslin_taxonomi
 
 ## run maaslin2 functional
 
-```{r read_in_bigmap_results echo = T, results = 'hide'}
-
-# strataa_bigmap_data = read.csv(strataa_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
-strataa_disease_health_bigmap_data = read.csv(file = strataa_disease_health_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
-strataa_carrier_health_bigmap_data = read.csv(file = strataa_carrier_health_bigmap_data_path, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
-
-rownames(strataa_disease_health_bigmap_data) <- rownames(strataa_disease_health_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
-rownames(strataa_carrier_health_bigmap_data) <- rownames(strataa_carrier_health_bigmap_data) %>% str_replace_all('-', '.') %>% str_replace_all('#', '.')
-
-# strataa_bigmap_metadata is the same as strataa_metaphlan_metadata
-#strataa_bigmap_metadata = read.csv(file = strataa_bigmap_metadata_path, header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
-
-#strataa_bigmap_metadata <- strataa_bigmap_metadata %>% filter(Gender != '#N/A')
-#strataa_bigmap_metadata$Age <- as.numeric(as.character(strataa_bigmap_metadata$Age))
-
-strataa_bigmap_metadata <- metadata %>% mutate(isolate_bigmap = str_replace_all(isolate, '_', '.'))
-rownames(strataa_bigmap_metadata) <- strataa_bigmap_metadata$isolate_bigmap
-
-```
-
-typhi vs health
+### typhi vs health
 
 - todo = haven't changed the function for including the prevalence, probably just need to filter/select the meta-data or something?
 
@@ -144,20 +138,27 @@ variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sam
 run_maaslin(strataa_disease_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", 'sequencing_lane')
 run_maaslin(strataa_disease_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32580_7"), 'bigmap')
+variables_for_analysis <- c("Group", "Sex", "Age")
+run_maaslin(strataa_nepal_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 
 ```
 
-carrier vs health
+### carrier vs health
 
 ```{r}
 
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 
-variables_for_analysis <- c("Group", "Sex", "Age")
+# variables_for_analysis <- c("Group", "Sex", "Age")
 # variables_for_analysis <- c("Group")
-run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
+# run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
 run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32712_2"), 'bigmap')
+
+variables_for_analysis <- c("Group", "Sex", "Age")
+run_maaslin(strataa_nepal_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
+
+
 
 ```
 

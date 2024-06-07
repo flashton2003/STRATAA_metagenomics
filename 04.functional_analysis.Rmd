@@ -117,6 +117,8 @@ There were `r nrow(combined_results$positive_coef)` MGCs significantly (q-val < 
 
 ## healthy vs carrier
 
+
+
 ### read in data
 ```{r read_in_maaslin_functional_healthy_carrier, error=FALSE}
 # bang_variables_for_analysis <- c("Group", "Sex", "Age")

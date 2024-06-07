@@ -336,7 +336,6 @@ run_beta_diversity <- function(metaphlan_data, metadata, groups_of_interest){
   # View(pn_res)
   p <- list(pcoa_df = pcoa_df, pn_res = pn_res)
   return(p)
-
 }
 
 strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest, participant_group_colours){
@@ -786,7 +785,7 @@ calculate_prevalence <- function(feature_data, metadata, country, groups_for_ana
 run_maaslin <- function(feature_data, metadata, output_root, country, groups_for_analysis, variables_for_analysis, norm, trans, reference_groups, input_type){
   ifelse(!dir.exists(output_root), dir.create(output_root), FALSE)
   metadata_to_analyse <- metadata %>% filter(Country == country, Group %in% groups_for_analysis) %>% filter(Antibiotics_taken_before_sampling_assumptions %in% c('Yes', 'No'))
-  View(metadata_to_analyse)
+  # View(metadata_to_analyse)
   # View(unique(metadata_to_analyse$Group))
   # View(unique(metadata_to_analyse$Sex))
   # View(dim(feature_data))

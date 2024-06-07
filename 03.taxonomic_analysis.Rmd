@@ -87,21 +87,21 @@ nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before
 ```
 
 ```{r read_in_maaslin_taxonomic, error=FALSE}
-bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
-malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
-nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
+bangladesh_taxonomic_maaslin_acute_healthy <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
+malawi_taxonomic_maaslin_acute_healthy <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
+nepal_taxonomic_maaslin_acute_healthy <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
 ```
 
 ```{r filter_maaslin_taxonomic, error=FALSE}
-bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
-malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
-nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
+bangladesh_taxonomic_maaslin_acute_healthy_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin_acute_healthy)
+malawi_taxonomic_maaslin_acute_healthy_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin_acute_healthy)
+nepal_taxonomic_maaslin_acute_healthy_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin_acute_healthy)
 ```
 
 ```{r basic_stats_maaslin_taxonomic, error=FALSE}
-bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
-malawi_maaslin_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
-nepal_maaslin_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
+bangladesh_maaslin_acute_healthy_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_acute_healthy_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
+malawi_maaslin_acute_healthy_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_acute_healthy_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
+nepal_maaslin_acute_healthy_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_acute_healthy_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
 ```
 
 There were `r nrow(malawi_maaslin_stats$maaslin_results_sig)` species significantly (q-val < 0.05) associated with health/disease in Malawi, `r nrow(bangladesh_maaslin_stats$maaslin_results_species_group_sig)` in Bangladesh, and `r nrow(nepal_maaslin_stats$maaslin_results_species_group_sig)` in Nepal.
@@ -113,7 +113,7 @@ Because sequencing run and participant type are totally confounded for Banglades
 associated at both sites
 ```{r combine_maaslins_taxonomic, error=FALSE}
 
-bang_mal <- list(bangladesh_taxonomic_maaslin_filtered, malawi_taxonomic_maaslin_filtered)
+bang_mal <- list(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered)
 combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
 
 # View(combined_results$positive_coef)
@@ -229,7 +229,10 @@ hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemo
 
 
 
-## healthy vs carrier
+## healthy vs carrier (parts include all participant groups)
+
+We're not including the bangladesh samples in this analysis, because the bangladesh carriers were processed differently (extracted without being frozen).
+
 ### phylum plots
 
 ```{r phylum_plots_carrier_healthy, error=FALSE}
@@ -248,13 +251,22 @@ malawi_phyla_plot / nepal_phyla_plot + plot_layout(guides = 'collect')
 
 ### alpha diversity
 
-Alpha diversity - all countries, healthy and carrier
+Alpha diversity - Malawi and Nepal, healthy and carrier.
 
 ```{r alpha_diversity_healthy_carrier, error=FALSE}
-all_countries_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('High Vi-titre', 'Household contact'), comparisons = list(c('High Vi-titre', 'Household contact')), participant_group_colours)
-all_countries_healthy_carrier_alpha$alpha_by_country
-all_countries_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
-all_countries_healthy_carrier_alpha$alpha_plot_group
+# malawi_nepal_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('High Vi-titre', 'Household contact', 'Acute typhoid'), comparisons = list(c('High Vi-titre', 'Household contact'), c('High Vi-titre', 'Acute typhoid'), c('Household contact', 'Acute typhoid')), participant_group_colours)
+# malawi_nepal_healthy_carrier_alpha$alpha_by_country
+# malawi_nepal_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+# malawi_nepal_healthy_carrier_alpha$alpha_plot_group
+```
+
+Alpha diversity - Malawi and Nepal, healthy, typhoid, and carrier.
+
+```{r alpha_diversity_healthy_carrier_typhoid, error=FALSE}
+malawi_nepal_healthy_carrier_alpha <- metaphlan_alpha(strataa_metaphlan_data_species, metadata, countries_of_interest = c('Malawi', 'Nepal'), groups_of_interest = c('High Vi-titre', 'Household contact', 'Acute typhoid'), comparisons = list(c('High Vi-titre', 'Household contact')), participant_group_colours)
+malawi_nepal_healthy_carrier_alpha$alpha_by_country
+malawi_nepal_healthy_carrier_alpha$alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% kbl() %>% kable_styling()
+malawi_nepal_healthy_carrier_alpha$alpha_plot_group
 ```
 
 ### beta diversity
@@ -262,26 +274,24 @@ all_countries_healthy_carrier_alpha$alpha_plot_group
 High Vi-titre vs healthy.
 ```{r beta_diversity_healthy_carrier, error=FALSE}
 
-all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('High Vi-titre', 'Household contact'), participant_group_colours)
-all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), participant_group_colours)
+# all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-# bgd_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Bangladesh'), c('High Vi-titre', 'Household contact'))
-# bgd_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('High Vi-titre', 'Household contact'), participant_group_colours)
-mal_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+mal_beta_carrier_healthy_typhoid <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), participant_group_colours)
+mal_beta_carrier_healthy_typhoid$pn_res %>% kbl %>% kable_styling()
 
-nep_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('High Vi-titre', 'Household contact'), participant_group_colours)
-nep_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
+nep_beta_carrier_healthy_typhoid <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Nepal'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), participant_group_colours)
+nep_beta_carrier_healthy_typhoid$pn_res %>% kbl %>% kable_styling()
 
-mal_beta_carrier_healthy$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
+mal_beta_carrier_healthy_typhoid$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
 ```
 
 ### maaslin taxonomic groups
 
 ```{r basics_for_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # groups_to_analyse <- c('Acute_typhi', 'Control_HealthySerosurvey')
-
+# use the original metadata variable names, not the presentation names because that's what the maaslin2 results are saved as.
 groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 # bang_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
@@ -302,12 +312,17 @@ nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maa
 
 ```{r basic_stats_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
-malawi_maaslin_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
-nepal_maaslin_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
-nrow(malawi_maaslin_stats$maaslin_results_sig)
-nrow(nepal_maaslin_stats$maaslin_results_sig)
+malawi_taxonomic_maaslin_health_carrier_filtered <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
+nepal_taxonomic_maaslin_health_carrier_filtered <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
+nrow(malawi_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig)
+nrow(nepal_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig)
 ```
 
-We're not including the bangladesh samples in this analysis, because the bangladesh carriers were processed differently (extracted without being frozen).
-
 There are no species significantly associated with carrier status in both Mal and Nep, so not doing the combine.
+
+```{r}
+malawi_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig %>% kbl %>% kable_styling()
+nepal_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig %>% kbl %>% kable_styling()
+```
+
+Combine the nepal_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig and 
