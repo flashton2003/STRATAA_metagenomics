@@ -871,6 +871,13 @@ inner_join_maaslins <- function(first_set_maaslin_results, second_set_maaslin_re
 }
 
 
+summarise_mgcs <- function(functional_maaslin_results){
+  func_maaslin_filtered <- functional_maaslin_results %>% filter(metadata == 'Group', value == 'Control_HealthySerosurvey', qval < 0.05)
+  func_maaslin_filtered <- func_maaslin_filtered %>% mutate(direction_of_assc = ifelse(coef > 0, 'assc_health', 'assc_disease'))
+  func_maaslin_summarised <- func_maaslin_filtered %>% group_by(MGC_class, direction_of_assc) %>% summarise(n = n())
+  return(func_maaslin_summarised)
+}
+
 filter_combined_maaslins <- function(combined_df){
   # Filter the combined data frame based on the conditions for coef > 0
   # View(combined_df)
@@ -896,13 +903,19 @@ run_inner_join_maaslins <- function(maaslin_results, suffixes, variables_for_out
     combined_maaslins <- inner_join_maaslins(maaslin_results[[1]], maaslin_results[[2]], suffixes[[1]], suffixes[[2]], analysis_type)
   }
 
-  if (length(maaslin_results) >= 3){
+  if (length(maaslin_results) == 3){
     combined_maaslins <- inner_join_maaslins(combined_maaslins, maaslin_results[[3]], '', suffixes[[3]], analysis_type)
+    # rename coef, std_err, N, N.not.0, pval, qval columns to include the last suffix
+    combined_maaslins <- combined_maaslins %>% rename(!!paste('coef', suffixes[[3]], sep = '') := coef, !!paste('stderr', suffixes[[3]], sep = '') := stderr, !!paste('N', suffixes[[3]], sep = '') := N, !!paste('N.not.0', suffixes[[3]], sep = '') := N.not.0, !!paste('pval', suffixes[[3]], sep = '') := pval, !!paste('qval', suffixes[[3]], sep = '') := qval)
+    # combined_maaslins 
+  }
+
+  if (length(maaslin_results) >3) {
+    print('run_inner_join_maaslins only setup for combining 3 dfs right now')
+    quit()
   }
   
-  combined_filtered_maaslins <- filter_combined_maaslins(combined_maaslins)
-  combined_maaslins_positive_coef <- combined_filtered_maaslins$positive_coef
-  combined_maaslins_negative_coef <- combined_filtered_maaslins$negative_coef
+  
   
   # bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
   # mwi_maaslin_only <- malawi_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
@@ -910,16 +923,16 @@ run_inner_join_maaslins <- function(maaslin_results, suffixes, variables_for_out
   # print(nrow(bang_maaslin_only) + nrow(combined_maaslins_positive_coef) + nrow(combined_maaslins_negative_coef))
   # print(nrow(bang_maaslin %>% filter(qval < 0.05)))
   
-  combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
+  # combined_maaslins_positive_coef %>%  kbl() %>% kable_styling()
   # write_csv(combined_maaslins_positive_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_positive_coef.csv', sep = '.')))
-  combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
+  # combined_maaslins_negative_coef %>%  kbl() %>% kable_styling()
   # write_csv(combined_maaslins_negative_coef, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'combined_maaslins_negative_coef.csv', sep = '.')))
   # write_csv(bang_maaslin_only, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'bangladesh_only.csv', sep = '.')))
   # write_csv(mwi_maaslin_only, file.path(maaslin_output_root_folder, paste(groups_for_dirname, vars_for_output_dirname, 'malawi_only.csv', sep = '.')))
 
   # combined_results <- list(positive_coef = combined_maaslins_positive_coef, negative_coef = combined_maaslins_negative_coef, bang_maaslin_only = bang_maaslin_only, mwi_maaslin_only = mwi_maaslin_only)
-  combined_results <- list(positive_coef = combined_maaslins_positive_coef, negative_coef = combined_maaslins_negative_coef)
-  return(combined_results)
+  # combined_results <- list(positive_coef = combined_maaslins_positive_coef, negative_coef = combined_maaslins_negative_coef)
+  return(combined_maaslins)
 }
 
 

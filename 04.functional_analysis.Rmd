@@ -10,10 +10,8 @@ output:
       number_sections: true
 ---
 
-
 ```{r setup, error=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
-
 ```
 
 # STRATAA microbiome analysis
@@ -35,14 +33,13 @@ metadata <- read_metadata(metadata_handle)
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
 ```
 
-## typhi vs healthy
+## typhi vs healthy
 
 ### maaslin functional groups 
 
 Functional groups associated with health
 
 ```{r read_in_maaslin_functional, error=FALSE}
-
 bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
 # nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
@@ -53,15 +50,34 @@ mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_f
 nep_func_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
 ```
 
+```{r count_func_maaslins, error=FALSE}
+
+print(nrow(bang_func_maaslin %>% filter(qval < 0.05, metadata == 'Group')))
+print(nrow(mal_func_maaslin %>% filter(qval < 0.05, metadata == 'Group')))
+print(nrow(nep_func_maaslin %>% filter(qval < 0.05, metadata == 'Group')))
+
+```
+
+Malawi, Bangladesh and Nepal. There are none shared at this level.
+
+```{r maaslin_functional_group_bang_mal_nep}
+bang_mal_nep <- list(bang_func_maaslin, mal_func_maaslin, nep_func_maaslin)
+bang_mal_nep_heal_typh_combined_results <- run_inner_join_maaslins(bang_mal_nep, c('_bang', '_mal', '_nep'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+bang_mal_nep_heal_typh_combined_filtered_maaslins <- filter_combined_maaslins(bang_mal_nep_heal_typh_combined_results)
+print(nrow(bang_mal_nep_heal_typh_combined_filtered_maaslins$positive_coef))
+print(nrow(bang_mal_nep_heal_typh_combined_filtered_maaslins$negative_coef))
+# bang_mal_nep_heal_typh_combined_filtered_maaslins$positive_coef %>%  kbl() %>% kable_styling()
+# bang_mal_nep_heal_typh_combined_filtered_maaslins$negative_coef %>%  kbl() %>% kable_styling()
+```
+
 Just Malawi and Bangladesh.
 
-```{r maaslin_functional_groups, error=FALSE}
-##
+```{r combine_maaslin_functional_groups, error=FALSE}
 bang_mal <- list(bang_func_maaslin, mal_func_maaslin)
-combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+mal_bang_heal_typh_combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+mal_bang_heal_typh_combined_filtered_maaslins <- filter_combined_maaslins(mal_bang_heal_typh_combined_results)
 
-# View(combined_results$positive_coef)
-positive_table <- combined_results$positive_coef %>%
+positive_table <- mal_bang_heal_typh_combined_filtered_maaslins$positive_coef %>%
   dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
          `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
@@ -70,7 +86,7 @@ positive_table <- combined_results$positive_coef %>%
   kable_styling()
 
 # Process negative coefficients
-negative_table <- combined_results$negative_coef %>%
+negative_table <- mal_bang_heal_typh_combined_filtered_maaslins$negative_coef %>%
   dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
   rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
          `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
@@ -79,7 +95,7 @@ negative_table <- combined_results$negative_coef %>%
   kable_styling()
 
 # Split species and clean data for positive coefficients
-positive_cleaned <- combined_results$positive_coef %>% 
+positive_cleaned <- mal_bang_heal_typh_combined_filtered_maaslins$positive_coef %>% 
   mutate(split_species = str_split(Species, '_')) %>% 
   mutate(genus = sapply(split_species, "[[", 1)) %>% 
   mutate(specific = sapply(split_species, "[[", 2)) %>% 
@@ -94,7 +110,7 @@ positive_cleaned <- combined_results$positive_coef %>%
   kable_styling()
 
 # Split species and clean data for negative coefficients
-negative_cleaned <- combined_results$negative_coef %>% 
+negative_cleaned <- mal_bang_heal_typh_combined_filtered_maaslins$negative_coef %>% 
   mutate(split_species = str_split(Species, '_')) %>% 
   mutate(genus = sapply(split_species, "[[", 1)) %>% 
   mutate(specific = sapply(split_species, "[[", 2)) %>% 
@@ -110,21 +126,50 @@ negative_cleaned <- combined_results$negative_coef %>%
 
 # Display the tables
 positive_table
-negative_table
+# negative_table
 positive_cleaned
-negative_cleaned
+# negative_cleaned
+
+nrow(mal_bang_heal_typh_combined_filtered_maaslins$positive_coef)
+```
+
+There were `r nrow(mal_bang_heal_typh_combined_results$positive_coef)` MGCs significantly (q-val < 0.05) associated with health/disease in Malawi and Bangladesh.
+
+```{r mwi_bgd_single_site}
+bang_only_func_maaslin <- bang_func_maaslin %>% filter(qval < 0.05, metadata == 'Group', value == 'Control_HealthySerosurvey') %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$positive_coef, by = c('feature', 'metadata', 'value')) %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$negative_coef, by = c('feature', 'metadata', 'value'))
+bang_only_func_maaslin %>% kbl() %>% kable_styling()
+# bang_only <- anti_join(bangladesh_taxonomic_maaslin_filtered, mal_bang_maaslins, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
+
+mal_only_func_maaslin <- mal_func_maaslin %>% filter(qval < 0.05, metadata == 'Group', value == 'Control_HealthySerosurvey') %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$positive_coef, by = c('feature', 'metadata', 'value')) %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$negative_coef, by = c('feature', 'metadata', 'value'))
+mal_only_func_maaslin %>% kbl() %>% kable_styling()
+
 
 ```
 
-There were `r nrow(combined_results$positive_coef)` MGCs significantly (q-val < 0.05) associated with health/disease in Malawi and Bangladesh.
+Also look at just the MGC_class level, not matching on full MGC and species etc.
+
+Filter for metadata = Group, value = Control_HealthySerosurvey, and qval < 0.05
+
+make a new variable which is the direction of the coef.
+
+then, group by MGC_class and direction of the coef, and take a count.
+
+Do this for each country separately, and then join by MGC class and direction of effect.
+
+Similar findings to the main analysis - PFOR, pyruvate2acetate.formate, and Rnf.
 
 ```{r}
+bang_func_summarised <- summarise_mgcs(bang_func_maaslin)
+mal_func_summarised <- summarise_mgcs(mal_func_maaslin)
+nep_func_summarised <- summarise_mgcs(nep_func_maaslin)
 
+# only two MGCs assc in Nepal, so just going to join bang and mal.
+
+bang_mal_func_summarise <- full_join(bang_func_summarised, mal_func_summarised, by = c('MGC_class', 'direction_of_assc'))
+bang_mal_func_summarise %>% kbl() %>% kable_styling()
 ```
 
 ## healthy vs carrier
-
-
 
 ### read in data
 ```{r read_in_maaslin_functional_healthy_carrier, error=FALSE}
