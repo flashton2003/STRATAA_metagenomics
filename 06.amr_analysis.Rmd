@@ -68,6 +68,281 @@ amr_summarised_meta_with_data <- left_join(amr_summarised_meta, amr_data_with_nc
 
 
 
+## Typhi gene analysis
+
+Do an analysis of only genes found in Typhi. allele_names and gene_family_names come from the pathogen watch paper supp table 2.
+
+```{r typhi_only}
+allele_names <- c('blaCMY-2', 'blaOXA-1', 'blaOXA-11', 'blaOXA-15', 'blaOXA-7', 'blaTEM-1', 'blaTEM-10', 'blaTEM-124', 'cmlA1')
+gene_family_names <- c('blaAIM', 'blaBIC', 'blaCTX-M', 'blaGES', 'blaIMI', 'blaIMP', 'blaKPC', 'blaLMB', 'blaNDM', 'blaSHV', 'blaSIM', 'blaSPM', 'blaVIM', 'dfrA1', 'dfrA15', 'dfrA17', 'dfrA18', 'dfrA5', 'dfrA7', 'drfA14', 'erm(A)', 'erm(B)', 'erm(C)', 'mcr-1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mph(A)', 'mph(B)', 'qnrA', 'qnrB', 'qnrD', 'qnrS', 'sul1', 'sul2', 'tet(A)', 'tet(B)', 'tet(C)', 'tet(D)')
+
+amr_data_typhi <- amr_data_with_ncbi_cln %>% filter(`#Allele` %in% allele_names | `Gene family` %in% gene_family_names) %>% mutate(Class = ifelse(str_detect(`Product name`, 'extended-spectrum'), 'ESBL', Class))
+
+typhi_classes <- unique(amr_data_typhi$Class)
+# samples <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(Lane)
+
+# for this section, remove all carriers
+samples <- metadata %>% filter(!(Group == 'Carrier')) %>% pull(SampleID)
+
+# 1. make a template with all the samples and classes
+amr_summarised_typhi <- expand.grid(sample = samples, `Class` = typhi_classes)
+
+# 2. count the number of genes per sample, per class.
+tmp <- amr_data_typhi %>% group_by(sample, Class) %>% summarise(n = n()) #%>% kbl() %>% kable_styling()
+
+# 3. join the data to the template (amr_summarised_typhi)
+amr_summarised_typhi_d <- left_join(amr_summarised_typhi, tmp, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(at_least_one = ifelse(n > 0, 1, 0)) 
+
+# 4. join to metadata
+amr_summarised_typhi_d_meta <- left_join(amr_summarised_typhi_d, select(metadata, c(SampleID, Country, Group)), by = join_by(sample == SampleID))
+
+# 5. Group by class, country, and summarise
+typhi_amr_class_country <- amr_summarised_typhi_d_meta %>% 
+  group_by(Class, Country) %>% 
+  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
+# typhi_amr_class_country %>% filter(Country == 'Bangladesh') %>% kbl() %>% kable_styling()
+typhi_amr_class_country %>% kbl() %>% kable_styling()
+
+# function to run chi sq test on a given antibiotic class, assuming country and class.
+run_chisq_on_amr <- function(df, antibiotic_class){
+  test <- df %>% 
+    ungroup() %>% 
+    filter(Class == antibiotic_class) %>% 
+    mutate(n_samples_without_gene = n_samples - n_samples_with_gene) %>% 
+    select(n_samples_with_gene, n_samples_without_gene)
+  test <- as.data.frame(test)
+  # row.names(test) <- test$Country
+  # test <- test[, -which(names(test) == "Country")]
+  chisq.test(test)
+}
+
+# 6. run chi-sq tests on each antibiotic class
+run_chisq_on_amr(typhi_amr_class_country, 'SULFONAMIDE')
+run_chisq_on_amr(typhi_amr_class_country, 'TETRACYCLINE')
+run_chisq_on_amr(typhi_amr_class_country, 'BETA-LACTAM')
+run_chisq_on_amr(typhi_amr_class_country, 'ESBL')
+run_chisq_on_amr(typhi_amr_class_country, 'MACROLIDE')
+run_chisq_on_amr(typhi_amr_class_country, 'QUINOLONE')
+run_chisq_on_amr(typhi_amr_class_country, 'TRIMETHOPRIM')
+run_chisq_on_amr(typhi_amr_class_country, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN')
+
+
+# 7. Group by class and group and summarise
+
+## now doing it with the carriers as well
+
+samples_with_carrier <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(SampleID)
+
+amr_summarised_typhi_carrier <- expand.grid(sample = samples_with_carrier, `Class` = typhi_classes)
+
+# 2. count the number of genes per sample, per class.
+tmp <- amr_data_typhi %>% group_by(sample, Class) %>% summarise(n = n()) #%>% kbl() %>% kable_styling()
+
+# 3. join the data to the template (amr_summarised_typhi)
+amr_summarised_typhi_carrier_d <- left_join(amr_summarised_typhi_carrier, tmp, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(at_least_one = ifelse(n > 0, 1, 0)) 
+
+# 4. join to metadata
+amr_summarised_typhi_carrier_d_meta <- left_join(amr_summarised_typhi_carrier_d, select(metadata, c(SampleID, Country, Group)), by = join_by(sample == SampleID))
+
+
+
+typhi_amr_class_group <- amr_summarised_typhi_carrier_d_meta %>% 
+  group_by(Class, Group) %>% 
+  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
+
+typhi_amr_class_group %>% kbl() %>% kable_styling()
+
+# 8. run chi sq 
+
+run_chisq_on_amr(typhi_amr_class_group, 'SULFONAMIDE')
+run_chisq_on_amr(typhi_amr_class_group, 'TETRACYCLINE')
+run_chisq_on_amr(typhi_amr_class_group, 'MACROLIDE')
+run_chisq_on_amr(typhi_amr_class_group, 'QUINOLONE')
+run_chisq_on_amr(typhi_amr_class_group, 'TRIMETHOPRIM')
+run_chisq_on_amr(typhi_amr_class_group, 'BETA-LACTAM')
+run_chisq_on_amr(typhi_amr_class_group, 'ESBL')
+run_chisq_on_amr(typhi_amr_class_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN')
+
+# 7. Group by class, country, group, and summarise
+typhi_amr_class_country_group <- amr_summarised_typhi_d_meta %>% 
+  group_by(Class, Country, Group) %>% 
+  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
+  # kbl() %>% kable_styling()
+
+
+# function to run chi sq test on a given antibiotic class, assuming country, class and group.
+run_chisq_on_amr_w_group <- function(df, antibiotic_class, country){
+  test <- df %>% 
+    ungroup() %>% 
+    filter(Class == antibiotic_class, Country == country) %>% 
+    select(Country, Group, n_samples_with_gene, n_samples) %>% 
+    mutate(n_samples_without_gene = n_samples - n_samples_with_gene) %>% 
+    select(-n_samples, Country)
+  test <- as.data.frame(test)
+  row.names(test) <- test$Group
+  test <- test[, -which(names(test) == "Group")]
+  test <- test[, -which(names(test) == "Country")]
+  View(test)
+  fisher.test(test)
+}
+
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'BETA-LACTAM', 'Bangladesh')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'BETA-LACTAM', 'Malawi')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'BETA-LACTAM', 'Nepal')
+
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN', 'Bangladesh')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN', 'Malawi')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN', 'Nepal')
+
+run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'MACROLIDE', 'Bangladesh')
+run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'MACROLIDE', 'Malawi')
+run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'MACROLIDE', 'Nepal')
+
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'QUINOLONE', 'Bangladesh')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'QUINOLONE', 'Malawi')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'QUINOLONE', 'Nepal')
+
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'SULFONAMIDE', 'Bangladesh')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'SULFONAMIDE', 'Malawi')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'SULFONAMIDE', 'Nepal')
+
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TETRACYCLINE', 'Bangladesh')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TETRACYCLINE', 'Malawi')
+# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TETRACYCLINE', 'Nepal')
+
+run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Bangladesh')
+run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Malawi')
+run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Nepal')
+
+typhi_amr_class_country_group %>% kbl() %>% kable_styling()
+
+amr_data_typhi_meta <- left_join(amr_data_typhi, metadata, by = join_by(sample == Lane))
+
+# amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% arrange(`Gene family`, Country, Group) %>% kbl() %>% kable_styling()
+# get all the unique class names
+typhi_classes <- unique(amr_data_typhi_meta$Class)
+# make an empty data frame, with just the classes, countries, and groups.
+typhi_amr_classes <- expand.grid(Class = typhi_classes, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
+# group by class, country, group, and summarise
+tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% kbl() %>% kable_styling()
+# join the data to the template (typhi_amr_classes), set any NAs as 0.
+typhi_amr_classes <- left_join(typhi_amr_classes, tmp, by = join_by(Class == Class, Country == Country, Group == Group)) %>% 
+  mutate(n = ifelse(is.na(n), 0, n)) %>% 
+  mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% 
+  arrange(Class, Country, Group)
+# print the table
+typhi_amr_classes %>% kbl() %>% kable_styling()
+
+# same as above, but for gene families
+typhi_gene_family_names <- unique(amr_data_typhi_meta$`Gene family`)
+typhi_amr_gene_families <- expand.grid(`Gene family` = typhi_gene_family_names, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
+
+tmp <- amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) # %>% kbl() %>% kable_styling()
+typhi_amr_families <- left_join(typhi_amr_gene_families, tmp, by = join_by(`Gene family` == `Gene family`, Country == Country, Group == Group)) %>% 
+  mutate(n = ifelse(is.na(n), 0, n)) %>% 
+  mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% 
+  arrange(`Gene family`, Country, Group)
+
+typhi_amr_families %>% kbl() %>% kable_styling()
+```
+
+## checking for relationship with prior antibiotic given
+
+
+```{r}
+
+
+amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_presentation)), by = join_by(sample == Lane))  %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Acute_Typhi')
+
+amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Cefixime'), 1, 0))
+
+amr_summarised_typhi_d_meta_abu_quinolone <- filter(amr_summarised_typhi_d_meta_abu, Class == 'QUINOLONE')
+
+amr_summarised_typhi_d_meta_abu_azithromycin <- filter(amr_summarised_typhi_d_meta_abu, Class == 'MACROLIDE')
+
+amr_summarised_typhi_d_meta_abu_bl_esbl <- filter(amr_summarised_typhi_d_meta_abu, Class == 'ESBL' | Class == 'BETA-LACTAM')
+
+
+table(amr_summarised_typhi_d_meta_abu_quinolone$Ciprofloxacin, amr_summarised_typhi_d_meta_abu_quinolone$at_least_one)
+
+table(amr_summarised_typhi_d_meta_abu_azithromycin$Azithromyin, amr_summarised_typhi_d_meta_abu_azithromycin$at_least_one)
+
+table(amr_summarised_typhi_d_meta_abu_bl_esbl$Cefixime, amr_summarised_typhi_d_meta_abu_bl_esbl$at_least_one)
+
+
+
+```
+
+## correlation 
+
+```{r}
+data <- read_tsv('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2024.02.29/2024.02.29.country_drug_percent.tsv')
+
+# Data inspection and cleaning (if needed)
+# data <- na.omit(data)  # Example of removing rows with NA
+
+# data <- data %>% filter(country != 'Nepal')
+
+microbiome_data <- data %>% filter(type == "Microbiome") %>% 
+                  select(-type) %>% 
+                  rename(percent_microbiome = percent)
+isolate_data <- data %>% filter(type == "Isolate") %>% 
+                select(-type) %>% 
+                rename(percent_isolate = percent)
+
+combined_data <- left_join(microbiome_data, isolate_data, by = c("country", "drug"))
+
+# Plotting
+combined_data$percent_microbiome <- combined_data$percent_microbiome / 100
+combined_data$percent_isolate <- combined_data$percent_isolate / 100
+
+```
+
+calculate correlation
+
+```{r}
+calculate_correlation_and_lm <- function(data, drug_name) {
+  cor_test <- cor.test(data$percent_isolate, data$percent_microbiome, use = "complete.obs")
+  lm_model <- lm(percent_microbiome ~ percent_isolate, data = data)
+  eq_slope <- coef(lm_model)[2]
+  eq_intercept <- coef(lm_model)[1]
+  equation <- paste("y = ", round(eq_slope, 2), "x + ", round(eq_intercept, 2))
+  mean_x <- mean(data$percent_isolate, na.rm = TRUE)
+  mean_y <- mean(data$percent_microbiome, na.rm = TRUE)
+  return(data.frame(drug = drug_name, correlation = cor_test$estimate, p_value = cor_test$p.value,
+                    equation = equation, label_pos_x = NA, label_pos_y = NA))
+}
+
+correlation_data <- combined_data %>%
+  group_by(drug) %>%
+  do(calculate_correlation_and_lm(., unique(.$drug)))
+
+# correlation_data$label_pos_x <- c(0.3, 0.3, 0.3, 0.3, 0.3, 0.3)
+# correlation_data$label_pos_y <- c(0.95, 0.8, 0.65, 0.5, 0.35, 0.2)
+
+# Add label text
+# correlation_data$label <- with(correlation_data, paste(drug, ": r =", round(correlation, 2), "p =", signif(p_value, 2), "\n", equation))
+
+correlation_data %>% kbl() %>% kable_styling()
+
+# Plotting
+plot <- ggplot(combined_data, aes(x = percent_isolate, y = percent_microbiome, color = drug)) +
+  geom_point(aes(shape = country)) +
+  geom_smooth(method = "lm", aes(group = drug), linetype = "dotted", alpha = 0.8) +
+#   geom_text(data = correlation_data, aes(x = label_pos_x, y = label_pos_y, label = label), hjust = 1, vjust = 1, inherit.aes = FALSE) +
+  labs(x = "Proportion Isolates\nwith Resistance Gene", y = "Proportion Microbiome\nwith Resistance Gene", color = "Drug", shape = "Country") +
+  theme(text = element_text(size = 15)) +
+  ylim(0, 100) +
+  guides(fill = guide_legend(override.aes = list(fill = "transparent"))) +
+  coord_fixed()
+
+# Save and display the plot
+# ggsave("microbiome_isolate_linear_fit_plot.png", plot)
+show(plot)
+
+```
+
+
 ## Graphs of overall comparison. Do not include carriers here, because of different sample handling in Bangladesh.
 
 ```{r overall_graphs_per_country}
@@ -377,280 +652,5 @@ for (drug_class in subclasses) {
     # print(drug_class)
     ggsave(filename =  file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/ncbi_graphs/beta_lactam_subclasses/rpk', paste(gsub("/", "_", drug_class), "bl_subclass_rpkb_boxplot_country.png", sep = '_')), plot = p, width = 10, height = 6)
 }
-
-```
-
-## Typhi gene analysis
-
-Do an analysis of only genes found in Typhi. allele_names and gene_family_names come from the pathogen watch paper supp table 2.
-
-```{r typhi_only}
-allele_names <- c('blaCMY-2', 'blaOXA-1', 'blaOXA-11', 'blaOXA-15', 'blaOXA-7', 'blaTEM-1', 'blaTEM-10', 'blaTEM-124', 'cmlA1')
-gene_family_names <- c('blaAIM', 'blaBIC', 'blaCTX-M', 'blaGES', 'blaIMI', 'blaIMP', 'blaKPC', 'blaLMB', 'blaNDM', 'blaSHV', 'blaSIM', 'blaSPM', 'blaVIM', 'dfrA1', 'dfrA15', 'dfrA17', 'dfrA18', 'dfrA5', 'dfrA7', 'drfA14', 'erm(A)', 'erm(B)', 'erm(C)', 'mcr-1', 'mcr-2', 'mcr-3', 'mcr-4', 'mcr-5', 'mcr-6', 'mcr-7', 'mcr-8', 'mph(A)', 'mph(B)', 'qnrA', 'qnrB', 'qnrD', 'qnrS', 'sul1', 'sul2', 'tet(A)', 'tet(B)', 'tet(C)', 'tet(D)')
-
-amr_data_typhi <- amr_data_with_ncbi_cln %>% filter(`#Allele` %in% allele_names | `Gene family` %in% gene_family_names) %>% mutate(Class = ifelse(str_detect(`Product name`, 'extended-spectrum'), 'ESBL', Class))
-
-typhi_classes <- unique(amr_data_typhi$Class)
-# samples <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(Lane)
-
-# for this section, remove all carriers
-samples <- metadata %>% filter(!(Group == 'Carrier')) %>% pull(Lane)
-
-# 1. make a template with all the samples and classes
-amr_summarised_typhi <- expand.grid(sample = samples, `Class` = typhi_classes)
-
-# 2. count the number of genes per sample, per class.
-tmp <- amr_data_typhi %>% group_by(sample, Class) %>% summarise(n = n()) #%>% kbl() %>% kable_styling()
-
-# 3. join the data to the template (amr_summarised_typhi)
-amr_summarised_typhi_d <- left_join(amr_summarised_typhi, tmp, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(at_least_one = ifelse(n > 0, 1, 0)) 
-
-# 4. join to metadata
-amr_summarised_typhi_d_meta <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group)), by = join_by(sample == Lane))
-
-# 5. Group by class, country, and summarise
-typhi_amr_class_country <- amr_summarised_typhi_d_meta %>% 
-  group_by(Class, Country) %>% 
-  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
-# typhi_amr_class_country %>% filter(Country == 'Bangladesh') %>% kbl() %>% kable_styling()
-typhi_amr_class_country %>% kbl() %>% kable_styling()
-
-# function to run chi sq test on a given antibiotic class, assuming country and class.
-run_chisq_on_amr <- function(df, antibiotic_class){
-  test <- df %>% 
-    ungroup() %>% 
-    filter(Class == antibiotic_class) %>% 
-    mutate(n_samples_without_gene = n_samples - n_samples_with_gene) %>% 
-    select(n_samples_with_gene, n_samples_without_gene)
-  test <- as.data.frame(test)
-
-  # row.names(test) <- test$Country
-  # test <- test[, -which(names(test) == "Country")]
-  chisq.test(test)
-}
-
-# 6. run chi-sq tests on each antibiotic class
-run_chisq_on_amr(typhi_amr_class_country, 'SULFONAMIDE')
-run_chisq_on_amr(typhi_amr_class_country, 'TETRACYCLINE')
-run_chisq_on_amr(typhi_amr_class_country, 'BETA-LACTAM')
-run_chisq_on_amr(typhi_amr_class_country, 'ESBL')
-run_chisq_on_amr(typhi_amr_class_country, 'MACROLIDE')
-run_chisq_on_amr(typhi_amr_class_country, 'QUINOLONE')
-run_chisq_on_amr(typhi_amr_class_country, 'TRIMETHOPRIM')
-run_chisq_on_amr(typhi_amr_class_country, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN')
-
-
-# 7. Group by class and group and summarise
-
-## now doing it with the carriers as well
-
-samples_with_carrier <- metadata %>% filter(!(Country == 'Bangladesh' & Group == 'Carrier')) %>% pull(Lane)
-
-amr_summarised_typhi_carrier <- expand.grid(sample = samples_with_carrier, `Class` = typhi_classes)
-
-# 2. count the number of genes per sample, per class.
-tmp <- amr_data_typhi %>% group_by(sample, Class) %>% summarise(n = n()) #%>% kbl() %>% kable_styling()
-
-# 3. join the data to the template (amr_summarised_typhi)
-amr_summarised_typhi_carrier_d <- left_join(amr_summarised_typhi_carrier, tmp, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(at_least_one = ifelse(n > 0, 1, 0)) 
-
-# 4. join to metadata
-amr_summarised_typhi_carrier_d_meta <- left_join(amr_summarised_typhi_carrier_d, select(metadata, c(Lane, Country, Group)), by = join_by(sample == Lane))
-
-
-
-typhi_amr_class_group <- amr_summarised_typhi_carrier_d_meta %>% 
-  group_by(Class, Group) %>% 
-  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
-
-typhi_amr_class_group %>% kbl() %>% kable_styling()
-
-# 8. run chi sq 
-
-run_chisq_on_amr(typhi_amr_class_group, 'SULFONAMIDE')
-run_chisq_on_amr(typhi_amr_class_group, 'TETRACYCLINE')
-run_chisq_on_amr(typhi_amr_class_group, 'MACROLIDE')
-run_chisq_on_amr(typhi_amr_class_group, 'QUINOLONE')
-run_chisq_on_amr(typhi_amr_class_group, 'TRIMETHOPRIM')
-run_chisq_on_amr(typhi_amr_class_group, 'BETA-LACTAM')
-run_chisq_on_amr(typhi_amr_class_group, 'ESBL')
-run_chisq_on_amr(typhi_amr_class_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN')
-
-# 7. Group by class, country, group, and summarise
-typhi_amr_class_country_group <- amr_summarised_typhi_d_meta %>% 
-  group_by(Class, Country, Group) %>% 
-  summarise(n_samples = n(), n_samples_with_gene = sum(at_least_one), proportion_samples_with_gene = n_samples_with_gene / n_samples, n_genes = sum(n)) #%>% 
-  # kbl() %>% kable_styling()
-
-
-# function to run chi sq test on a given antibiotic class, assuming country, class and group.
-run_chisq_on_amr_w_group <- function(df, antibiotic_class, country){
-  test <- df %>% 
-    ungroup() %>% 
-    filter(Class == antibiotic_class, Country == country) %>% 
-    select(Country, Group, n_samples_with_gene, n_samples) %>% 
-    mutate(n_samples_without_gene = n_samples - n_samples_with_gene) %>% 
-    select(-n_samples, Country)
-  test <- as.data.frame(test)
-  row.names(test) <- test$Group
-  test <- test[, -which(names(test) == "Group")]
-  test <- test[, -which(names(test) == "Country")]
-  View(test)
-  fisher.test(test)
-}
-
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'BETA-LACTAM', 'Bangladesh')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'BETA-LACTAM', 'Malawi')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'BETA-LACTAM', 'Nepal')
-
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN', 'Bangladesh')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN', 'Malawi')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'LINCOSAMIDE/MACROLIDE/STREPTOGRAMIN', 'Nepal')
-
-run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'MACROLIDE', 'Bangladesh')
-run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'MACROLIDE', 'Malawi')
-run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'MACROLIDE', 'Nepal')
-
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'QUINOLONE', 'Bangladesh')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'QUINOLONE', 'Malawi')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'QUINOLONE', 'Nepal')
-
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'SULFONAMIDE', 'Bangladesh')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'SULFONAMIDE', 'Malawi')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'SULFONAMIDE', 'Nepal')
-
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TETRACYCLINE', 'Bangladesh')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TETRACYCLINE', 'Malawi')
-# run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TETRACYCLINE', 'Nepal')
-
-run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Bangladesh')
-run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Malawi')
-run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Nepal')
-
-typhi_amr_class_country_group %>% kbl() %>% kable_styling()
-
-amr_data_typhi_meta <- left_join(amr_data_typhi, metadata, by = join_by(sample == Lane))
-
-# amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% arrange(`Gene family`, Country, Group) %>% kbl() %>% kable_styling()
-# get all the unique class names
-typhi_classes <- unique(amr_data_typhi_meta$Class)
-# make an empty data frame, with just the classes, countries, and groups.
-typhi_amr_classes <- expand.grid(Class = typhi_classes, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
-# group by class, country, group, and summarise
-tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% kbl() %>% kable_styling()
-# join the data to the template (typhi_amr_classes), set any NAs as 0.
-typhi_amr_classes <- left_join(typhi_amr_classes, tmp, by = join_by(Class == Class, Country == Country, Group == Group)) %>% 
-  mutate(n = ifelse(is.na(n), 0, n)) %>% 
-  mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% 
-  arrange(Class, Country, Group)
-# print the table
-typhi_amr_classes %>% kbl() %>% kable_styling()
-
-# same as above, but for gene families
-typhi_gene_family_names <- unique(amr_data_typhi_meta$`Gene family`)
-typhi_amr_gene_families <- expand.grid(`Gene family` = typhi_gene_family_names, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
-
-tmp <- amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) # %>% kbl() %>% kable_styling()
-typhi_amr_families <- left_join(typhi_amr_gene_families, tmp, by = join_by(`Gene family` == `Gene family`, Country == Country, Group == Group)) %>% 
-  mutate(n = ifelse(is.na(n), 0, n)) %>% 
-  mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% 
-  arrange(`Gene family`, Country, Group)
-
-typhi_amr_families %>% kbl() %>% kable_styling()
-```
-
-## checking for relationship with prior antibiotic given
-
-
-```{r}
-
-
-amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_presentation)), by = join_by(sample == Lane))  %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Acute_Typhi')
-
-amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Cefixime'), 1, 0))
-
-amr_summarised_typhi_d_meta_abu_quinolone <- filter(amr_summarised_typhi_d_meta_abu, Class == 'QUINOLONE')
-
-amr_summarised_typhi_d_meta_abu_azithromycin <- filter(amr_summarised_typhi_d_meta_abu, Class == 'MACROLIDE')
-
-amr_summarised_typhi_d_meta_abu_bl_esbl <- filter(amr_summarised_typhi_d_meta_abu, Class == 'ESBL' | Class == 'BETA-LACTAM')
-
-
-table(amr_summarised_typhi_d_meta_abu_quinolone$Ciprofloxacin, amr_summarised_typhi_d_meta_abu_quinolone$at_least_one)
-
-table(amr_summarised_typhi_d_meta_abu_azithromycin$Azithromyin, amr_summarised_typhi_d_meta_abu_azithromycin$at_least_one)
-
-table(amr_summarised_typhi_d_meta_abu_bl_esbl$Cefixime, amr_summarised_typhi_d_meta_abu_bl_esbl$at_least_one)
-
-
-
-```
-
-## correlation 
-
-```{r}
-data <- read_tsv('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2024.02.29/2024.02.29.country_drug_percent.tsv')
-
-# Data inspection and cleaning (if needed)
-# data <- na.omit(data)  # Example of removing rows with NA
-
-# data <- data %>% filter(country != 'Nepal')
-
-microbiome_data <- data %>% filter(type == "Microbiome") %>% 
-                  select(-type) %>% 
-                  rename(percent_microbiome = percent)
-isolate_data <- data %>% filter(type == "Isolate") %>% 
-                select(-type) %>% 
-                rename(percent_isolate = percent)
-
-combined_data <- left_join(microbiome_data, isolate_data, by = c("country", "drug"))
-
-# Plotting
-combined_data$percent_microbiome <- combined_data$percent_microbiome / 100
-combined_data$percent_isolate <- combined_data$percent_isolate / 100
-
-```
-
-calculate correlation
-
-```{r}
-calculate_correlation_and_lm <- function(data, drug_name) {
-  cor_test <- cor.test(data$percent_isolate, data$percent_microbiome, use = "complete.obs")
-  lm_model <- lm(percent_microbiome ~ percent_isolate, data = data)
-  eq_slope <- coef(lm_model)[2]
-  eq_intercept <- coef(lm_model)[1]
-  equation <- paste("y = ", round(eq_slope, 2), "x + ", round(eq_intercept, 2))
-  mean_x <- mean(data$percent_isolate, na.rm = TRUE)
-  mean_y <- mean(data$percent_microbiome, na.rm = TRUE)
-  return(data.frame(drug = drug_name, correlation = cor_test$estimate, p_value = cor_test$p.value,
-                    equation = equation, label_pos_x = NA, label_pos_y = NA))
-}
-
-correlation_data <- combined_data %>%
-  group_by(drug) %>%
-  do(calculate_correlation_and_lm(., unique(.$drug)))
-
-# correlation_data$label_pos_x <- c(0.3, 0.3, 0.3, 0.3, 0.3, 0.3)
-# correlation_data$label_pos_y <- c(0.95, 0.8, 0.65, 0.5, 0.35, 0.2)
-
-# Add label text
-# correlation_data$label <- with(correlation_data, paste(drug, ": r =", round(correlation, 2), "p =", signif(p_value, 2), "\n", equation))
-
-correlation_data %>% kbl() %>% kable_styling()
-
-# Plotting
-plot <- ggplot(combined_data, aes(x = percent_isolate, y = percent_microbiome, color = drug)) +
-  geom_point(aes(shape = country)) +
-  geom_smooth(method = "lm", aes(group = drug), linetype = "dotted", alpha = 0.8) +
-#   geom_text(data = correlation_data, aes(x = label_pos_x, y = label_pos_y, label = label), hjust = 1, vjust = 1, inherit.aes = FALSE) +
-  labs(x = "Proportion Isolates\nwith Resistance Gene", y = "Proportion Microbiome\nwith Resistance Gene", color = "Drug", shape = "Country") +
-  theme(text = element_text(size = 15)) +
-  ylim(0, 1) +
-  guides(fill = guide_legend(override.aes = list(fill = "transparent"))) +
-  coord_fixed()
-
-# Save and display the plot
-# ggsave("microbiome_isolate_linear_fit_plot.png", plot)
-show(plot)
 
 ```
