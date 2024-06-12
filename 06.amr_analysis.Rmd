@@ -1,40 +1,20 @@
-## Imports
-```{r}
-# library(rbiom)
-library(kableExtra)
-library(ggplot2)
-library(ggpubr)
-# library(ggforce)
-library(patchwork)
-# library(vegan)
-library(dplyr)
-library(purrr)
 
-# library(forcats)
-# library(RColorBrewer)
-
-```
 ## Sources
 
 The file handles are set in config.R as they're used by both this script and data_cleaning.
 
 ```{r source}
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
 
-
-## Metadata basics
-
-First do the plots with kruskall wallis comparison between groups to see if there's an overall difference, then do the pairwise tests because KW says there is a difference.
-
+## Read metadata
 
 ```{r metadata_read_in}
 metadata <- read_metadata(metadata_handle)
 
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Control', 'Control', Group))
 metadata <- metadata %>% mutate(Group = if_else(Group == 'Acute typhoid', 'Acute typhoid', Group))
-
 ```
 
 
@@ -45,7 +25,6 @@ Code here is not great, maybe come back and move some into functions/utils.
 ```{r amr_paths}
 amr_data_path <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/rgi/2023.08.30/2023.08.30.strataa_microbiome.subsamp.rgi.txt"
 ncbi_amr_info_path <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/ncbi_amr/2023.08.31/refgenes.modified.csv"
-
 ```
 
 ```{r amr_read_in}
@@ -54,11 +33,23 @@ ncbi_amr_info <- read_csv(ncbi_amr_info_path)
 
 amr_data <- read_delim(amr_data_path, delim = "\t") %>% separate_wider_delim(`ARO Term`, names = c("sample", "ARO Term"), delim = ".gene_mapping_data.txt:") %>% mutate(reads_per_kb = `Completely Mapped Reads` / (`Reference Length` / 1000)) 
 
-bgd_carriers <- metadata %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Carrier') %>% pull(Lane)
+bgd_carriers <- metadata %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Carrier') %>% pull(SampleID)
 # filter out the bgd carriers
 amr_data <- amr_data %>% filter(!(sample %in% bgd_carriers))
 
 amr_data_with_ncbi <- left_join(amr_data, ncbi_amr_info, by = join_by(`ARO Term` == combined_name))
+
+write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
+
+# 1. set the samples and classes to be analysed
+samples <- metadata %>% pull(SampleID)
+classes <- distinct(amr_data_with_ncbi, Class) %>% filter(!is.na(Class)) %>% pull(Class) 
+
+# 2. make an empty data frame, with just the samples and classes
+amr_summarised <- expand.grid(sample = samples, Class = classes)
+# 3. add the metadata
+amr_summarised_meta <- left_join(amr_summarised, metadata, by = join_by(sample == SampleID))
+
 
 # take the "found" genes
 # we filter for 100% cov here, and these are the "present" genes
@@ -75,29 +66,12 @@ amr_summarised_meta_with_data <- left_join(amr_summarised_meta, amr_data_with_nc
 
 ```
 
-Need to setup a data frame with every sample/drug combination so that capture the zeroes. 
 
-```{r setup_df, include=FALSE}
-
-## need to remove the Bangladesh carriers from this.
-
-write_csv(amr_data_with_ncbi, file.path('~/Desktop', "amr_data_with_ncbi.csv"))
-
-# 1. set the samples and classes to be analysed
-samples <- metadata %>% pull(Lane)
-classes <- distinct(amr_data_with_ncbi, Class) %>% filter(!is.na(Class)) %>% pull(Class) 
-
-# 2. make an empty data frame, with just the samples and classes
-amr_summarised <- expand.grid(sample = samples, Class = classes)
-# 3. add the metadata
-amr_summarised_meta <- left_join(amr_summarised, metadata, by = join_by(sample == Lane))
-
-```
 
 ## Graphs of overall comparison. Do not include carriers here, because of different sample handling in Bangladesh.
 
 ```{r overall_graphs_per_country}
-number_of_amr_genes_per_sample <- amr_summarised_meta_with_data %>% filter(!(Group == 'Carrier')) %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
+number_of_amr_genes_per_sample <- amr_summarised_meta_with_data %>% filter(!(Group == 'Carrier')) %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb)) %>% left_join(metadata, by = join_by(sample == SampleID))
 number_of_amr_genes_per_sample  %>% group_by(Country) %>% summarise(median_n = median(n), median_sum_rpk = median(sum_reads_per_kb))  %>% kbl() %>% kable_styling()
 # number of amr genes per sample, by country
 p <- ggplot(number_of_amr_genes_per_sample, aes(x = Country, y = n)) +

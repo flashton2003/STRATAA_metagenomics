@@ -10,40 +10,48 @@ output:
       number_sections: true
 ---
 
-
 ```{r setup, error=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# STRATAA microbiome random forest analysis
+
+## Sources
+
+The file handles are set in config.R as they're used by both this script and data_cleaning. The imports are done in the core functions file.
+
+```{r source, error=FALSE}
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
+```
+
+## Data import
+
+metadata
+
+```{r read_data, error=FALSE}
+metadata <- read_metadata(metadata_handle)
+# putting this here so that the output files of maaslin get named accroding to the variable names in the metadata file.
+metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
+metadata_copy <- metadata %>% select(SampleID, Group, Country)
 
 ```
 
-# STRATAA microbiome analysis
-
-## Imports
-```{r imports, error=FALSE}
-library(rbiom)
-library(kableExtra)
-library(ggplot2)
-library(ggpubr)
-library(patchwork)
-library(dplyr)
-library(forcats)
-library(randomForest)
-library(caret)
-```
-
-## random forest analysis
-
-Pre-processing.
+metaphlan data
 
 ```{r}
+
+strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+# strataa_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(strataa_metaphlan_data), "\\|"), function(x) x[length(x)])
+# strataa_metaphlan_data_species <- strataa_metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
+
 strataa_metaphlan_data_t <- as.data.frame(t(strataa_metaphlan_data))
 names(strataa_metaphlan_data_t) <- gsub("\\|", "_", names(strataa_metaphlan_data_t))
 strataa_metaphlan_data_t <- strataa_metaphlan_data_t %>% select(contains('_s__')) %>% select(!contains('_t__'))
 strataa_metaphlan_data_t$sample_name <- rownames(strataa_metaphlan_data_t)
-metadata_copy <- metadata %>% select(Group, Country) %>% mutate(sample_name = rownames(.))
 
 # join the Group column from metadata to the metaphlan data
-strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_t %>% left_join(metadata_copy, by = "sample_name") %>% filter(Group != "Acute typhoid", Country != 'Bangladesh') %>% mutate(Group = as.factor(Group))
+strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_t %>% left_join(metadata_copy, by = c("sample_name" = 'SampleID')) %>% filter(Group != "Acute typhoid", Country != 'Bangladesh') %>% mutate(Group = as.factor(Group))
 row.names(strataa_metaphlan_data_heal_carr_rf) <- strataa_metaphlan_data_heal_carr_rf$sample_name
 strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_heal_carr_rf %>% select(-sample_name) %>% filter(!is.na(Group))
 # remove rows where the group is acute typhi and remove any column that sums to 0

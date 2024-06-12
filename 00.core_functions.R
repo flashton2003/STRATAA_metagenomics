@@ -18,6 +18,8 @@ library(RColorBrewer)
 library(kableExtra)
 library(patchwork)
 library(forcats)
+library(randomForest)
+library(purrr)
 
 #source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 
@@ -1272,7 +1274,7 @@ sgb_stat_and_graph <- function(strataa_metaphlan_data_species, metadata, country
     filter(SGB == 'SGB') %>%
     mutate(Group = factor(Group, levels = c('Household contact', 'Acute typhoid', 'High Vi-titre'))) %>%
     filter(Country == country_of_interest)
-  sgb_abundance %>% group_by(Group) %>% summarise(median_abundance = median(abundance_sum)) %>% kbl() %>% kable_styling()
+  
   my_comparisons <- list(c('Acute typhoid', 'High Vi-titre'), c('Acute typhoid', 'Household contact'), c('High Vi-titre', 'Household contact'))
 
   p <- ggplot(sgb_abundance, aes(x = Group, y = abundance_sum, fill = Group)) +
