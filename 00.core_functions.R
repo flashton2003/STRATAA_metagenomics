@@ -837,24 +837,26 @@ filter_taxonomic_maaslin <- function(maaslin_results){
 }
 
 
-basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_for_analysis, vars_for_dirname){
-  # View(maaslin_results_species_group)
-  vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-  volcano_plot <- ggplot(aes(x = coef, y = -log10(qval)), data = taxonomic_maaslin_filtered) + 
-    geom_point() + 
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
-    ggtitle(paste(country, variables_for_analysis, 'covars=', vars_for_dirname, sep = '_'))
-  # show(volcano_plot)
-  maaslin_results_sig <- taxonomic_maaslin_filtered %>% filter(qval < 0.05)
-  basic_maaslin_results <- list(volcano_plot = volcano_plot, maaslin_results_sig = maaslin_results_sig)
-  return(basic_maaslin_results)
-  # geom_text(aes(label = feature), size = 2, vjust = 1, hjust = 1) + 
-  # View(maaslin_results_clean_sig)
-  # sig_per_metadata <- maaslin_results_clean_sig %>% group_by(metadata) %>% summarize(n_sig = n())
-  # View(sig_per_metadata)
-}
+# basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_for_analysis, vars_for_dirname){
+#   # View(maaslin_results_species_group)
+#   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
+#   volcano_plot <- ggplot(aes(x = coef, y = -log10(qval)), data = taxonomic_maaslin_filtered) + 
+#     geom_point() + 
+#     theme_bw() + 
+#     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+#     geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+#     ggtitle(paste(country, variables_for_analysis, 'covars=', vars_for_dirname, sep = '_'))
+#   # show(volcano_plot)
+#   maaslin_results_sig <- taxonomic_maaslin_filtered %>% filter(qval < 0.05)
+#   basic_maaslin_results <- list(volcano_plot = volcano_plot, maaslin_results_sig = maaslin_results_sig)
+#   return(basic_maaslin_results)
+#   # geom_text(aes(label = feature), size = 2, vjust = 1, hjust = 1) + 
+#   # View(maaslin_results_clean_sig)
+#   # sig_per_metadata <- maaslin_results_clean_sig %>% group_by(metadata) %>% summarize(n_sig = n())
+#   # View(sig_per_metadata)
+# }
+
+
 
 
 inner_join_maaslins <- function(first_set_maaslin_results, second_set_maaslin_results, first_suffix, second_suffix, type_of_input){
@@ -1255,4 +1257,33 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
 run_forest_plot <- function(prevalence, species_of_interest, combined_maaslins){
   species_maaslin_results <- get_maaslin_results_for_species(combined_maaslins, species_of_interest)
   forest_plot(prevalence, species_of_interest, species_maaslin_results)
+}
+
+
+sgb_stat_and_graph <- function(strataa_metaphlan_data_species, metadata, country_of_interest) {
+  sgb_abundance <- strataa_metaphlan_data_species %>% 
+    mutate(feature = row.names(strataa_metaphlan_data_species)) %>% 
+    select(-lowest_taxonomic_level) %>% 
+    pivot_longer(!c(feature), names_to = "sample", values_to = "abundance") %>% 
+    left_join(metadata %>% select(SampleID, Group, Country), by = c("sample" = "SampleID")) %>% 
+    mutate(SGB = ifelse(str_detect(feature, 'SGB'), 'SGB', 'non-SGB')) %>% 
+    group_by(sample, SGB, Group, Country) %>% 
+    summarise(abundance_sum = sum(abundance)) %>% 
+    filter(SGB == 'SGB') %>%
+    mutate(Group = factor(Group, levels = c('Household contact', 'Acute typhoid', 'High Vi-titre'))) %>%
+    filter(Country == country_of_interest)
+  sgb_abundance %>% group_by(Group) %>% summarise(median_abundance = median(abundance_sum)) %>% kbl() %>% kable_styling()
+  my_comparisons <- list(c('Acute typhoid', 'High Vi-titre'), c('Acute typhoid', 'Household contact'), c('High Vi-titre', 'Household contact'))
+
+  p <- ggplot(sgb_abundance, aes(x = Group, y = abundance_sum, fill = Group)) +
+    geom_boxplot() +
+    labs(x = "Group", y = "Abundance Sum") +
+    scale_fill_manual(values = participant_group_colours) +
+    stat_compare_means(comparisons = my_comparisons) + 
+    theme(legend.position="none") + 
+    ggtitle(country_of_interest) +
+    labs(y = 'SGB abundance in metagenome (%)', x = '') + 
+    theme(text = element_text(size=18))
+  show(p)
+  return(sgb_abundance)
 }

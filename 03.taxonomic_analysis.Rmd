@@ -99,12 +99,17 @@ nepal_taxonomic_maaslin_acute_healthy_filtered <- filter_taxonomic_maaslin(nepal
 ```
 
 ```{r basic_stats_maaslin_taxonomic, error=FALSE}
-bangladesh_maaslin_acute_healthy_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_acute_healthy_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
-malawi_maaslin_acute_healthy_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_acute_healthy_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
-nepal_maaslin_acute_healthy_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_acute_healthy_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
+# bangladesh_maaslin_acute_healthy_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_acute_healthy_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
+# malawi_maaslin_acute_healthy_stats <- basic_maaslin_stats(malawi_taxonomic_maaslin_acute_healthy_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
+# nepal_maaslin_acute_healthy_stats <- basic_maaslin_stats(nepal_taxonomic_maaslin_acute_healthy_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
+
+bangladesh_taxonomic_maaslin_acute_healthy_sig <- bangladesh_taxonomic_maaslin_acute_healthy_filtered %>% filter(qval < 0.05)
+malawi_taxonomic_maaslin_acute_healthy_sig <- malawi_taxonomic_maaslin_acute_healthy_filtered %>% filter(qval < 0.05)
+nepal_taxonomic_maaslin_acute_healthy_sig <- nepal_taxonomic_maaslin_acute_healthy_filtered %>% filter(qval < 0.05)
+
 ```
 
-There were `r nrow(malawi_maaslin_stats$maaslin_results_sig)` species significantly (q-val < 0.05) associated with health/disease in Malawi, `r nrow(bangladesh_maaslin_stats$maaslin_results_species_group_sig)` in Bangladesh, and `r nrow(nepal_maaslin_stats$maaslin_results_species_group_sig)` in Nepal.
+There were `r nrow(malawi_taxonomic_maaslin_acute_healthy_sig)` species significantly (q-val < 0.05) associated with health/disease in Malawi, `r nrow(bangladesh_taxonomic_maaslin_acute_healthy_sig)` in Bangladesh, and `r nrow(nepal_taxonomic_maaslin_acute_healthy_sig)` in Nepal.
 
 Combine the taxonomic maaslins, and print out the species that are sig in both and share directions.
 
@@ -113,18 +118,18 @@ Because sequencing run and participant type are totally confounded for Banglades
 associated at both sites
 ```{r combine_maaslins_taxonomic, error=FALSE}
 
-bang_mal <- list(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered)
-combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
-combined_filtered_maaslins <- filter_combined_maaslins(combined_results)
+bangladesh_malawi_taxonomic_maaslin_acute_healthy_filtered_list <- list(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered)
+bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined <- run_inner_join_maaslins(bangladesh_malawi_taxonomic_maaslin_acute_healthy_filtered_list, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'metaphlan', maaslin_taxonomic_output_root_folder)
+bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered <- filter_combined_maaslins(bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined)
 
 
-combined_filtered_maaslins$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
+bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered$positive_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
-combined_filtered_maaslins$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
+bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered$negative_coef %>% filter(grepl('^s', lowest_taxonomic_level)) %>% 
   select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
@@ -135,26 +140,26 @@ combined_filtered_maaslins$negative_coef %>% filter(grepl('^s', lowest_taxonomic
 # nrow(combined_results$mwi_maaslin_only)
 # nrow(combined_results$bang_maaslin_only)
 
-mal_bang_maaslins <- rbind(combined_filtered_maaslins$positive_coef, combined_filtered_maaslins$negative_coef)
+bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind <- rbind(bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered$positive_coef, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered$negative_coef)
 # View(combined_results$positive_coef )
 
 # do an anti-join to get the species that are only associated at one site
-bang_only <- anti_join(bangladesh_taxonomic_maaslin_filtered, mal_bang_maaslins, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
-mal_only <- anti_join(malawi_taxonomic_maaslin_filtered, mal_bang_maaslins, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
+bangladesh_only_taxonomic_maaslin_acute_healthy_filtered <- anti_join(bangladesh_taxonomic_maaslin_acute_healthy_filtered, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
+malawi_only_taxonomic_maaslin_acute_healthy_filtered <- anti_join(malawi_taxonomic_maaslin_acute_healthy_filtered, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
 
-bang_only %>% 
+bangladesh_only_taxonomic_maaslin_acute_healthy_filtered %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient` = coef, `Standard Error` = stderr, `Q-value` = qval) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
-mal_only %>% 
+malawi_only_taxonomic_maaslin_acute_healthy_filtered %>% 
   rename(Species = lowest_taxonomic_level, `Coefficient` = coef, `Standard Error` = stderr, `Q-value` = qval) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
   kbl() %>% kable_styling()
 
 ```
 
-There were `r nrow(mal_only)` species significantly (q-val < 0.05) associated with health/disease in Malawi only and `r nrow(bang_only)` in Bangladesh only.
+There were `r nrow(malawi_only_taxonomic_maaslin_acute_healthy_filtered)` species significantly (q-val < 0.05) associated with health/disease in Malawi only and `r nrow(bangladesh_only_taxonomic_maaslin_acute_healthy_filtered)` in Bangladesh only.
 
 The ones associated at only one site are written out to a file, you can look at them manually there.
 
@@ -164,10 +169,10 @@ Setting up the forest plots. Need to combine all three maaslin outputs, and then
 
 ```{r combine_maaslins_for_strataa_and_patch, error=FALSE}
 # combine the maaslines for bgd and mal, and then add in the nepal ones.
-combined_maaslins <- inner_join_maaslins(bangladesh_taxonomic_maaslin, malawi_taxonomic_maaslin, '_bang', '_mal', 'metaphlan')
-combined_maaslins <- inner_join_maaslins(combined_maaslins, nepal_taxonomic_maaslin, 'not', 'used', 'metaphlan')
+tmp <- inner_join_maaslins(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered, '_bang', '_mal', 'metaphlan')
+bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- inner_join_maaslins(tmp, nepal_taxonomic_maaslin_acute_healthy_filtered, 'not', 'used', 'metaphlan')
 # for the nepal columns, give them a "_nep" suffix
-combined_maaslins <- combined_maaslins %>%
+bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered %>%
   rename_with(~ paste0(.x, '_nep'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
 
 # get the patch data
@@ -185,7 +190,7 @@ patch_taxonomic_maaslin$metadata <- ifelse(patch_taxonomic_maaslin$metadata == '
 patch_taxonomic_maaslin$value <- ifelse(patch_taxonomic_maaslin$value == 'no_disease', 'Control_HealthySerosurvey', patch_taxonomic_maaslin$value)
 
 # join the patch data to the combined maaslin data
-combined_maaslins <- combined_maaslins %>% left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
+bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered %>% left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
 
 ```
 
@@ -201,7 +206,7 @@ do the forest plot
 
 ```{r per_species_data_for_forest_plot, error=FALSE}
 # prevalence is the relative abundance data, the species of interest are the ones that are significantly associated with health/disease in two countries, and combined_maaslins is the maaslin output with the associations
-run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae'), combined_maaslins)
+run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae'), bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered)
 
 ```
 
@@ -270,12 +275,11 @@ malawi_nepal_healthy_carrier_alpha$alpha_plot_group
 
 ### beta diversity
 
-High Vi-titre vs healthy.
+Healthy vs disease vs high-Vi.
 ```{r beta_diversity_healthy_carrier, error=FALSE}
 
 all_countries_beta_carrier_healthy <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi', 'Nepal'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), participant_group_colours)
 # all_countries_beta_carrier_healthy$pn_res %>% kbl %>% kable_styling()
-
 
 mal_beta_carrier_healthy_typhoid <- strataa_metaphlan_beta(strataa_metaphlan_data_species, metadata, c('Malawi'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), participant_group_colours)
 mal_beta_carrier_healthy_typhoid$pn_res %>% kbl %>% kable_styling()
@@ -288,6 +292,8 @@ mal_beta_carrier_healthy_typhoid$pc12 + nep_beta_carrier_healthy$pc12 + plot_lay
 
 ### maaslin taxonomic groups
 
+what i want to do here is read in the healthy vs carrier maaslin results, and then combine them with the typhoid vs healthy results for that same site, to see if anything consistent.
+
 ```{r basics_for_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # groups_to_analyse <- c('Acute_typhi', 'Control_HealthySerosurvey')
 # use the original metadata variable names, not the presentation names because that's what the maaslin2 results are saved as.
@@ -299,29 +305,74 @@ nep_variables_for_analysis <- c("Group", "Sex", "Age")
 
 ```{r read_in_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_taxonomic_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'metaphlan')
-malawi_taxonomic_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
-nepal_taxonomic_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
+malawi_taxonomic_maaslin_carrier_healthy <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'metaphlan')
+nepal_taxonomic_maaslin_carrier_healthy <- read_in_maaslin('Nepal', groups_to_analyse, nep_variables_for_analysis, 'metaphlan')
 ```
 
 ```{r filter_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(bangladesh_taxonomic_maaslin)
-malawi_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin)
-nepal_taxonomic_maaslin_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin)
+malawi_taxonomic_maaslin_carrier_healthy_filtered <- filter_taxonomic_maaslin(malawi_taxonomic_maaslin_carrier_healthy)
+nepal_taxonomic_maaslin_carrier_healthy_filtered <- filter_taxonomic_maaslin(nepal_taxonomic_maaslin_carrier_healthy)
 ```
 
 ```{r basic_stats_maaslin_taxonomic_carrier_healthy, error=FALSE}
 # bangladesh_maaslin_stats <- basic_maaslin_stats(bangladesh_taxonomic_maaslin_filtered, 'Bangladesh', bang_variables_for_analysis, groups_to_analyse)
-malawi_taxonomic_maaslin_health_carrier_filtered <- basic_maaslin_stats(malawi_taxonomic_maaslin_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
-nepal_taxonomic_maaslin_health_carrier_filtered <- basic_maaslin_stats(nepal_taxonomic_maaslin_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
-nrow(malawi_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig)
-nrow(nepal_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig)
+# malawi_taxonomic_maaslin_health_carrier_filtered <- basic_maaslin_stats(malawi_taxonomic_maaslin_carrier_healthy_filtered, 'Malawi', mwi_variables_for_analysis, groups_to_analyse)
+# nepal_taxonomic_maaslin_health_carrier_filtered <- basic_maaslin_stats(nepal_taxonomic_maaslin_carrier_healthy_filtered, 'Nepal', nep_variables_for_analysis, groups_to_analyse)
+
+malawi_taxonomic_maaslin_carrier_healthy_sig <- malawi_taxonomic_maaslin_carrier_healthy_filtered %>% filter(qval < 0.05)
+nepal_taxonomic_maaslin_carrier_healthy_sig <- nepal_taxonomic_maaslin_carrier_healthy_filtered %>% filter(qval < 0.05)
+nrow(malawi_taxonomic_maaslin_carrier_healthy_sig)
+nrow(nepal_taxonomic_maaslin_carrier_healthy_sig)
+
+nepal_taxonomic_maaslin_carrier_healthy_sig %>% kbl() %>% kable_styling()
+malawi_taxonomic_maaslin_carrier_healthy_sig %>% kbl() %>% kable_styling()
 ```
 
 There are no species significantly associated with carrier status in both Mal and Nep, so not doing the combine.
 
+join the healthy vs carrier with the healthy vs disease.
+
 ```{r}
-malawi_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig %>% kbl %>% kable_styling()
-nepal_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig %>% kbl %>% kable_styling()
+malawi_healdis_carrheal_combined_maaslins <- inner_join_maaslins(malawi_taxonomic_maaslin_acute_healthy_sig, malawi_taxonomic_maaslin_carrier_healthy_sig, '_heal_dis', '_carrier_heal', 'metaphlan')
+# malawi_healdis_carrheal_combined_maaslins_filtered <- filter_combined_maaslins(malawi_healdis_carrheal_combined_maaslins)
+
+# check that hte coefficients are in the same direction
+malawi_healdis_carrheal_combined_maaslins_filtered <- malawi_healdis_carrheal_combined_maaslins %>%
+    filter((coef_heal_dis > 0 & coef_carrier_heal > 0) | (coef_heal_dis < 0 & coef_carrier_heal < 0))
+# malawi_healdis_carrheal_combined_maaslins_filtered <- malawi_healdis_carrheal_combined_maaslins_filtered %>% 
+
+malawi_healdis_carrheal_combined_maaslins_filtered %>% kbl() %>% kable_styling()
 ```
 
-Combine the nepal_taxonomic_maaslin_health_carrier_filtered$maaslin_results_sig and 
+
+### species genome bin analysis
+
+```{r species_genome_bin_analysis, error=FALSE}
+
+malawi_sgb_abundance <- sgb_stat_and_graph(strataa_metaphlan_data_species, metadata, 'Malawi')
+nepal_sgb_abundance <- sgb_stat_and_graph(strataa_metaphlan_data_species, metadata, 'Nepal')
+malawi_sgb_abundance %>% group_by(Group) %>% summarise(median = median(abundance_sum)) %>% kbl() %>% kable_styling()
+
+malawi_sgbs <- strataa_metaphlan_data_species %>%
+    mutate(feature = row.names(strataa_metaphlan_data_species)) %>% 
+    select(-lowest_taxonomic_level) %>% 
+    pivot_longer(!c(feature), names_to = "sample", values_to = "abundance") %>% 
+    left_join(metadata %>% select(SampleID, Group, Country), by = c("sample" = "SampleID")) %>% 
+    filter(Country == 'Malawi') %>%
+    filter(str_detect(feature, 'SGB')) %>% select(-Group, -Country) 
+    # mutate(SGB = ifelse(str_detect(feature, 'SGB'), 'SGB', 'non-SGB')) 
+
+malawi_sgbs <- malawi_sgbs %>% pivot_wider(names_from = sample, values_from = abundance) %>% as.data.frame()
+
+# row.names(tmp2) <- tmp2$feature
+# tmp2 <- tmp2 %>% select(-feature)
+
+malawi_sgbs <- malawi_sgbs %>% rowwise() %>% mutate(sum = sum(c_across(-feature)), median = median(c_across(-feature))) %>% arrange(desc(median)) 
+malawi_sgbs <- malawi_sgbs %>% mutate(family = str_extract(feature, "f__[^|]+"), phylum = str_extract(feature, "p__[^|]+"))
+malawi_sgbs %>% select(c(feature, phylum, family, sum, median)) %>% kbl() %>% kable_styling()
+malawi_sgbs_top_50 <- head(malawi_sgbs, n = 50)
+malawi_sgbs_top_50 %>% group_by(phylum) %>% summarise(n = n()) %>% arrange(desc(n)) %>% kbl() %>% kable_styling()
+malawi_sgbs_top_50 %>% group_by(family) %>% summarise(n = n()) %>% arrange(desc(n)) %>% kbl() %>% kable_styling()
+
+```
