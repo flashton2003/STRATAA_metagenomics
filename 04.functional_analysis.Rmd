@@ -173,13 +173,15 @@ bang_mal_func_summarise %>% kbl() %>% kable_styling()
 
 ### read in data
 ```{r read_in_maaslin_functional_healthy_carrier, error=FALSE}
-# bang_variables_for_analysis <- c("Group", "Sex", "Age")
+nep_variables_for_analysis <- c("Group", "Sex", "Age")
 mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
-# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+
 groups_to_analyse <- c('High Vi-titre', 'Household contact')
 
 # bang_func_carr_health_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
 mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
+nep_func_carr_health_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
+
 ```
 
 ### maaslin

@@ -18,27 +18,12 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 
 # PATCH microbiome analysis
 
-## Imports
-```{r}
-library(rbiom)
-library(kableExtra)
-library(ggplot2)
-library(ggpubr)
-library(ggforce)
-library(patchwork)
-library(vegan)
-library(dplyr)
-library(forcats)
-library(Maaslin2)
-```
-
-
 ## Sources
 
 The file handles are set in config.R as they're used by both this script and data_cleaning.
 
 ```{r source}
-source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 ```
 
@@ -223,7 +208,7 @@ Maaslin2(input_data = patch_metaphlan_filtered, input_metadata = baseline_metada
 
 ## functional analysis
 
-```{r}
+```{r run_maaslin2_functional}
 
 patch_bigmap_handle <- "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29/all_RPKMs.transpose.filtered.csv"
 patch_bigmap <- read.csv(file = patch_bigmap_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)

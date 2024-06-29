@@ -19,10 +19,6 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 
 ## Sources
 ```{r imports}
-# library(kableExtra)
-# library(dplyr)
-# library(stringr)
-# library(tibble)
 
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
 source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
@@ -151,12 +147,12 @@ groups_to_analyse <- c('Carrier', 'Control_HealthySerosurvey')
 
 # variables_for_analysis <- c("Group", "Sex", "Age")
 # variables_for_analysis <- c("Group")
-# run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
+
 variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
-run_maaslin(strataa_carrier_health_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32712_2"), 'bigmap')
+run_maaslin(strataa_carrier_health_bigmap_data, strataa_metaphlan_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32712_2"), 'bigmap')
 
 variables_for_analysis <- c("Group", "Sex", "Age")
-run_maaslin(strataa_nepal_bigmap_data, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
+run_maaslin(strataa_nepal_bigmap_data, strataa_metaphlan_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
 
 
 
