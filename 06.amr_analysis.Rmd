@@ -61,9 +61,6 @@ amr_data_with_ncbi_cln_summarised <- amr_data_with_ncbi_cln %>% group_by(sample,
 # join the data to the template (amr_summarised_meta)
 amr_summarised_meta_with_data <- left_join(amr_summarised_meta, amr_data_with_ncbi_cln_summarised, by = join_by(sample == sample, Class == Class)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb)) %>% mutate(Class = ifelse(is.na(Class), "None", Class))
 
-# amr_data_with_ncbi_cln_meta <- left_join(amr_data_with_ncbi_cln, metadata, by = join_by(sample == Lane))
-# View(amr_summarised_meta_with_data %>% filter(Class == 'AMINOGLYCOSIDE') %>% select(sample, Class, n, Group, Country) %>% arrange(Country, Group))
-
 ```
 
 
@@ -216,7 +213,7 @@ run_chisq_on_amr_w_group(typhi_amr_class_country_group, 'TRIMETHOPRIM', 'Nepal')
 
 typhi_amr_class_country_group %>% kbl() %>% kable_styling()
 
-amr_data_typhi_meta <- left_join(amr_data_typhi, metadata, by = join_by(sample == Lane))
+amr_data_typhi_meta <- left_join(amr_data_typhi, metadata, by = join_by(sample == SampleID))
 
 # amr_data_typhi_meta %>% group_by(`Gene family`, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% arrange(`Gene family`, Country, Group) %>% kbl() %>% kable_styling()
 # get all the unique class names
@@ -224,7 +221,7 @@ typhi_classes <- unique(amr_data_typhi_meta$Class)
 # make an empty data frame, with just the classes, countries, and groups.
 typhi_amr_classes <- expand.grid(Class = typhi_classes, Country = c('Bangladesh', 'Malawi', 'Nepal'), Group = c('Control', 'Acute typhoid', 'Carrier'))
 # group by class, country, group, and summarise
-tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) %>% kbl() %>% kable_styling()
+tmp <- amr_data_typhi_meta %>% group_by(Class, Country, Group) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb)) #%>% kbl() %>% kable_styling()
 # join the data to the template (typhi_amr_classes), set any NAs as 0.
 typhi_amr_classes <- left_join(typhi_amr_classes, tmp, by = join_by(Class == Class, Country == Country, Group == Group)) %>% 
   mutate(n = ifelse(is.na(n), 0, n)) %>% 
@@ -251,24 +248,78 @@ typhi_amr_families %>% kbl() %>% kable_styling()
 
 ```{r}
 
+# amu only recorded for acute cases.
+amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(SampleID, Country, Group, Antibiotics_taken_before_presentation, Antibiotics_taken_before_sampling_assumptions)), by = join_by(sample == SampleID)) %>% filter(Group == 'Acute_Typhi')
 
-amr_summarised_typhi_d_meta_abu <- left_join(amr_summarised_typhi_d, select(metadata, c(Lane, Country, Group, Antibiotics_taken_before_presentation)), by = join_by(sample == Lane))  %>% filter(Country == 'Bangladesh') %>% filter(Group == 'Acute_Typhi')
+amu_amr_gene <- amr_summarised_typhi_d_meta_abu %>% filter(Antibiotics_taken_before_sampling_assumptions != 'Unknown') %>% group_by(sample, Country, Group, Antibiotics_taken_before_sampling_assumptions) %>% summarise(number_amr_genes = sum(n), number_amr_classes = sum(at_least_one))
 
-amr_summarised_typhi_d_meta_abu <- amr_summarised_typhi_d_meta_abu %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Cefixime'), 1, 0))
+#amu_amr_gene_summary <- amu_amr_gene %>% group_by(Antibiotics_taken_before_sampling_assumptions)
 
-amr_summarised_typhi_d_meta_abu_quinolone <- filter(amr_summarised_typhi_d_meta_abu, Class == 'QUINOLONE')
 
-amr_summarised_typhi_d_meta_abu_azithromycin <- filter(amr_summarised_typhi_d_meta_abu, Class == 'MACROLIDE')
+boxplot <- ggplot(amu_amr_gene, aes(x = Antibiotics_taken_before_sampling_assumptions, y = number_amr_genes, fill = Antibiotics_taken_before_sampling_assumptions)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+  geom_jitter(width = 0.1, height = 0, alpha = 0.5) +
+  labs(
+    x = "Antibiotic Usage",
+    y = "Number of AMR Genes",
+    title = "Comparison of number of AMR Genes by Antibiotic Usage"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = c("No" = "#00AFBB", "Yes" = "#E7B800")) + # Customize colors
+  stat_compare_means(
+    method = "wilcox.test",  # Use "wilcox.test" for non-parametric comparison
+    label.y = max(amu_amr_gene$number_amr_genes) * 1.05
+  )
 
-amr_summarised_typhi_d_meta_abu_bl_esbl <- filter(amr_summarised_typhi_d_meta_abu, Class == 'ESBL' | Class == 'BETA-LACTAM')
+print(boxplot)
 
+boxplot <- ggplot(amu_amr_gene, aes(x = Antibiotics_taken_before_sampling_assumptions, y = number_amr_classes, fill = Antibiotics_taken_before_sampling_assumptions)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+  geom_jitter(width = 0.1, height = 0, alpha = 0.5) +
+  labs(
+    x = "Antibiotic Usage",
+    y = "Number of AMR Genes",
+    title = "Comparison of number of AMR classes by Antibiotic Usage"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = c("No" = "#00AFBB", "Yes" = "#E7B800")) + # Customize colors
+  stat_compare_means(
+    method = "wilcox.test",  # Use "wilcox.test" for non-parametric comparison
+    label.y = max(amu_amr_gene$number_amr_classes) * 1.05
+  )
+
+
+
+print(boxplot)
+# Perform a Wilcoxon Rank Sum Test
+wilcox_test_result <- wilcox.test(number_amr_genes ~ Antibiotics_taken_before_presentation_yes_no_assumptions, data = amu_amr_gene)
+
+# Print the result
+print(wilcox_test_result)
+
+wilcox_test_result <- wilcox.test(number_amr_classes ~ Antibiotics_taken_before_presentation_yes_no_assumptions, data = amu_amr_gene)
+
+# Print the result
+print(wilcox_test_result)
+
+# only bgd recorded antibiotic type, below here is class specific analyses.
+amr_summarised_typhi_d_meta_abu_bang_acute <- amr_summarised_typhi_d_meta_abu %>% filter(Country == 'Bangladesh') 
+
+amr_summarised_typhi_d_meta_abu_bang_acute <- amr_summarised_typhi_d_meta_abu_bang_acute %>% mutate(Azithromyin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Azithromycin'), 1, 0)) %>% mutate(Ciprofloxacin = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Ciprofloxacin'), 1, 0)) %>% mutate(Cefixime = ifelse(str_detect(Antibiotics_taken_before_presentation, 'Cefixime'), 1, 0))
+
+amr_summarised_typhi_d_meta_abu_quinolone <- filter(amr_summarised_typhi_d_meta_abu_bang_acute, Class == 'QUINOLONE')
+
+amr_summarised_typhi_d_meta_abu_azithromycin <- filter(amr_summarised_typhi_d_meta_abu_bang_acute, Class == 'MACROLIDE')
+
+amr_summarised_typhi_d_meta_abu_bl_esbl <- filter(amr_summarised_typhi_d_meta_abu_bang_acute, Class == 'ESBL' | Class == 'BETA-LACTAM')
 
 table(amr_summarised_typhi_d_meta_abu_quinolone$Ciprofloxacin, amr_summarised_typhi_d_meta_abu_quinolone$at_least_one)
 
 table(amr_summarised_typhi_d_meta_abu_azithromycin$Azithromyin, amr_summarised_typhi_d_meta_abu_azithromycin$at_least_one)
 
 table(amr_summarised_typhi_d_meta_abu_bl_esbl$Cefixime, amr_summarised_typhi_d_meta_abu_bl_esbl$at_least_one)
-
 
 
 ```
@@ -329,12 +380,12 @@ correlation_data %>% kbl() %>% kable_styling()
 plot <- ggplot(combined_data, aes(x = percent_isolate, y = percent_microbiome, color = drug)) +
   geom_point(aes(shape = country)) +
   geom_smooth(method = "lm", aes(group = drug), linetype = "dotted", alpha = 0.8) +
-#   geom_text(data = correlation_data, aes(x = label_pos_x, y = label_pos_y, label = label), hjust = 1, vjust = 1, inherit.aes = FALSE) +
+  #geom_text(data = correlation_data, aes(x = label_pos_x, y = label_pos_y, label = label), hjust = 1, vjust = 1, inherit.aes = FALSE) +
   labs(x = "Proportion Isolates\nwith Resistance Gene", y = "Proportion Microbiome\nwith Resistance Gene", color = "Drug", shape = "Country") +
   theme(text = element_text(size = 15)) +
-  ylim(0, 100) +
-  guides(fill = guide_legend(override.aes = list(fill = "transparent"))) +
-  coord_fixed()
+  ylim(0, 1) +
+  guides(fill = guide_legend(override.aes = list(fill = "transparent"))) #+
+  #coord_fixed()
 
 # Save and display the plot
 # ggsave("microbiome_isolate_linear_fit_plot.png", plot)
@@ -378,7 +429,7 @@ p
 
 
 ```{r overall_graphs_per_group}
-number_of_amr_genes_per_sample_group <- amr_summarised_meta_with_data %>% filter(!(Group == 'Carrier' & Country == 'Bangladesh')) %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb)) %>% left_join(metadata, by = join_by(sample == Lane))
+number_of_amr_genes_per_sample_group <- amr_summarised_meta_with_data %>% filter(!(Group == 'Carrier' & Country == 'Bangladesh')) %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb)) %>% left_join(metadata, by = join_by(sample == SampleID))
 number_of_amr_genes_per_sample_group$Group <- factor(number_of_amr_genes_per_sample_group$Group, levels = c("Control", "Acute typhoid", "Carrier"))
 
 number_of_amr_genes_per_sample_group  %>% group_by(Group) %>% summarise(median_n = median(n), median_sum_rpk = median(sum_reads_per_kb))  %>% kbl() %>% kable_styling()
@@ -414,7 +465,7 @@ p
 ```{r amr_with_antibiotic_treatment}
 
 number_of_amr_genes_per_sample_abu <- amr_summarised_meta_with_data %>% filter(Group == 'Acute typhoid') %>% filter(n > 0) %>% group_by(sample) %>% summarise(n = sum(n), sum_reads_per_kb = sum(sum_reads_per_kb))
-number_of_amr_genes_per_sample_abu_meta <- left_join(number_of_amr_genes_per_sample_abu, metadata, by = join_by(sample == Lane))
+number_of_amr_genes_per_sample_abu_meta <- left_join(number_of_amr_genes_per_sample_abu, metadata, by = join_by(sample == SampleID))
 
 number_of_amr_genes_per_sample_abu_meta  %>% group_by(Antibiotics_taken_before_sampling_assumptions) %>% summarise(median_n = median(n), median_sum_rpk = median(sum_reads_per_kb))  %>% kbl() %>% kable_styling()
 number_of_amr_genes_per_sample_abu_meta$Antibiotics_taken_before_sampling_assumptions <- factor(number_of_amr_genes_per_sample_abu_meta$Antibiotics_taken_before_sampling_assumptions, levels = c("Yes", "No", "Unknown"))
@@ -526,11 +577,11 @@ for (drug_class in classes) {
 esbls <- amr_data_with_ncbi_cln %>% filter(grepl('extended-spectrum', `Product name`))
 esbls_template <- expand.grid(sample = samples, Subclass = 'ESBL')
 
-esbls_meta <- left_join(esbls, metadata, by = join_by(sample == Lane))
+esbls_meta <- left_join(esbls, metadata, by = join_by(sample == SampleID))
 esbls_summarised <- esbls_meta %>% group_by(sample) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb))
 esbls_all_samples_summarised <- left_join(esbls_template, esbls_summarised, by = join_by(sample == sample)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb))
-esbls_summarised_meta <- left_join(esbls_all_samples_summarised, metadata, by = join_by(sample == Lane))
-esbls_summarised_meta$Group <- factor(esbls_summarised_meta$Group, levels = c("Control", "Acute typhoid", "Carrier"))
+esbls_summarised_meta <- left_join(esbls_all_samples_summarised, metadata, by = join_by(sample == SampleID))
+esbls_summarised_meta$Group <- factor(esbls_summarised_meta$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi", "Carrier"))
 
 ```
 
@@ -572,27 +623,28 @@ p
 
 
 ```{r betalactam_graphs}
+subclasses <- c('BETA-LACTAM', 'CEPHALOSPORIN')
+
 # 1. set the samples and classes to be analysed (samples set above)
 # 2. make an empty data frame, with just the samples and classes
 amr_summarised_betalac <- expand.grid(sample = samples, Subclass = subclasses)
 # 3. add the metadata
-amr_summarised_betalac_meta <- left_join(amr_summarised_betalac, metadata, by = join_by(sample == Lane))
+amr_summarised_betalac_meta <- left_join(amr_summarised_betalac, metadata, by = join_by(sample == SampleID))
 # 4. take the found genes (can just use amr_data_with_ncbi_cln from above)
 # 5. summarise the data (by Subclass)
 amr_data_with_ncbi_cln_betalac_summarised <- amr_data_with_ncbi_cln %>% group_by(sample, Subclass) %>% summarise(n = n(), sum_reads_per_kb = sum(reads_per_kb))
 
 # 6. join the data to the template (amr_summarised_betalac_meta)
 amr_summarised_meta_with_data_betalac <- left_join(amr_summarised_betalac_meta, amr_data_with_ncbi_cln_betalac_summarised, by = join_by(sample == sample, Subclass == Subclass)) %>% mutate(n = ifelse(is.na(n), 0, n)) %>% mutate(sum_reads_per_kb = ifelse(is.na(sum_reads_per_kb), 0, sum_reads_per_kb))
-View(amr_summarised_meta_with_data_betalac %>% filter(Subclass == 'CARBAPENEM', n > 0))
+#View(amr_summarised_meta_with_data_betalac %>% filter(Subclass == 'CARBAPENEM', n > 0))
 
 # only four carbapenem samples, so taking out.
 amr_summarised_meta_with_data_betalac <- amr_summarised_meta_with_data_betalac %>% filter(!(Subclass == 'CARBAPENEM'))
 # after joining, everything that doesnt have a value in n is a zero (i.e. no genes of that class present in that sample)
 
-amr_summarised_meta_with_data_betalac$Group <- factor(amr_summarised_meta_with_data_betalac$Group, levels = c("Control", "Acute typhoid", "Carrier"))
+amr_summarised_meta_with_data_betalac$Group <- factor(amr_summarised_meta_with_data_betalac$Group, levels = c("Control_HealthySerosurvey", "Acute_Typhi"))
 
 # amr_summarised_meta_with_data_betalac$Group <- factor(amr_summarised_meta_with_data_betalac$Group, levels = c("Control", "Acute typhoid", "Carrier"))
-subclasses <- c('BETA-LACTAM', 'CEPHALOSPORIN')
 
 # by country by group, boxplot of number of genes
 for (drug_class in subclasses) {
