@@ -412,10 +412,12 @@ View(strataa_metaphlan_data_longer_meta %>% select(Group) %>% distinct())
 
 ```{r species_genome_bin_analysis, error=FALSE}
 
-malawi_sgb_abundance <- sgb_stat_and_graph(strataa_metaphlan_data_species, metadata, 'Malawi')
-nepal_sgb_abundance <- sgb_stat_and_graph(strataa_metaphlan_data_species, metadata, 'Nepal')
-malawi_sgb_abundance %>% group_by(Group) %>% summarise(median = median(abundance_sum)) %>% kbl() %>% kable_styling()
+malawi_sgb <- sgb_stat_and_graph(strataa_metaphlan_data_species, metadata, 'Malawi')
+nepal_sgb <- sgb_stat_and_graph(strataa_metaphlan_data_species, metadata, 'Nepal')
+malawi_sgb$abundance %>% group_by(Group) %>% summarise(median = median(abundance_sum)) %>% kbl() %>% kable_styling()
 
+# library(patchwork)
+show(malawi_sgb$plot | nepal_sgb$plot)
 nepal_sgb_abundance %>% group_by(Group) %>% summarise(median_abundance = median(abundance_sum)) %>% kbl() %>% kable_styling()
 
 # pivot it longer, join the metadata, filter only malawi and only sgbs, then pivot it wider as want to do rowwise calculations

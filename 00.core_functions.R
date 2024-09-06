@@ -1289,15 +1289,15 @@ sgb_stat_and_graph <- function(strataa_metaphlan_data_species, metadata, country
 
   p <- ggplot(sgb_abundance, aes(x = Group, y = abundance_sum, fill = Group)) +
     geom_boxplot() +
-    labs(x = "Group", y = "Abundance Sum") +
     scale_fill_manual(values = participant_group_colours) +
     stat_compare_means(comparisons = my_comparisons) + 
     theme(legend.position="none") + 
     ggtitle(country_of_interest) +
     labs(y = 'SGB abundance in metagenome (%)', x = '') + 
-    theme(text = element_text(size=18))
-  show(p)
-  return(sgb_abundance)
+    theme(text = element_text(size=18)) +
+    ylim(0, 100)
+  # show(p)
+  return(list(abundance = sgb_abundance, plot = p))
 }
 
 
