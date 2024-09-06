@@ -41,6 +41,44 @@ strataa_metaphlan_data_species <- strataa_metaphlan_data %>% filter(str_starts(l
 # metadata <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.strataa_metadata.metaphlan.csv'), header = TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE)
 ```
 
+## read in patch data
+
+This first chunk is all the patch data, and then the second chunk is the maaslin for only the taxa that were significant in both bgd and mwi.
+
+```{r read_in_patch, error=FALSE}
+# get the patch data
+patch_taxonomic_maaslin <- read_tsv(file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_typhi_species', 'all_results.tsv'))
+patch_taxonomic_maaslin$lowest_taxonomic_level <- sapply(str_split(patch_taxonomic_maaslin$feature, "\\."), function(x) x[length(x)])
+patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>% relocate(lowest_taxonomic_level, .after = feature)
+patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>%
+  rename_with(~ paste0(.x, '_patch'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
+
+# in patch_taxonomic_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+# this is to match the other maaslin outputs
+patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>% filter(metadata == 'Diagnosis')
+# in patch_taxonomic_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+patch_taxonomic_maaslin$metadata <- ifelse(patch_taxonomic_maaslin$metadata == 'Diagnosis', 'Group', patch_taxonomic_maaslin$metadata)
+patch_taxonomic_maaslin$value <- ifelse(patch_taxonomic_maaslin$value == 'no_disease', 'Control_HealthySerosurvey', patch_taxonomic_maaslin$value)
+```
+
+```{r read_in_patch_selected, error=FALSE}
+
+patch_selected_taxa_maaslin <- read_tsv('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29/baseline_typhi_paratyphi_species_filtered/all_results.tsv')
+patch_selected_taxa_maaslin$lowest_taxonomic_level <- sapply(str_split(patch_selected_taxa_maaslin$feature, "\\."), function(x) x[length(x)])
+patch_selected_taxa_maaslin <- patch_selected_taxa_maaslin %>% relocate(lowest_taxonomic_level, .after = feature)
+patch_selected_taxa_maaslin <- patch_selected_taxa_maaslin %>%
+  rename_with(~ paste0(.x, '_patch'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
+
+# in patch_selected_taxa_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+# this is to match the other maaslin outputs
+patch_selected_taxa_maaslin <- patch_selected_taxa_maaslin %>% filter(metadata == 'Diagnosis')
+# in patch_selected_taxa_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+patch_selected_taxa_maaslin$metadata <- ifelse(patch_selected_taxa_maaslin$metadata == 'Diagnosis', 'Group', patch_selected_taxa_maaslin$metadata)
+patch_selected_taxa_maaslin$value <- ifelse(patch_selected_taxa_maaslin$value == 'no_disease', 'Control_HealthySerosurvey', patch_selected_taxa_maaslin$value)
+
+
+```
+
 ## Healthy vs Typhi
 
 ### alpha diversity
@@ -115,7 +153,7 @@ Combine the taxonomic maaslins, and print out the species that are sig in both a
 
 Because sequencing run and participant type are totally confounded for Bangladesh, need to exclude sequencing run from the final model for Bangladesh (otherwise, wipes out the signals).
 
-associated at both sites
+Associated at both sites
 ```{r combine_maaslins_taxonomic, error=FALSE}
 
 bangladesh_malawi_taxonomic_maaslin_acute_healthy_filtered_list <- list(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered)
@@ -144,6 +182,7 @@ bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind <- rbi
 # View(combined_results$positive_coef )
 
 # do an anti-join to get the species that are only associated at one site
+# going to redo this in a different way, because i want to include the results from all sites and the CHIM in the table, so that people can see the results.
 bangladesh_only_taxonomic_maaslin_acute_healthy_filtered <- anti_join(bangladesh_taxonomic_maaslin_acute_healthy_filtered, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
 malawi_only_taxonomic_maaslin_acute_healthy_filtered <- anti_join(malawi_taxonomic_maaslin_acute_healthy_filtered, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
 
@@ -163,6 +202,17 @@ There were `r nrow(malawi_only_taxonomic_maaslin_acute_healthy_filtered)` specie
 
 The ones associated at only one site are written out to a file, you can look at them manually there.
 
+```{r get_single_site_associations, error=FALSE}
+
+single_site_associations <- get_single_site_associations(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered, nepal_taxonomic_maaslin_acute_healthy_filtered, patch_taxonomic_maaslin, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind)
+
+write_csv(single_site_associations$bgd_only, file.path(maaslin_taxonomic_output_root_folder, 'bgd_only_associations.csv'))
+write_csv(single_site_associations$mwi_only, file.path(maaslin_taxonomic_output_root_folder, 'mwi_only_associations.csv'))
+write_csv(single_site_associations$nep_only, file.path(maaslin_taxonomic_output_root_folder, 'nep_only_associations.csv'))
+# View(single_site_associations$bgd_only)
+```
+
+
 ### Forest plot
 
 Setting up the forest plots. Need to combine all three maaslin outputs, and then add in the patch data.
@@ -175,22 +225,9 @@ bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- inner_join_maaslins(tmp,
 bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered %>%
   rename_with(~ paste0(.x, '_nep'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
 
-# get the patch data
-patch_taxonomic_maaslin <- read_tsv(file.path(patch_maaslin_taxonomic_output_root_folder, 'baseline_typhi_species', 'all_results.tsv'))
-patch_taxonomic_maaslin$lowest_taxonomic_level <- sapply(str_split(patch_taxonomic_maaslin$feature, "\\."), function(x) x[length(x)])
-patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>% relocate(lowest_taxonomic_level, .after = feature)
-patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>%
-  rename_with(~ paste0(.x, '_patch'), c("coef", "stderr", "N", "N.not.0", "pval", "qval"))
-
-# in patch_taxonomic_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
-# this is to match the other maaslin outputs
-patch_taxonomic_maaslin <- patch_taxonomic_maaslin %>% filter(metadata == 'Diagnosis')
-# in patch_taxonomic_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
-patch_taxonomic_maaslin$metadata <- ifelse(patch_taxonomic_maaslin$metadata == 'Diagnosis', 'Group', patch_taxonomic_maaslin$metadata)
-patch_taxonomic_maaslin$value <- ifelse(patch_taxonomic_maaslin$value == 'no_disease', 'Control_HealthySerosurvey', patch_taxonomic_maaslin$value)
 
 # join the patch data to the combined maaslin data
-bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered %>% left_join(patch_taxonomic_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
+bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered <- bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered %>% left_join(patch_selected_taxa_maaslin, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'))
 
 ```
 
@@ -207,14 +244,12 @@ do the forest plot
 ```{r per_species_data_for_forest_plot, error=FALSE}
 # prevalence is the relative abundance data, the species of interest are the ones that are significantly associated with health/disease in two countries, and combined_maaslins is the maaslin output with the associations
 run_forest_plot(prevalence, c('s__Prevotella_copri_clade_A', 's__Clostridium_SGB6179', 's__GGB4266_SGB5809', 's__Haemophilus_parainfluenzae'), bgd_mal_nep_taxonomic_maaslin_acute_healthy_filtered)
-
 ```
 
 
 ### plots of species of interest
 
 ```{r plot_species_of_interest_taxonomic, error=FALSE}
-
 strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) %>% pivot_longer(!c(feature, lowest_taxonomic_level), names_to = "SampleID", values_to = "prevalence")
 # View(head(strataa_metaphlan_data_longer))
 strataa_metaphlan_data_longer_meta <- strataa_metaphlan_data_longer %>% left_join(metadata, by = c("SampleID" = "SampleID"))
@@ -290,6 +325,7 @@ nep_beta_carrier_healthy_typhoid$pn_res %>% kbl %>% kable_styling()
 mal_beta_carrier_healthy_typhoid$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
 ```
 
+
 ### maaslin taxonomic groups
 
 what i want to do here is read in the healthy vs carrier maaslin results, and then combine them with the typhoid vs healthy results for that same site, to see if anything consistent.
@@ -343,6 +379,17 @@ malawi_healdis_carrheal_combined_maaslins_filtered <- malawi_healdis_carrheal_co
 # malawi_healdis_carrheal_combined_maaslins_filtered <- malawi_healdis_carrheal_combined_maaslins_filtered %>% 
 
 malawi_healdis_carrheal_combined_maaslins_filtered %>% kbl() %>% kable_styling()
+```
+
+### heatmaps
+
+```{r heatmaps_healthy_carrier, error=FALSE}
+library(pheatmap)
+# species_to_include <- 
+strataa_metaphlan_heatmap(strataa_metaphlan_data_species, metadata, c('Malawi'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), species_to_include)
+
+
+
 ```
 
 

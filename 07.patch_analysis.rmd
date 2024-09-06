@@ -69,6 +69,10 @@ summary_table %>% kbl() %>% kable_styling()
 metaphlan_data <- read.csv(file = patch_metaphlan_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(metaphlan_data), "\\|"), function(x) x[length(x)])
 metaphlan_data_species <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
+
+patch_metaphlan_filtered_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29/2023.05.05.patch.metaphlan.filtered.csv'
+patch_metaphlan_filtered <- read.csv(file = patch_metaphlan_filtered_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+
 ```
 
 ## Alpha diversity
@@ -89,8 +93,6 @@ alpha_anova_summary_with_var_names %>% dplyr::mutate_if(is.numeric, funs(as.char
 
 ### all samples, by group
 ```{r beta_diversity}
-
-
 # metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
 
 baseline_typhi_paratyphi_ids <- baseline_metadata_typhi_paratyphi %>% pull(SampleID)
@@ -137,11 +139,36 @@ pc12_rechallenge
 baseline_metadata %>% group_by(Run, Diagnosis) %>% summarise(n = n()) %>% kbl() %>% kable_styling()
 ```
 
+## basic abundance stats on species from endemic settings
+
+```{r basic_abundance_stats}
+# pivot patch_metaphlan_filtered longer
+colnames(patch_metaphlan_filtered) <- colnames(patch_metaphlan_filtered) %>% str_replace_all('#', '_')
+
+patch_metaphlan_filtered_long <- patch_metaphlan_filtered %>% rownames_to_column(var = "taxa") %>% pivot_longer(!taxa, names_to = "sample_id", values_to = "abundance") %>% filter(sample_id %in% baseline_metadata_typhi_paratyphi$SampleID)
+
+patch_metaphlan_filtered_long %>%
+  group_by(taxa) %>%
+  summarise(
+    total_count = n(),                             
+    # Total number of samples per taxa
+    non_zero_count = sum(abundance > 0),           
+    # Number of samples with abundance > 0
+    median_non_zero = median(abundance[abundance > 0], na.rm = TRUE)  # Median of non-zero abundance values
+    ) %>% kbl() %>% kable_styling()
+
+patch_metaphlan_filtered_long %>%
+  group_by(taxa) %>%
+  summarise(
+    total_count = n(),
+    median = median(abundance)) %>% kbl() %>% kable_styling()
+```
+
 ## maaslin2 metaphlan - all species
 
 ```{r }
 metaphlan_data_species_only <- metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__')) %>% select(!lowest_taxonomic_level)
-colnames(metaphlan_data_species_only) <- colnames(metaphlan_data_species_only) %>% str_replace_all('#', '_')
+# colnames(metaphlan_data_species_only) <- colnames(metaphlan_data_species_only) %>% str_replace_all('#', '_')
 ```
 
 ```{r maaslin2_baseline}
@@ -175,9 +202,6 @@ Maaslin2(input_data = metaphlan_data_species_only, input_metadata = baseline_met
 ## maaslin metaphlan - only species from endemic settings
 
 ```{r maaslin2_endemic}
-
-patch_metaphlan_filtered_handle <- '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/metaphlan/results/2024.02.29/2023.05.05.patch.metaphlan.filtered.csv'
-patch_metaphlan_filtered <- read.csv(file = patch_metaphlan_filtered_handle, header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
 
 colnames(patch_metaphlan_filtered) <- colnames(patch_metaphlan_filtered) %>% str_replace_all('#', '_')
 

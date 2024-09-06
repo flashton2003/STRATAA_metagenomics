@@ -1,25 +1,27 @@
 library(dplyr)
 library(edgeR)
+library(forcats)
+library(forestplot)
 library(ggplot2)
 library(ggpubr)
+library(kableExtra)
+library(Maaslin2)
 library(magrittr)
 library(microbiome)
+library(patchwork)
 library(phyloseq)
+library(purrr)
+library(randomForest)
+library(RColorBrewer)
 library(readr)
 library(reshape2)
 library(rlist)
 library(stringr)
+library(tibble)
 library(tidyr)
 library(vegan)
 library(VennDiagram)
-library(Maaslin2)
-library(forestplot)
-library(RColorBrewer)
-library(kableExtra)
-library(patchwork)
-library(forcats)
-library(randomForest)
-library(purrr)
+
 
 #source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
 
@@ -368,6 +370,19 @@ strataa_metaphlan_beta <- function(metaphlan_data, metadata, countries_of_intere
     stat_ellipse()
   p <- list(pc12 = pc12, pc34 = pc34, pn_res = rbd_output$pn_res)
   return(p)
+}
+
+
+strataa_metaphlan_heatmap <- function(metaphlan_data, metadata, countries_of_interest, groups_of_interest, participant_group_colours){
+  # View(metadata)
+  # View(metaphlan_data)
+  metadata_coi <- metadata %>% filter(Country %in% countries_of_interest) %>% filter(Group %in% groups_of_interest)
+  metadata_coi_ids <- metadata_coi %>% pull(SampleID) 
+  metaphlan_data_coi <- metaphlan_data %>% select(all_of(metadata_coi_ids))
+  # metaphlan_data_coi 
+  log_transformed_data <- metaphlan_data_coi %>% mutate(across(where(is.numeric), ~ log10(. + 1e-6)))
+  pheatmap(sample_n(log_transformed_data, 50), show_rownames = FALSE, cluster_cols = FALSE)
+  # pheatmap()
 }
 
 
@@ -839,48 +854,13 @@ filter_taxonomic_maaslin <- function(maaslin_results){
 }
 
 
-# basic_maaslin_stats <- function(taxonomic_maaslin_filtered, country, variables_for_analysis, vars_for_dirname){
-#   # View(maaslin_results_species_group)
-#   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-#   volcano_plot <- ggplot(aes(x = coef, y = -log10(qval)), data = taxonomic_maaslin_filtered) + 
-#     geom_point() + 
-#     theme_bw() + 
-#     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-#     geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
-#     ggtitle(paste(country, variables_for_analysis, 'covars=', vars_for_dirname, sep = '_'))
-#   # show(volcano_plot)
-#   maaslin_results_sig <- taxonomic_maaslin_filtered %>% filter(qval < 0.05)
-#   basic_maaslin_results <- list(volcano_plot = volcano_plot, maaslin_results_sig = maaslin_results_sig)
-#   return(basic_maaslin_results)
-#   # geom_text(aes(label = feature), size = 2, vjust = 1, hjust = 1) + 
-#   # View(maaslin_results_clean_sig)
-#   # sig_per_metadata <- maaslin_results_clean_sig %>% group_by(metadata) %>% summarize(n_sig = n())
-#   # View(sig_per_metadata)
-# }
-
-
-
-
-inner_join_maaslins <- function(first_set_maaslin_results, second_set_maaslin_results, first_suffix, second_suffix, type_of_input){
-  # thanks chatgpt!
-  if (type_of_input == 'metaphlan'){
-    # we include the lowest taxonomic level in the join so that it doesn't get duplicated as bang/mal
-    combined_df <- first_set_maaslin_results %>%
-      inner_join(second_set_maaslin_results, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'), suffix = c(first_suffix, second_suffix))
-  } else if (type_of_input == 'bigmap'){
-    combined_df <- first_set_maaslin_results %>%
-      inner_join(second_set_maaslin_results, by = c("MGC_class", "Species", "feature", 'metadata', 'value'), suffix = c(first_suffix, second_suffix))
-  }
-  return(combined_df)
-}
-
-
 summarise_mgcs <- function(functional_maaslin_results){
   func_maaslin_filtered <- functional_maaslin_results %>% filter(metadata == 'Group', value == 'Control_HealthySerosurvey', qval < 0.05)
   func_maaslin_filtered <- func_maaslin_filtered %>% mutate(direction_of_assc = ifelse(coef > 0, 'assc_health', 'assc_disease'))
   func_maaslin_summarised <- func_maaslin_filtered %>% group_by(MGC_class, direction_of_assc) %>% summarise(n = n())
   return(func_maaslin_summarised)
 }
+
 
 filter_combined_maaslins <- function(combined_df){
   # Filter the combined data frame based on the conditions for coef > 0
@@ -894,6 +874,19 @@ filter_combined_maaslins <- function(combined_df){
   
   # Return the two filtered data frames
   return(list(positive_coef = filtered_df_positive_coef, negative_coef = filtered_df_negative_coef, all_features = combined_df))
+}
+
+
+inner_join_maaslins <- function(first_set_maaslin_results, second_set_maaslin_results, first_suffix, second_suffix, type_of_input){
+  if (type_of_input == 'metaphlan'){
+    # we include the lowest taxonomic level in the join so that it doesn't get duplicated as bang/mal
+    combined_df <- first_set_maaslin_results %>%
+      inner_join(second_set_maaslin_results, by = c("feature", 'metadata', 'value', 'lowest_taxonomic_level'), suffix = c(first_suffix, second_suffix))
+  } else if (type_of_input == 'bigmap'){
+    combined_df <- first_set_maaslin_results %>%
+      inner_join(second_set_maaslin_results, by = c("MGC_class", "Species", "feature", 'metadata', 'value'), suffix = c(first_suffix, second_suffix))
+  }
+  return(combined_df)
 }
 
 
@@ -918,8 +911,6 @@ run_inner_join_maaslins <- function(maaslin_results, suffixes, variables_for_out
     print('run_inner_join_maaslins only setup for combining 3 dfs right now')
     quit()
   }
-  
-  
   
   # bang_maaslin_only <- bang_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
   # mwi_maaslin_only <- malawi_maaslin %>% filter(qval < 0.05) %>% filter(!feature %in% combined_maaslins_positive_coef$feature) %>% filter(!feature %in% combined_maaslins_negative_coef$feature) %>% arrange(desc(coef))
@@ -1142,6 +1133,7 @@ get_maaslin_results_for_species <- function(combined_maaslins, species_of_intere
       names_pattern = "(.*)_(.*)"
     )
   # change the country names to the full names
+  View(maaslin_results_for_species)
   maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'bang', 'Bangladesh', maaslin_results_for_species$country)
   maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'mal', 'Malawi', maaslin_results_for_species$country)
   maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'nep', 'Nepal', maaslin_results_for_species$country)
@@ -1288,4 +1280,20 @@ sgb_stat_and_graph <- function(strataa_metaphlan_data_species, metadata, country
     theme(text = element_text(size=18))
   show(p)
   return(sgb_abundance)
+}
+
+
+get_single_site_associations <- function(bangladesh_taxonomic_maaslin_acute_healthy_filtered, malawi_taxonomic_maaslin_acute_healthy_filtered, nepal_taxonomic_maaslin_acute_healthy_filtered, patch_taxonomic_maaslin, bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind){
+  combined_df <- bangladesh_taxonomic_maaslin_acute_healthy_filtered %>%
+    full_join(malawi_taxonomic_maaslin_acute_healthy_filtered, by = c("feature", "metadata", "value"), suffix = c('_bgd', '_mwi')) %>%
+    full_join(rename_with(nepal_taxonomic_maaslin_acute_healthy_filtered, ~paste0(., '_npl'), -c("feature", "metadata", "value")), 
+              by = c("feature", "metadata", "value")) %>%
+    full_join(patch_taxonomic_maaslin, 
+              by = c("feature", "metadata", "value"))
+  
+  bgd_only <- combined_df %>% filter(qval_bgd < 0.05) %>% anti_join(bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value'))
+  mwi_only <- combined_df %>% filter(qval_mwi < 0.05) %>% anti_join(bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value'))
+  nep_only <- combined_df %>% filter(qval_npl < 0.05) %>% anti_join(bangladesh_malawi_taxonomic_maaslin_acute_healthy_combined_filtered_rbind, by = c('feature', 'metadata', 'value'))
+
+  return(list(bgd_only = bgd_only, mwi_only = mwi_only, nep_only = nep_only))
 }
