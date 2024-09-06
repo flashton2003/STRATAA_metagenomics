@@ -381,17 +381,6 @@ malawi_healdis_carrheal_combined_maaslins_filtered <- malawi_healdis_carrheal_co
 malawi_healdis_carrheal_combined_maaslins_filtered %>% kbl() %>% kable_styling()
 ```
 
-### heatmaps
-
-```{r heatmaps_healthy_carrier, error=FALSE}
-library(pheatmap)
-# species_to_include <- 
-strataa_metaphlan_heatmap(strataa_metaphlan_data_species, metadata, c('Malawi'), c('High Vi-titre', 'Household contact', 'Acute typhoid'), species_to_include)
-
-
-
-```
-
 
 ### species genome bin analysis
 
