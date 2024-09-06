@@ -969,6 +969,24 @@ run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_c
   #combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))
 }
 
+simple_plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest, participant_group_colours){
+  
+  prevalence_meta_filtered <- prevalence_meta %>% filter(lowest_taxonomic_level == species_of_interest) %>% filter(Country == country_of_interest) %>% filter(Group %in% groups_of_interest)  
+  prevalence_meta_filtered$Group <- factor(prevalence_meta_filtered$Group, levels = c('Household contact', 'Acute typhoid', 'High Vi-titre'))
+
+  abundance_compared <- compare_means(prevalence ~ Group, data = prevalence_meta_filtered, group.by = "age_bracket") %>% arrange(age_bracket)
+
+  p <- ggplot(prevalence_meta_filtered, aes(x = age_bracket, y = prevalence, fill = factor(Group))) + 
+    geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+    geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
+    ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
+    ggtitle(country_of_interest) +
+    # theme(legend.position="none") + 
+    scale_color_manual(values = participant_group_colours) +
+    scale_fill_manual(values = participant_group_colours)
+  return(p)
+
+}
 
 plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest, participant_group_colours){
   
@@ -989,7 +1007,7 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
     geom_point(position = position_jitterdodge(), aes(group=factor(Group), colour = factor(Group))) +
     ylab(paste('Percentage', species_of_interest, sep = ' ')) + 
     ggtitle(country_of_interest) +
-    theme(legend.position="none") + 
+    # theme(legend.position="none") + 
     scale_color_manual(values = participant_group_colours) +
     scale_fill_manual(values = participant_group_colours) #+
     # stat_summary(fun.data = country_species_fun_data[[country_of_interest]][[species_of_interest]], geom = "text", fun = median, position = position_dodge(width = 0.75))
@@ -1038,14 +1056,14 @@ plot_species_of_interest <- function(prevalence_meta, species_of_interest, count
 }
 
 
-run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, participant_group_colours){
+run_plot_species_of_interest <- function(prevalence_meta, species_of_interest, groups_to_analyse, participant_group_colours){
   # we do this so that we can combine plots for the same species from bang and mal together
-  m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', c('Acute typhoid', 'Household contact'), participant_group_colours)
+  m <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Malawi', groups_to_analyse, participant_group_colours)
   m <- m + theme(text = element_text(size = 15))
-  b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', c('Acute typhoid', 'Household contact'), participant_group_colours)
+  b <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Bangladesh', groups_to_analyse, participant_group_colours)
   # show(m)
   b <- b + theme(text = element_text(size = 15))
-  n <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Nepal', c('Acute typhoid', 'Household contact'), participant_group_colours)
+  n <- plot_species_of_interest(strataa_metaphlan_data_longer_meta, species_of_interest, 'Nepal', groups_to_analyse, participant_group_colours)
   # show(m)
   n <- n + theme(text = element_text(size = 15))
   

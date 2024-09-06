@@ -254,19 +254,16 @@ strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = row
 # View(head(strataa_metaphlan_data_longer))
 strataa_metaphlan_data_longer_meta <- strataa_metaphlan_data_longer %>% left_join(metadata, by = c("SampleID" = "SampleID"))
 
-pc <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', participant_group_colours)
-cs <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', participant_group_colours)
-SGB5809 <-run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', participant_group_colours)
-hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', participant_group_colours)
-# rt <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', participant_group_colours)
-# lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', participant_group_colours)
+pc <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Prevotella_copri_clade_A', c('Acute typhoid', 'Household contact'), participant_group_colours)
+cs <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', c('Acute typhoid', 'Household contact'), participant_group_colours)
+SGB5809 <-run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', c('Acute typhoid', 'Household contact'), participant_group_colours)
+hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', c('Acute typhoid', 'Household contact'), participant_group_colours)
+
 
 # pc
   # pc + cs + SGB5809 + hp + rt + lb
 
 ```
-
-
 
 ## healthy vs carrier (parts include all participant groups)
 
@@ -325,7 +322,6 @@ nep_beta_carrier_healthy_typhoid$pn_res %>% kbl %>% kable_styling()
 mal_beta_carrier_healthy_typhoid$pc12 + nep_beta_carrier_healthy$pc12 + plot_layout(guides = 'collect')
 ```
 
-
 ### maaslin taxonomic groups
 
 what i want to do here is read in the healthy vs carrier maaslin results, and then combine them with the typhoid vs healthy results for that same site, to see if anything consistent.
@@ -381,6 +377,36 @@ malawi_healdis_carrheal_combined_maaslins_filtered <- malawi_healdis_carrheal_co
 malawi_healdis_carrheal_combined_maaslins_filtered %>% kbl() %>% kable_styling()
 ```
 
+### plots of species of interest
+
+```{r plot_species_of_interest_taxonomic, error=FALSE}
+# strataa_metaphlan_data_longer <- strataa_metaphlan_data %>% mutate(feature = rownames(strataa_metaphlan_data)) %>% pivot_longer(!c(feature, lowest_taxonomic_level), names_to = "SampleID", values_to = "prevalence")
+# View(head(strataa_metaphlan_data_longer))
+# strataa_metaphlan_data_longer_meta <- strataa_metaphlan_data_longer %>% left_join(metadata, by = c("SampleID" = "SampleID"))
+
+bobeum <- simple_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Blautia_obeum', 'Malawi', c('Acute typhoid', 'Household contact', 'High Vi-titre'), participant_group_colours)
+# bobeum
+hpara <- simple_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', 'Malawi', c('Acute typhoid', 'Household contact', 'High Vi-titre'), participant_group_colours)
+# hpara
+# removing an outlier form this plot
+t <- strataa_metaphlan_data_longer_meta %>% filter(!(lowest_taxonomic_level == 's__Ruminococcus_gnavus' & prevalence > 15))
+rgnav <- simple_plot_species_of_interest(t, 's__Ruminococcus_gnavus', 'Malawi', c('Acute typhoid', 'Household contact', 'High Vi-titre'), participant_group_colours)
+# rgnav
+
+p <- bobeum / hpara / rgnav + plot_layout(guides = 'collect')
+p
+
+# pc <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, , c('Acute typhoid', 'Household contact', 'High Vi-titre'), participant_group_colours)
+cs <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Clostridium_SGB6179', participant_group_colours)
+SGB5809 <-run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__GGB4266_SGB5809', participant_group_colours)
+hp <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Haemophilus_parainfluenzae', participant_group_colours)
+# rt <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Romboutsia_timonensis', participant_group_colours)
+# lb <- run_plot_species_of_interest(strataa_metaphlan_data_longer_meta, 's__Lachnospiraceae_bacterium', participant_group_colours)
+
+# pc
+  # pc + cs + SGB5809 + hp + rt + lb
+View(strataa_metaphlan_data_longer_meta %>% select(Group) %>% distinct())
+```
 
 ### species genome bin analysis
 
