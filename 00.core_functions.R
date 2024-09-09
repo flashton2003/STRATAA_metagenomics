@@ -813,7 +813,7 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   #      feature 1, group 2, prevalence 0.5
   
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
+  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, 'mgc', sep = '_'))
   Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
            normalization  = norm,
            transform = trans,

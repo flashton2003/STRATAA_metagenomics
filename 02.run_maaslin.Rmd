@@ -139,6 +139,27 @@ run_maaslin(strataa_nepal_bigmap_data, strataa_bigmap_metadata, maaslin_function
 
 ```
 
+#### grouping reads by mgc class and doing maaslin
+
+
+```{r}
+strataa_disease_health_bigmap_data_l <- strataa_disease_health_bigmap_data %>% rownames_to_column(var = 'sample_id') %>%  
+  pivot_longer(!sample_id, names_to = "mgc_class", values_to = "reads") %>%
+  mutate(extracted_column = str_extract(mgc_class, "(?<=Entryname=)[^\\-]+"))
+
+View(head(strataa_disease_health_bigmap_data_l))
+
+strataa_disease_health_bigmap_mgc <- strataa_disease_health_bigmap_data_l %>% group_by(sample_id, extracted_column) %>% summarise(reads = sum(reads)) %>% ungroup() %>% pivot_wider(names_from = extracted_column, values_from = reads, values_fill = 0) %>% column_to_rownames(var = 'sample_id')
+
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+run_maaslin(strataa_disease_health_bigmap_mgc, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Bangladesh', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", 'sequencing_lane')
+run_maaslin(strataa_disease_health_bigmap_mgc, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Malawi', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', c("sequencing_lane,32580_7"), 'bigmap')
+variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+run_maaslin(strataa_disease_health_bigmap_mgc, strataa_bigmap_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
+
+
+```
 ### carrier vs health
 
 ```{r}
@@ -153,8 +174,6 @@ run_maaslin(strataa_carrier_health_bigmap_data, strataa_metaphlan_metadata, maas
 
 variables_for_analysis <- c("Group", "Sex", "Age")
 run_maaslin(strataa_nepal_bigmap_data, strataa_metaphlan_metadata, maaslin_functional_output_root_folder, 'Nepal', groups_to_analyse, variables_for_analysis, 'NONE', 'LOG', NA, 'bigmap')
-
-
 
 ```
 
