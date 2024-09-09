@@ -82,6 +82,11 @@ ggboxplot(metadata_for_plotting, facet.by = "Country", y = "Age", x = "Group", c
 
 ```
 
+```{r get_age_range}
+
+
+```
+
 ```{r metadata_basic_plots, error=FALSE, fig.width = 4, fig.height= 8}
 country_group_sex <- metadata %>% group_by(Country, Group, Sex) %>% summarise(count = n()) 
 comparisons_groups <- list(c("Acute typhoid", "High Vi-titre"), c("Acute typhoid", "Household contact"), c("High Vi-titre", "Household contact"))

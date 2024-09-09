@@ -52,7 +52,7 @@ get_baseline_characteristics <- function(meta){
   pct_antibiotics[is.na(pct_antibiotics)] <- 0
   pct_antibiotics <- pct_antibiotics %>% mutate(pct_anti = (Yes / sum(c(No, Yes))) * 100) %>% select(c(Group, Country, pct_anti))
   
-  baseline_chars <- meta_subset %>% group_by(Country, Group) %>% summarise(number = n(), median_age = median(Age)) %>% left_join(pct_female, by = c('Group', 'Country')) %>% left_join(pct_antibiotics, by = c('Group', 'Country'))
+  baseline_chars <- meta_subset %>% group_by(Country, Group) %>% summarise(number = n(), median_age = median(Age), age_range = list(range(Age))) %>% left_join(pct_female, by = c('Group', 'Country')) %>% left_join(pct_antibiotics, by = c('Group', 'Country'))
   return(baseline_chars)
 }
 
