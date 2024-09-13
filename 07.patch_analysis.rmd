@@ -274,7 +274,6 @@ baseline_metadata_typhi_tmp <- baseline_metadata_typhi
 patch_bigmap_tmp$sample_id <- rownames(patch_bigmap_tmp)
 baseline_metadata_typhi_tmp$sample_id <- rownames(baseline_metadata_typhi_tmp)
 
-
 # Merge the dataframes on the sample_id
 merged_data <- merge(patch_bigmap_tmp, baseline_metadata_typhi_tmp, by = "sample_id")
 
@@ -300,5 +299,45 @@ ggplot(rnf_data_to_plot, aes(x = Diagnosis, y = rnf, colour = Diagnosis)) +
   geom_jitter(width = 0.25) +
   geom_boxplot(alpha = 0.5) +
   stat_compare_means()
+
+```
+
+
+Group read counts by MGC and then do maaslin.
+
+```{r group_by_mgc}
+
+patch_bigmap_l <- patch_bigmap %>% rownames_to_column(var = 'sample_id') %>%  
+  pivot_longer(!sample_id, names_to = "mgc_class", values_to = "reads") %>%
+  mutate(extracted_column = str_extract(mgc_class, "(?<=Entryname=)[^\\-]+"))
+
+View(head(patch_bigmap_l))
+
+patch_bigmap_mgc <- patch_bigmap_l %>% group_by(sample_id, extracted_column) %>% summarise(reads = sum(reads)) %>% ungroup() %>% pivot_wider(names_from = extracted_column, values_from = reads, values_fill = 0) %>% column_to_rownames(var = 'sample_id')
+
+variables_for_analysis <- c("Gender", "Diagnosis", "Run", 'age_at_challenge')
+
+Maaslin2(input_data = patch_bigmap_mgc, 
+           input_metadata = baseline_metadata_typhi, 
+           analysis_method = "LM",
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29', 'baseline_metadata_typhi_mgc'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+Maaslin2(input_data = patch_bigmap_mgc, input_metadata = baseline_metadata_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29', 'baseline_metadata_paratyphi_mgc'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
+
+Maaslin2(input_data = patch_bigmap_mgc, input_metadata = baseline_metadata_typhi_paratyphi, analysis_method = "LM", min_prevalence = 0,
+           normalization  = 'NONE',
+           transform = 'LOG',
+           output         = file.path('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29', 'baseline_metadata_typhi_paratyphi_mgc'), 
+           fixed_effects  = variables_for_analysis,
+           reference = c('Run,run_1'))
 
 ```

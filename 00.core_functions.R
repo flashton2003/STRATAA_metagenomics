@@ -813,7 +813,8 @@ run_maaslin <- function(feature_data, metadata, output_root, country, groups_for
   #      feature 1, group 2, prevalence 0.5
   
   vars_for_dirname <- paste(variables_for_analysis, collapse = '.')
-  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, 'mgc', sep = '_'))
+  # output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, 'mgc', sep = '_'))
+  output_dir <- file.path(output_root, paste(country, paste(groups_for_analysis, collapse = '_vs_'), vars_for_dirname, sep = '_'))
   Maaslin2(input_data = feature_data, input_metadata = metadata_to_analyse, analysis_method = "LM", min_prevalence = 0,
            normalization  = norm,
            transform = trans,
@@ -930,44 +931,6 @@ run_inner_join_maaslins <- function(maaslin_results, suffixes, variables_for_out
   return(combined_maaslins)
 }
 
-
-run_combine_edgeR <- function(groups_for_comparison, bangladesh_covars, malawi_covars){
-  comp <- paste(groups_for_comparison[1], 'vs', groups_for_comparison[2], sep = '_')
-  bang_covar_initials <- paste(str_sub(bangladesh_covars, 1, 6), sep = '', collapse = '')
-  mal_covar_initials <- paste(str_sub(malawi_covars, 1, 6), sep = '', collapse = '')
-  
-  blantyre_output_path <- file.path(output_folder_blantyre, '5_glm', paste('results_all', comp, mal_covar_initials, 'edgeR.tsv', sep = '.'))
-  dhaka_output_path <- file.path(output_folder_dhaka, '5_glm', paste('results_all', comp, bang_covar_initials, 'edgeR.tsv', sep = '.'))
-  
-  blantyre_output <- read_delim(blantyre_output_path, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
-  dhaka_output <- read_delim(dhaka_output_path, delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
-  
-  # this is the ridiculous shit you have to do in R to get a list of dataframes.
-  to_combine_paths <- c(blantyre_output_path, dhaka_output_path)
-  # this is a vec of strings that will be passed to dge_output to give sensible names to the joined output
-  # needs to be same order as to_combine_paths
-  to_combine_strings_for_join <- c("_mal", "_bang")
-  to_combine <- list()
-  for (i in seq_along(to_combine_paths)) {
-    to_combine[[i]] <- read_delim(to_combine_paths[i], delim = "\t", escape_double = FALSE,  trim_ws = TRUE)
-    to_combine[[i]] <- to_combine[[i]] %>% rename(species=...1)
-  }
-  
-  dge_output <- combine_and_compare_edgeRs(to_combine, to_combine_strings_for_join)
-  
-  #options(scipen = 999)
-  #options(scipen = 0) # to switch scientific notation back on
-  
-  sig_up_for_writing <- dge_output$sig_up %>% select(species, logFC_bang, FDR_bang, logFC_mal, FDR_mal) 
-  sig_up_for_writing %>% kbl() %>% kable_styling()
-  write_csv(sig_up_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_up_dge.csv', sep = '.')))
-  
-  sig_down_for_writing <- dge_output$sig_down %>% select(species, logFC_bang, FDR_bang, logFC_mal, FDR_mal)
-  sig_down_for_writing %>% kbl() %>% kable_styling()
-  write_csv(sig_down_for_writing, file.path(combined_output_root, 'dge', paste(the_date, comp, covar_initials, 'sig_down_dge.csv', sep = '.')))
-  #covar_initials <- paste(str_sub(covars, 1, 6), sep = '', collapse = '')
-  #combined_dge_output_folder <- file.path(combined_output_root, paste(covar_initials, 'combined_edgeR'))
-}
 
 simple_plot_species_of_interest <- function(prevalence_meta, species_of_interest, country_of_interest, groups_of_interest, participant_group_colours){
   
@@ -1139,7 +1102,7 @@ prep_data_to_plot_phyla <- function(strataa_metaphlan_data, metadata_select){
 }
 
 
-get_maaslin_results_for_species <- function(combined_maaslins, species_of_interest){
+prep_maaslin_results_for_species_forest_plot <- function(combined_maaslins, species_of_interest){
   # grepl for the species name, and then filter for the Group metadata (which is the case/control assc) and then select all columns except feature, metadata, value
   # maaslin_results_for_species <- combined_maaslins %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
   maaslin_results_for_species <- combined_maaslins %>% filter(lowest_taxonomic_level %in% species_of_interest) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
@@ -1207,6 +1170,71 @@ get_prevalence <- function(strataa_metaphlan_data_species, groups_to_analyse) {
 }
 
 
+forest_plot_functional <- function(mgc_maaslin_results){
+
+  mgc_maaslin_results <- mgc_maaslin_results %>%
+    pivot_longer(
+      cols = starts_with("coef") | starts_with("stderr") | starts_with("N") | starts_with("N.not.0") | starts_with("pval") | starts_with("qval"),
+      names_to = c(".value", "country"),
+      names_pattern = "(.*)_(.*)"
+    )
+  mgc_maaslin_results$country <- ifelse(mgc_maaslin_results$country == 'bgd', 'Bangladesh', mgc_maaslin_results$country)
+  mgc_maaslin_results$country <- ifelse(mgc_maaslin_results$country == 'mal', 'Malawi', mgc_maaslin_results$country)
+  mgc_maaslin_results$country <- ifelse(mgc_maaslin_results$country == 'nep', 'Nepal', mgc_maaslin_results$country)
+  mgc_maaslin_results$country <- ifelse(mgc_maaslin_results$country == 'patch', 'CHIM', mgc_maaslin_results$country)
+  
+  mgc_maaslin_results <- mgc_maaslin_results %>%
+    mutate(
+      ci_lower = coef - 1.96 * stderr,
+      ci_upper = coef + 1.96 * stderr
+    )
+  mgc_maaslin_results <- mgc_maaslin_results %>%
+    mutate(across(c(coef, stderr, ci_lower, ci_upper), ~ formatC(.x, format = "fg", digits = 3)))
+  mgc_maaslin_results <- mgc_maaslin_results %>%
+    mutate(across(c(pval, qval), ~ formatC(.x, format = "fg", digits = 2)))
+
+  tabletext <- cbind(
+    mgc = mgc_maaslin_results$feature,
+    country = mgc_maaslin_results$country,
+    N = mgc_maaslin_results$N,
+    coef = mgc_maaslin_results$coef,
+    stderr = mgc_maaslin_results$stderr,
+    qval = mgc_maaslin_results$qval
+  )
+
+  mean <- as.numeric(mgc_maaslin_results$coef)
+  lower <- as.numeric(mgc_maaslin_results$coef) - 1.96 * as.numeric(mgc_maaslin_results$stderr)
+  upper <- as.numeric(mgc_maaslin_results$coef) + 1.96 * as.numeric(mgc_maaslin_results$stderr)
+  # remove NaN values from lower and upper, dont set them as 0, remove them entirely
+
+  x_min <- min(na.omit(lower)) - 1  # Extend range slightly for better visualization
+  x_max <- max(na.omit(upper)) + 1
+  x_ticks <- seq(floor(x_min), ceiling(x_max), by = 2)  # Adjust 'by' for desired interval
+
+  # Plot the forest plot with table
+  forestplot(
+    labeltext = tabletext,
+    mean = mean,
+    lower = lower,
+    upper = upper,
+    xlab = "Effect Size",
+    xticks = x_ticks,
+    new_page = TRUE,
+    is.summary = c(FALSE, FALSE, FALSE, FALSE),
+    txt_gp = fpTxtGp(label = gpar(cex = 0.8), ticks = gpar(cex = 0.7), xlab = gpar(cex = 0.8)),
+    colgap = unit(0.2, "cm"),
+    col = fpColors(box = "royalblue", lines = "darkblue", summary = "royalblue")) %>% 
+      fp_set_zebra_style("#EFEFEF") %>% 
+      fp_add_header(country = "Cohort" %>% fp_align_center(),
+                  mgc = "MGC" %>% fp_align_center(),
+                  coef = 'Coefficient' %>% fp_align_center(),
+                  stderr = 'Standard\nError' %>% fp_align_center(),
+                  qval = 'Q-value' %>% fp_align_center(),
+                  N = "N" %>% fp_align_center()
+                  )
+}
+
+
 forest_plot <- function(prevalence, species_of_interest, species_maaslin_results){
   # species_prevalence <- prevalence %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% select(!c(feature, variable))
   species_prevalence <- prevalence %>% filter(lowest_taxonomic_level %in% species_of_interest) %>% select(!c(feature, variable))
@@ -1267,7 +1295,7 @@ forest_plot <- function(prevalence, species_of_interest, species_maaslin_results
 
 
 run_forest_plot <- function(prevalence, species_of_interest, combined_maaslins){
-  species_maaslin_results <- get_maaslin_results_for_species(combined_maaslins, species_of_interest)
+  species_maaslin_results <- prep_maaslin_results_for_species_forest_plot(combined_maaslins, species_of_interest)
   forest_plot(prevalence, species_of_interest, species_maaslin_results)
 }
 

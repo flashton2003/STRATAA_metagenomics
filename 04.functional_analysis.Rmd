@@ -169,6 +169,77 @@ bang_mal_func_summarise <- full_join(bang_func_summarised, mal_func_summarised, 
 bang_mal_func_summarise %>% kbl() %>% kable_styling()
 ```
 
+```{r forest_plot_mgc_types, error=FALSE}
+
+mal_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/Malawi_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions.sequencing_lane_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+bgd_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/Bangladesh_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+nep_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/Nepal_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+patch_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29/baseline_metadata_typhi_paratyphi_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+
+mal_func_maaslin_mgc_type <- mal_func_maaslin_mgc_type %>% rename_with(~paste0(., '_mal'), -c(feature, metadata, value))
+bgd_func_maaslin_mgc_type <- bgd_func_maaslin_mgc_type %>% rename_with(~paste0(., '_bgd'), -c(feature, metadata, value))
+nep_func_maaslin_mgc_type <- nep_func_maaslin_mgc_type %>% rename_with(~paste0(., '_nep'), -c(feature, metadata, value))
+patch_func_maaslin_mgc_type <- patch_func_maaslin_mgc_type %>% rename_with(~paste0(., '_patch'), -c(feature, metadata, value))
+
+patch_func_maaslin_mgc_type <- patch_func_maaslin_mgc_type %>% filter(metadata == 'Diagnosis')
+# in patch_selected_taxa_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+patch_func_maaslin_mgc_type$metadata <- ifelse(patch_func_maaslin_mgc_type$metadata == 'Diagnosis', 'Group', patch_func_maaslin_mgc_type$metadata)
+patch_func_maaslin_mgc_type$value <- ifelse(patch_func_maaslin_mgc_type$value == 'no_disease', 'Control_HealthySerosurvey', patch_func_maaslin_mgc_type$value)
+
+
+# do a full join of all four of the above dataframes based on feature and metadata
+# name the columns according to site
+
+all_func_maaslin_mgc_type <- full_join(mal_func_maaslin_mgc_type, bgd_func_maaslin_mgc_type, by = c('feature', 'metadata', 'value')) %>% 
+  full_join(nep_func_maaslin_mgc_type, by = c('feature', 'metadata', 'value')) %>% 
+  full_join(patch_func_maaslin_mgc_type, by = c('feature', 'metadata', 'value'))
+
+write_csv(all_func_maaslin_mgc_type, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/2024.09.11.functional_maaslin_mgc_type.all_sites.full_join.csv')
+
+# do a forest plot for TPP_AA_metabolism.Arginine2putrescine, acetate2butyrate.TPP_fatty_acids, TPP_fatty_acids.aminobutyrate2Butyrate, acrylate2propionate, Rnf_complex.succinate2propionate, Pyruvate2acetate, Others_HGD_unassigned.Nitrate_reductase, Molybdopterin_dependent_oxidoreductase, pdu, and Fumarate2succinate.fatty_acids
+# all_func_maaslin_mgc_type %>% 
+  # filter(MGC_class %in% c('TPP_AA_metabolism.Arginine2putrescine', 'acetate2butyrate.TPP_fatty_acids', 'TPP_fatty_acids.aminobutyrate2Butyrate', 'acrylate2propionate', 'Rnf_complex.succinate2propionate', 'Pyruvate2acetate', 'Others_HGD_unassigned.Nitrate_reductase', 'Molybdopterin_dependent_oxidoreductase', 'pdu', 'Fumarate2succinate.fatty_acids')) %>%
+mgcs_of_interest <- c('TPP_AA_metabolism.Arginine2putrescine', 'acetate2butyrate.TPP_fatty_acids', 'TPP_fatty_acids.aminobutyrate2Butyrate', 'acrylate2propionate', 'Rnf_complex.succinate2propionate', 'Pyruvate2acetate', 'Others_HGD_unassigned.Nitrate_reductase', 'Molybdopterin_dependent_oxidoreductase', 'pdu', 'Fumarate2succinate.fatty_acids')
+filtered_func_maaslin_mgc_type <- all_func_maaslin_mgc_type %>% 
+  filter(feature %in% mgcs_of_interest) %>%
+  filter(metadata == 'Group') %>% 
+  select(!c(metadata, value))
+
+forest_plot_functional(filtered_func_maaslin_mgc_type)
+
+
+prep_maaslin_results_for_species_forest_plot <- function(combined_maaslins, species_of_interest){
+  # grepl for the species name, and then filter for the Group metadata (which is the case/control assc) and then select all columns except feature, metadata, value
+  # maaslin_results_for_species <- combined_maaslins %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  maaslin_results_for_species <- combined_maaslins %>% filter(lowest_taxonomic_level %in% species_of_interest) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  # pivot the data so that the columns are now the country, and the values are the coef, stderr, N, N.not.0, pval, qval
+  maaslin_results_for_species <- maaslin_results_for_species %>%
+    pivot_longer(
+      cols = starts_with("coef") | starts_with("stderr") | starts_with("N") | starts_with("N.not.0") | starts_with("pval") | starts_with("qval"),
+      names_to = c(".value", "country"),
+      names_pattern = "(.*)_(.*)"
+    )
+  # change the country names to the full names
+  View(maaslin_results_for_species)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'bang', 'Bangladesh', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'mal', 'Malawi', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'nep', 'Nepal', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'patch', 'CHIM', maaslin_results_for_species$country)
+  # change the country to a factor, and set the levels to the desired order
+  desired_order <- c("Bangladesh", "Malawi", "Nepal", "CHIM")
+  maaslin_results_for_species$country <- factor(maaslin_results_for_species$country, levels = desired_order)
+  maaslin_results_for_species$country <- as.character(maaslin_results_for_species$country)
+  # add the 95% confidence intervals
+  maaslin_results_for_species <- maaslin_results_for_species %>%
+    mutate(
+      ci_lower = coef - 1.96 * stderr,
+      ci_upper = coef + 1.96 * stderr
+    )
+  return(maaslin_results_for_species)
+}
+
+```
+
 ## healthy vs carrier
 
 ### read in data
