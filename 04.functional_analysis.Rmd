@@ -1,0 +1,278 @@
+---
+title: "STRATAA Microbiome"
+author: "Philip Ashton"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+      toc: true
+      toc_float: true
+      theme: united
+      number_sections: true
+---
+
+```{r setup, error=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# STRATAA microbiome analysis
+
+## Sources
+
+The file handles are set in config.R as they're used by both this script and data_cleaning.
+
+```{r source, error=FALSE}
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
+```
+
+## Data import
+
+```{r metadata_read_in, error=FALSE}
+metadata <- read_metadata(metadata_handle)
+# putting this here so that the output files of maaslin get named accroding to the variable names in the metadata file.
+metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
+```
+
+## typhi vs healthy
+
+### maaslin functional groups 
+
+Functional groups associated with health
+
+```{r read_in_maaslin_functional, error=FALSE}
+bang_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions", "sequencing_lane")
+# nep_variables_for_analysis <- c("Group", "Sex", "Age", "Antibiotics_taken_before_sampling_assumptions")
+groups_to_analyse <- c('Acute_typhi', 'Control_HealthySerosurvey')
+
+bang_func_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
+mal_func_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
+nep_func_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
+```
+
+```{r count_func_maaslins, error=FALSE}
+
+print(nrow(bang_func_maaslin %>% filter(qval < 0.05, metadata == 'Group')))
+print(nrow(mal_func_maaslin %>% filter(qval < 0.05, metadata == 'Group')))
+print(nrow(nep_func_maaslin %>% filter(qval < 0.05, metadata == 'Group')))
+
+```
+
+Malawi, Bangladesh and Nepal. There are none shared at this level.
+
+```{r maaslin_functional_group_bang_mal_nep}
+bang_mal_nep <- list(bang_func_maaslin, mal_func_maaslin, nep_func_maaslin)
+bang_mal_nep_heal_typh_combined_results <- run_inner_join_maaslins(bang_mal_nep, c('_bang', '_mal', '_nep'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+bang_mal_nep_heal_typh_combined_filtered_maaslins <- filter_combined_maaslins(bang_mal_nep_heal_typh_combined_results)
+print(nrow(bang_mal_nep_heal_typh_combined_filtered_maaslins$positive_coef))
+print(nrow(bang_mal_nep_heal_typh_combined_filtered_maaslins$negative_coef))
+# bang_mal_nep_heal_typh_combined_filtered_maaslins$positive_coef %>%  kbl() %>% kable_styling()
+# bang_mal_nep_heal_typh_combined_filtered_maaslins$negative_coef %>%  kbl() %>% kable_styling()
+```
+
+Just Malawi and Bangladesh.
+
+```{r combine_maaslin_functional_groups, error=FALSE}
+bang_mal <- list(bang_func_maaslin, mal_func_maaslin)
+mal_bang_heal_typh_combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+mal_bang_heal_typh_combined_filtered_maaslins <- filter_combined_maaslins(mal_bang_heal_typh_combined_results)
+
+positive_table <- mal_bang_heal_typh_combined_filtered_maaslins$positive_coef %>%
+  dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
+         `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, ~as.character(signif(., 3))) %>% 
+  kbl() %>% 
+  kable_styling()
+
+# Process negative coefficients
+negative_table <- mal_bang_heal_typh_combined_filtered_maaslins$negative_coef %>%
+  dplyr::select(-metadata, -value, -N_bang, -N.not.0_bang, -pval_bang, -N_mal, -N.not.0_mal, -pval_mal) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, 
+         `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, ~as.character(signif(., 3))) %>% 
+  kbl() %>% 
+  kable_styling()
+
+# Split species and clean data for positive coefficients
+positive_cleaned <- mal_bang_heal_typh_combined_filtered_maaslins$positive_coef %>% 
+  mutate(split_species = str_split(Species, '_')) %>% 
+  mutate(genus = sapply(split_species, "[[", 1)) %>% 
+  mutate(specific = sapply(split_species, "[[", 2)) %>% 
+  mutate(clean_species = paste(genus, specific, sep = ' ')) %>% 
+  dplyr::select(-split_species, -genus, -specific) %>% 
+  relocate(clean_species, .after = Species) %>% 
+  group_by(MGC_class) %>% 
+  arrange(Species) %>% 
+  summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% 
+  arrange(desc(n), MGC_class) %>%  
+  kbl() %>% 
+  kable_styling()
+
+# Split species and clean data for negative coefficients
+negative_cleaned <- mal_bang_heal_typh_combined_filtered_maaslins$negative_coef %>% 
+  mutate(split_species = str_split(Species, '_')) %>% 
+  mutate(genus = sapply(split_species, "[[", 1)) %>% 
+  mutate(specific = sapply(split_species, "[[", 2)) %>% 
+  mutate(clean_species = paste(genus, specific, sep = ' ')) %>% 
+  dplyr::select(-split_species, -genus, -specific) %>% 
+  relocate(clean_species, .after = Species) %>% 
+  group_by(MGC_class) %>% 
+  arrange(Species) %>% 
+  summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% 
+  arrange(desc(n), MGC_class) %>%  
+  kbl() %>% 
+  kable_styling()
+
+# Display the tables
+positive_table
+# negative_table
+positive_cleaned
+# negative_cleaned
+
+nrow(mal_bang_heal_typh_combined_filtered_maaslins$positive_coef)
+```
+
+There were `r nrow(mal_bang_heal_typh_combined_results$positive_coef)` MGCs significantly (q-val < 0.05) associated with health/disease in Malawi and Bangladesh.
+
+```{r mwi_bgd_single_site}
+bang_only_func_maaslin <- bang_func_maaslin %>% filter(qval < 0.05, metadata == 'Group', value == 'Control_HealthySerosurvey') %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$positive_coef, by = c('feature', 'metadata', 'value')) %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$negative_coef, by = c('feature', 'metadata', 'value'))
+bang_only_func_maaslin %>% kbl() %>% kable_styling()
+# bang_only <- anti_join(bangladesh_taxonomic_maaslin_filtered, mal_bang_maaslins, by = c('feature', 'metadata', 'value')) %>% filter(qval < 0.05)
+
+mal_only_func_maaslin <- mal_func_maaslin %>% filter(qval < 0.05, metadata == 'Group', value == 'Control_HealthySerosurvey') %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$positive_coef, by = c('feature', 'metadata', 'value')) %>% anti_join(mal_bang_heal_typh_combined_filtered_maaslins$negative_coef, by = c('feature', 'metadata', 'value'))
+mal_only_func_maaslin %>% kbl() %>% kable_styling()
+
+
+```
+
+Also look at just the MGC_class level, not matching on full MGC and species etc.
+
+Filter for metadata = Group, value = Control_HealthySerosurvey, and qval < 0.05
+
+make a new variable which is the direction of the coef.
+
+then, group by MGC_class and direction of the coef, and take a count.
+
+Do this for each country separately, and then join by MGC class and direction of effect.
+
+Similar findings to the main analysis - PFOR, pyruvate2acetate.formate, and Rnf.
+
+```{r}
+bang_func_summarised <- summarise_mgcs(bang_func_maaslin)
+mal_func_summarised <- summarise_mgcs(mal_func_maaslin)
+nep_func_summarised <- summarise_mgcs(nep_func_maaslin)
+
+# only two MGCs assc in Nepal, so just going to join bang and mal.
+
+bang_mal_func_summarise <- full_join(bang_func_summarised, mal_func_summarised, by = c('MGC_class', 'direction_of_assc'))
+bang_mal_func_summarise %>% kbl() %>% kable_styling()
+```
+
+```{r forest_plot_mgc_types, error=FALSE}
+
+mal_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/Malawi_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions.sequencing_lane_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+bgd_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/Bangladesh_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+nep_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/Nepal_Acute_Typhi_vs_Control_HealthySerosurvey_Group.Sex.Age.Antibiotics_taken_before_sampling_assumptions_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+patch_func_maaslin_mgc_type <- read_delim('/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/patch_data/big-map/2024.02.29/baseline_metadata_typhi_paratyphi_mgc/all_results.tsv', delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+
+mal_func_maaslin_mgc_type <- mal_func_maaslin_mgc_type %>% rename_with(~paste0(., '_mal'), -c(feature, metadata, value))
+bgd_func_maaslin_mgc_type <- bgd_func_maaslin_mgc_type %>% rename_with(~paste0(., '_bgd'), -c(feature, metadata, value))
+nep_func_maaslin_mgc_type <- nep_func_maaslin_mgc_type %>% rename_with(~paste0(., '_nep'), -c(feature, metadata, value))
+patch_func_maaslin_mgc_type <- patch_func_maaslin_mgc_type %>% rename_with(~paste0(., '_patch'), -c(feature, metadata, value))
+
+patch_func_maaslin_mgc_type <- patch_func_maaslin_mgc_type %>% filter(metadata == 'Diagnosis')
+# in patch_selected_taxa_maaslin, change all Diagnosis in metadata column to Group, and all 'no_disease' in value column to 'ControlHealthySerosurvey'
+patch_func_maaslin_mgc_type$metadata <- ifelse(patch_func_maaslin_mgc_type$metadata == 'Diagnosis', 'Group', patch_func_maaslin_mgc_type$metadata)
+patch_func_maaslin_mgc_type$value <- ifelse(patch_func_maaslin_mgc_type$value == 'no_disease', 'Control_HealthySerosurvey', patch_func_maaslin_mgc_type$value)
+
+
+# do a full join of all four of the above dataframes based on feature and metadata
+# name the columns according to site
+
+all_func_maaslin_mgc_type <- full_join(mal_func_maaslin_mgc_type, bgd_func_maaslin_mgc_type, by = c('feature', 'metadata', 'value')) %>% 
+  full_join(nep_func_maaslin_mgc_type, by = c('feature', 'metadata', 'value')) %>% 
+  full_join(patch_func_maaslin_mgc_type, by = c('feature', 'metadata', 'value'))
+
+write_csv(all_func_maaslin_mgc_type, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/big-map/2024.05.03/2024.09.11.functional_maaslin_mgc_type.all_sites.full_join.csv')
+
+# do a forest plot for TPP_AA_metabolism.Arginine2putrescine, acetate2butyrate.TPP_fatty_acids, TPP_fatty_acids.aminobutyrate2Butyrate, acrylate2propionate, Rnf_complex.succinate2propionate, Pyruvate2acetate, Others_HGD_unassigned.Nitrate_reductase, Molybdopterin_dependent_oxidoreductase, pdu, and Fumarate2succinate.fatty_acids
+# all_func_maaslin_mgc_type %>% 
+  # filter(MGC_class %in% c('TPP_AA_metabolism.Arginine2putrescine', 'acetate2butyrate.TPP_fatty_acids', 'TPP_fatty_acids.aminobutyrate2Butyrate', 'acrylate2propionate', 'Rnf_complex.succinate2propionate', 'Pyruvate2acetate', 'Others_HGD_unassigned.Nitrate_reductase', 'Molybdopterin_dependent_oxidoreductase', 'pdu', 'Fumarate2succinate.fatty_acids')) %>%
+mgcs_of_interest <- c('TPP_AA_metabolism.Arginine2putrescine', 'acetate2butyrate.TPP_fatty_acids', 'TPP_fatty_acids.aminobutyrate2Butyrate', 'acrylate2propionate', 'Rnf_complex.succinate2propionate', 'Pyruvate2acetate', 'Others_HGD_unassigned.Nitrate_reductase', 'Molybdopterin_dependent_oxidoreductase', 'pdu', 'Fumarate2succinate.fatty_acids')
+filtered_func_maaslin_mgc_type <- all_func_maaslin_mgc_type %>% 
+  filter(feature %in% mgcs_of_interest) %>%
+  filter(metadata == 'Group') %>% 
+  select(!c(metadata, value))
+
+forest_plot_functional(filtered_func_maaslin_mgc_type)
+
+
+prep_maaslin_results_for_species_forest_plot <- function(combined_maaslins, species_of_interest){
+  # grepl for the species name, and then filter for the Group metadata (which is the case/control assc) and then select all columns except feature, metadata, value
+  # maaslin_results_for_species <- combined_maaslins %>% filter(grepl(species_of_interest, lowest_taxonomic_level)) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  maaslin_results_for_species <- combined_maaslins %>% filter(lowest_taxonomic_level %in% species_of_interest) %>% filter(metadata == 'Group') %>% select(!c(feature, metadata, value))
+  # pivot the data so that the columns are now the country, and the values are the coef, stderr, N, N.not.0, pval, qval
+  maaslin_results_for_species <- maaslin_results_for_species %>%
+    pivot_longer(
+      cols = starts_with("coef") | starts_with("stderr") | starts_with("N") | starts_with("N.not.0") | starts_with("pval") | starts_with("qval"),
+      names_to = c(".value", "country"),
+      names_pattern = "(.*)_(.*)"
+    )
+  # change the country names to the full names
+  View(maaslin_results_for_species)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'bang', 'Bangladesh', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'mal', 'Malawi', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'nep', 'Nepal', maaslin_results_for_species$country)
+  maaslin_results_for_species$country <- ifelse(maaslin_results_for_species$country == 'patch', 'CHIM', maaslin_results_for_species$country)
+  # change the country to a factor, and set the levels to the desired order
+  desired_order <- c("Bangladesh", "Malawi", "Nepal", "CHIM")
+  maaslin_results_for_species$country <- factor(maaslin_results_for_species$country, levels = desired_order)
+  maaslin_results_for_species$country <- as.character(maaslin_results_for_species$country)
+  # add the 95% confidence intervals
+  maaslin_results_for_species <- maaslin_results_for_species %>%
+    mutate(
+      ci_lower = coef - 1.96 * stderr,
+      ci_upper = coef + 1.96 * stderr
+    )
+  return(maaslin_results_for_species)
+}
+
+```
+
+## healthy vs carrier
+
+### read in data
+
+Not running this bit for now.
+```{r read_in_maaslin_functional_healthy_carrier, error=FALSE, include=FALSE}
+nep_variables_for_analysis <- c("Group", "Sex", "Age")
+mwi_variables_for_analysis <- c("Group", "Sex", "Age", "sequencing_lane")
+groups_to_analyse <- c('High Vi-titre', 'Household contact')
+# bang_func_carr_health_maaslin <- read_in_maaslin('Bangladesh', groups_to_analyse, bang_variables_for_analysis, 'bigmap')
+mal_func_carr_health_maaslin <- read_in_maaslin('Malawi', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
+nep_func_carr_health_maaslin <- read_in_maaslin('Nepal', groups_to_analyse, mwi_variables_for_analysis, 'bigmap')
+```
+# maaslin
+```{r maaslin_functional_groups_healthy_carrier, error=FALSE, include=FALSE}
+combined_results <- run_inner_join_maaslins(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin, bang_variables_for_analysis, mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+bang_mal <- list(bang_func_carr_health_maaslin, mal_func_carr_health_maaslin)
+combined_results <- run_inner_join_maaslins(bang_mal, c('_bang', '_mal'), mwi_variables_for_analysis, groups_to_analyse, 'bigmap', maaslin_functional_output_root_folder)
+# positive is associated with health
+# combined_results$positive_coef %>%  kbl() %>% kable_styling()
+combined_results$positive_coef %>% 
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
+# negative is associated with carrier
+# combined_results$negative_coef %>%  kbl() %>% kable_styling()
+combined_results$negative_coef %>% 
+  select(!c(metadata, value, N_bang, N.not.0_bang, pval_bang, N_mal, N.not.0_mal, pval_mal)) %>% 
+  rename(`Coefficient Bangladesh` = coef_bang, `Standard Error Bangladesh` = stderr_bang, `Q-value Bangladesh` = qval_bang, `Coefficient Malawi` = coef_mal, `Standard Error Malawi` = stderr_mal, `Q-value Malawi` = qval_mal) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>% 
+  kbl() %>% kable_styling()
+# print out a nicely formatted table of the count of the MGCs
+combined_results$positive_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+combined_results$negative_coef %>% mutate(split_species = str_split(Species, '_')) %>% mutate(genus = sapply(split_species, "[[", 1)) %>% mutate(specific = sapply(split_species, "[[", 2)) %>% mutate(clean_species = paste(genus, specific, sep = ' ')) %>% select(-split_species, -genus, -specific) %>% relocate(clean_species, .after = Species) %>% group_by(MGC_class) %>% arrange(Species) %>% summarise(n = n(), Species = paste(clean_species, collapse = ', ')) %>% arrange(desc(n), MGC_class) %>%  kbl() %>% kable_styling()
+```

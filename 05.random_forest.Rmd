@@ -1,0 +1,194 @@
+---
+title: "STRATAA Microbiome - random forest"
+author: "Philip Ashton"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+      toc: true
+      toc_float: true
+      theme: united
+      number_sections: true
+---
+
+```{r setup, error=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# STRATAA microbiome random forest analysis
+
+## Sources
+
+The file handles are set in config.R as they're used by both this script and data_cleaning. The imports are done in the core functions file.
+
+```{r source, error=FALSE}
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/00.core_functions.R")
+source("/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_Leo/Leonardos_analysis/bin/config.R")
+```
+
+## Data import
+
+metadata
+
+```{r read_data, error=FALSE}
+metadata <- read_metadata(metadata_handle)
+# putting this here so that the output files of maaslin get named accroding to the variable names in the metadata file.
+metadata <- metadata %>% mutate(Group = if_else(Group == 'Control_HealthySerosurvey', 'Household contact', Group)) %>% mutate(Group = if_else(Group == 'Acute_Typhi', 'Acute typhoid', Group)) %>% mutate(Group = if_else(Group == 'Carrier', 'High Vi-titre', Group))
+metadata_copy <- metadata %>% select(SampleID, Group, Country)
+
+```
+
+metaphlan data
+
+```{r}
+
+strataa_metaphlan_data <- read.csv(file = file.path(metaphlan_input_folder, '2023.05.11.all_strataa_metaphlan.csv'), header= TRUE, sep = ",", row.names = 1, stringsAsFactors = FALSE, check.names=FALSE)
+# strataa_metaphlan_data$lowest_taxonomic_level <- sapply(str_split(row.names(strataa_metaphlan_data), "\\|"), function(x) x[length(x)])
+# strataa_metaphlan_data_species <- strataa_metaphlan_data %>% filter(str_starts(lowest_taxonomic_level, 's__'))
+
+strataa_metaphlan_data_t <- as.data.frame(t(strataa_metaphlan_data))
+names(strataa_metaphlan_data_t) <- gsub("\\|", "_", names(strataa_metaphlan_data_t))
+strataa_metaphlan_data_t <- strataa_metaphlan_data_t %>% select(contains('_s__')) %>% select(!contains('_t__'))
+strataa_metaphlan_data_t$sample_name <- rownames(strataa_metaphlan_data_t)
+
+# join the Group column from metadata to the metaphlan data
+strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_t %>% left_join(metadata_copy, by = c("sample_name" = 'SampleID')) %>% filter(Group != "Acute typhoid", Country != 'Bangladesh') %>% mutate(Group = as.factor(Group))
+row.names(strataa_metaphlan_data_heal_carr_rf) <- strataa_metaphlan_data_heal_carr_rf$sample_name
+strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_heal_carr_rf %>% select(-sample_name) %>% filter(!is.na(Group))
+# remove rows where the group is acute typhi and remove any column that sums to 0
+# strataa_metaphlan_data_heal_carr_rf <- strataa_metaphlan_data_rf %>% filter(G #%>% select(where(~ !is.numeric(.) || sum(.) != 0))
+
+```
+
+RF - Using a strategy from one of Kevin Bonham's papers https://www.biorxiv.org/content/10.1101/2020.02.13.944181v5.full
+
+this creates three folds, each of which has 2/3rds of the data in it.
+this is because for a 3 fold CV, we use 2/3 as training, and 1/3 as test.
+
+```{r}
+# Assuming strataa_metaphlan_data_heal_carr_rf is your dataset
+data <- strataa_metaphlan_data_heal_carr_rf %>% select(-Country)
+
+# Parameters for the CV process
+n_repeats <- 100
+n_folds <- 3
+n_rng_states <- 10
+
+# Data frames to store the results
+accuracy_df <- data.frame(rep = integer(), 
+                          fold = integer(), 
+                          rng_state = integer(), 
+                          data_type = character(),  # Indicates train or test data
+                          accuracy = numeric())
+
+importance_df <- data.frame(feature = character(), 
+                            rep = integer(), 
+                            fold = integer(), 
+                            rng_state = integer(), 
+                            importance = numeric())
+
+# Start the cross-validation process
+for (rep in 1:n_repeats) {
+  fold_indices <- createFolds(data$Group, k = n_folds, list = TRUE)
+  
+  for (fold in 1:n_folds) {
+    train_indices <- fold_indices[[fold]]
+    test_indices <- setdiff(1:nrow(data), train_indices)
+    train_data <- data[train_indices, ]
+    test_data <- data[test_indices, ]
+    
+    for (rng_state in 1:n_rng_states) {
+      set.seed(1000 * rep + 100 * fold + rng_state)
+      rf <- randomForest(Group ~ ., data = train_data, ntree = 500)
+      
+      # Calculate accuracy on training data
+      train_pred <- predict(rf, train_data)
+      train_accuracy <- sum(train_pred == train_data$Group) / nrow(train_data)
+      
+      # Calculate accuracy on test data
+      test_pred <- predict(rf, test_data)
+      test_accuracy <- sum(test_pred == test_data$Group) / nrow(test_data)
+      
+      # Add to accuracy dataframe
+      accuracy_df <- rbind(accuracy_df, 
+                           data.frame(rep = rep, 
+                                      fold = fold, 
+                                      rng_state = rng_state, 
+                                      data_type = "Train",
+                                      accuracy = train_accuracy),
+                           data.frame(rep = rep, 
+                                      fold = fold, 
+                                      rng_state = rng_state, 
+                                      data_type = "Test",
+                                      accuracy = test_accuracy))
+      
+      # Capture feature importance
+      imp <- as.data.frame(importance(rf))
+      imp$feature <- row.names(imp)
+      imp$rep <- rep
+      imp$fold <- fold
+      imp$rng_state <- rng_state
+      
+      # Reshape for tidy data and bind to the main importance dataframe
+      imp_long <- pivot_longer(imp, 
+                               cols = -c(feature, rep, fold, rng_state), 
+                               names_to = "metric", 
+                               values_to = "importance")
+      
+      # We only need the MeanDecreaseGini (or MeanDecreaseAccuracy) column here
+      imp_filtered <- imp_long %>% 
+                      filter(metric == "MeanDecreaseGini") %>% 
+                      select(-metric)
+      
+      importance_df <- rbind(importance_df, imp_filtered)
+    }
+  }
+}
+
+# Clean the importance_df to have columns as specified
+importance_df <- importance_df %>% 
+                 select(feature, rep, fold, rng_state, importance)
+
+# Print the data frames to check
+print(head(accuracy_df))
+print(head(importance_df))
+
+# save(accuracy_df, importance_df, file = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/random_forest/2024.01.09/rf_results.RData")
+
+# test_accuracy_df <- accuracy_df
+# test_importance_df <- importance_df
+```
+
+```{r}
+
+accuracy_df_w <- accuracy_df %>%
+             pivot_wider(names_from = data_type, values_from = accuracy, 
+                         names_prefix = "accuracy_") %>%
+             mutate(sqrt_product_accuracy = sqrt(accuracy_Train * accuracy_Test)) %>%
+             select(rep, fold, rng_state, sqrt_product_accuracy)
+
+
+joined_df <- left_join(importance_df, accuracy_df_w, by = c("rep", "fold", "rng_state"))
+
+# Calculate sqrt_product_accuracy weighted importance
+joined_df <- joined_df %>%
+             mutate(weighted_importance = sqrt_product_accuracy * importance)
+
+# Group by feature and calculate the average of the weighted importances
+average_importance_df <- joined_df %>%
+                         group_by(feature) %>%
+                         summarise(average_weighted_importance = mean(weighted_importance, na.rm = TRUE)) %>%
+                         arrange(desc(average_weighted_importance))
+
+# report the median and second and third quartiles
+
+average_accuracy <- accuracy_df %>% group_by(data_type) %>% summarise(average_accuracy = median(accuracy, na.rm = TRUE), second_quantile = quantile(accuracy, 0.25, na.rm = TRUE), third_quantile = quantile(accuracy, 0.75, na.rm = TRUE))
+View(average_accuracy)
+
+
+# accuracy_df %>% filter(data_type == 'Test') %>% ggplot(aes(x = accuracy)) + geom_histogram(bins = 20)
+
+# View the result
+print(head(average_importance_df, 10))
+save(average_importance_df, file = "/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/random_forest/2024.01.09/rf_results.final.RData")
+write_csv(average_importance_df, '/Users/flashton/Dropbox/GordonGroup/STRATAA_Microbiome/from_leo/Leonardos_analysis/random_forest/2024.01.09/rf_results.feature_importance.csv')
+```
